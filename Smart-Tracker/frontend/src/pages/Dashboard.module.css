@@ -38,11 +38,14 @@
 }
 
 .summaryTitle {
-  font-size: 0.9rem;
+  font-size: 1rem; /* Match existing title size or adjust */
   color: var(--text-secondary-light);
   margin-bottom: 0.4rem;
   text-transform: uppercase;
   font-weight: 500;
+  /* Re-add flex alignment for inline SVG */
+  display: inline-flex;
+  align-items: center;
 }
 
 .summaryValue {
@@ -164,4 +167,35 @@
 
   /* Ensure chart tooltips/legends have dark mode styles */
   /* Recharts usually needs specific prop overrides for theme */
+
+  /* Removed specific icon stroke colors */
+}
+
+/* Styles for the summary icons (react-icons) */
+.summaryIcon {
+  width: 1.1em; /* Size relative to font size */
+  height: 1.1em;
+  margin-right: 0.5em; /* Space relative to font size */
+  /* color: currentColor; Inherits color by default */
+}
+
+/* Optional: Color specific icons */
+.incomeIconColor {
+  color: #10B981; /* Match income value color */
+}
+
+.expenseIconColor {
+  color: #EF4444; /* Match expense value color */
+}
+
+/* Dark Mode specific icon colors */
+@media (prefers-color-scheme: dark) {
+  /* ... existing dark mode styles ... */
+  .incomeIconColor {
+    color: #34D399; /* Match dark mode income value color */
+  }
+
+  .expenseIconColor {
+    color: #F87171; /* Match dark mode expense value color */
+  }
 } 
