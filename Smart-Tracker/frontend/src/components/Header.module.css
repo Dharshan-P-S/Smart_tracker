@@ -72,9 +72,27 @@
 }
 
 .navOpen {
-  transform: translateX(0); /* Slide in from left */
-  opacity: 1;
+  transform: translateX(0);
   visibility: visible;
+}
+
+/* NEW: Menu Backdrop Styles */
+.menuBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5); 
+  opacity: 1; /* Make it visible when rendered */
+  visibility: visible; /* Make it visible when rendered */
+  /* Add transition for smooth fade-in/out if needed, triggered by conditional rendering */
+  /* Example (if not using React transitions): */
+  /* transition: opacity 0.3s ease-out; */
+  /* &.entering { opacity: 0; } */
+  /* &.entered { opacity: 1; } */
+  /* &.exiting { opacity: 0; } */
+  z-index: 998; 
 }
 
 /* NEW: Menu Header inside Drawer */

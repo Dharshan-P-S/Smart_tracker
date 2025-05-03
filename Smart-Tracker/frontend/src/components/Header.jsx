@@ -69,18 +69,20 @@ function Header() {
   }
 
   return (
-    <header className={styles.header}>
-      {/* Hamburger Toggle */}
-      <button onClick={toggleMenu} className={styles.menuToggle} aria-label="Toggle menu">
-        {isMenuOpen ? <CloseIcon /> : <MenuIcon />}
-      </button>
+    <>
+      <header className={styles.header}>
+        {/* Hamburger Toggle */}
+        <button onClick={toggleMenu} className={styles.menuToggle} aria-label="Toggle menu">
+          {isMenuOpen ? <CloseIcon /> : <MenuIcon />}
+        </button>
 
-      {/* Logo Container - Now after toggle */}
-      <div className={styles.logoContainer}>
-        <Link to="/dashboard" className={styles.logoLink} onClick={closeMenu}>
-            <h1 className={styles.logo}>Smart Tracker</h1>
-        </Link>
-      </div>
+        {/* Logo Container - Now after toggle */}
+        <div className={styles.logoContainer}>
+          <Link to="/dashboard" className={styles.logoLink} onClick={closeMenu}>
+              <h1 className={styles.logo}>Dashboard</h1>
+          </Link>
+        </div>
+      </header>
 
       {/* Collapsible Menu Area */}
       <nav className={`${styles.nav} ${isMenuOpen ? styles.navOpen : ''}`}>
@@ -115,7 +117,16 @@ function Header() {
              </button>
          </div>
       </nav>
-    </header>
+
+      {/* Backdrop Overlay */}
+      {isMenuOpen && (
+        <div 
+          className={styles.menuBackdrop} 
+          onClick={closeMenu} 
+          aria-hidden="true" 
+        />
+      )}
+    </>
   );
 }
 

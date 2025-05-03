@@ -1,0 +1,89 @@
+/* Dashboard.module.css */
+
+.dashboardPageContent {
+  /* Styles for the content area within the main layout */
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.pageTitle {
+  font-size: 1.8rem; /* Adjusted size */
+  font-weight: 600;
+  color: var(--text-primary-light);
+  margin-bottom: 0.5rem; /* Reduced margin */
+}
+
+/* Summary Section Styles */
+.summarySection {
+  display: flex;
+  flex-direction: row; /* Changed to row */
+  gap: 1rem;
+  background-color: var(--box-bg-light);
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-light);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  border-radius: 6px;
+  background-color: var(--bg-light);
+  flex: 1; /* Make items take equal space */
+}
+
+.summaryTitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary-light);
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.summaryValue {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--text-primary-light);
+}
+
+/* Specific colors for income/expense */
+.summaryValue.income {
+  color: #10B981; /* Green */
+}
+
+.summaryValue.expense {
+  color: #EF4444; /* Red */
+}
+
+/* Add styles for other sections later */
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  .pageTitle {
+    color: var(--text-primary-dark);
+  }
+  .summarySection {
+    background-color: var(--box-bg-dark);
+    border-color: var(--border-dark);
+  }
+   .summaryItem {
+     background-color: var(--bg-dark);
+   }
+  .summaryTitle {
+     color: var(--text-secondary-dark);
+  }
+  .summaryValue {
+     color: var(--text-primary-dark);
+  }
+  .summaryValue.income {
+     color: #34D399; /* Lighter Green */
+  }
+  .summaryValue.expense {
+     color: #F87171; /* Lighter Red */
+  }
+} 
