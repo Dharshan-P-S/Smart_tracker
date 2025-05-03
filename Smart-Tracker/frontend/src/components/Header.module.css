@@ -10,8 +10,8 @@
   border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 1.5rem;
+  gap: 1rem; /* Add gap between toggle and logo */
+  padding: 0 1rem; /* Adjust padding slightly */
   z-index: 1000; /* Ensure header stays on top */
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
@@ -35,7 +35,8 @@
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0.5rem;
+  padding: 0.5rem; /* Ensure some padding */
+  margin-right: 0.5rem; /* Add some space if needed */
   display: block; /* Initially shown */
 }
 
@@ -46,30 +47,82 @@
   transition: color 0.3s ease;
 }
 
-/* Navigation Menu Styles */
+/* Navigation Menu Styles - Reverted to Slide-in Drawer */
 .nav {
   display: flex;
   flex-direction: column;
   position: fixed;
-  top: 60px; /* Below header */
+  top: 0; /* Start from top */
   left: 0;
-  width: 100%;
-  max-height: calc(100vh - 60px);
+  width: 85%; /* Take up most of the width */
+  max-width: 400px; /* Max width */
+  height: 100vh; /* Full height */
   overflow-y: auto;
   background-color: var(--box-bg-light);
-  padding: 1rem;
-  border-bottom: 1px solid var(--border-light);
-  transform: translateY(-110%); /* Start hidden above */
-  opacity: 0;
+  padding: 1.5rem 1rem;
+  border-right: 1px solid var(--border-light); /* Restore border-right */
+  /* Removed border-bottom */
+  transform: translateX(-100%); /* Start hidden to the left */
+  opacity: 1; /* Opacity is handled by visibility/transform */
   visibility: hidden;
-  transition: transform 0.3s ease-out, opacity 0.3s ease-out, visibility 0.3s ease-out, background-color 0.3s ease, border-color 0.3s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease-out, visibility 0.3s ease-out, background-color 0.3s ease, border-color 0.3s ease;
+  z-index: 999;
+  box-shadow: 4px 0 6px rgba(0, 0, 0, 0.05);
+  justify-content: space-between; /* Added back for logout positioning */
 }
 
 .navOpen {
-  transform: translateY(0);
+  transform: translateX(0); /* Slide in from left */
   opacity: 1;
   visibility: visible;
+}
+
+/* NEW: Menu Header inside Drawer */
+.menuHeader {
+  display: flex;
+  justify-content: flex-end; /* Position button to the right */
+  align-items: center;
+  padding-bottom: 1rem; /* Space below header */
+  margin-bottom: 1rem; /* Space below header */
+  border-bottom: 1px solid var(--border-light);
+}
+
+/* NEW: Close button inside Drawer */
+.closeMenuButton {
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  line-height: 0; /* Prevent extra space */
+}
+
+.closeMenuButton .icon {
+  width: 28px; /* Slightly larger icon */
+  height: 28px;
+  color: var(--text-secondary-light);
+  transition: color 0.2s ease;
+}
+
+.closeMenuButton:hover .icon {
+  color: var(--text-primary-light);
+}
+
+.navLinksSection {
+  /* border-bottom: 1px dashed var(--border-light); */
+  /* padding-bottom: 1rem; */
+  /* margin-bottom: 1rem; */
+  flex-grow: 1; /* Make this section take up space */
+  /* Maybe remove border/padding from here now */
+  /* border-bottom: none; */ 
+  /* padding-bottom: 0; */
+  /* margin-bottom: 0; */
+}
+
+/* NEW: Styles for navigation icons */
+.navIcon {
+  width: 22px;
+  height: 22px;
+  margin-right: 0.8rem; /* Add margin back */
 }
 
 .navLink, .logoutButton {
@@ -81,16 +134,12 @@
   color: var(--text-secondary-light);
   font-weight: 500;
   transition: background-color 0.2s ease, color 0.2s ease;
-  width: 100%; /* Make button take full width */
+  width: 100%;
   background: none;
   border: none;
   cursor: pointer;
-  text-align: left;
+  text-align: left; /* Ensure text aligns left */
   font-size: 1rem;
-}
-
-.navLink span, .logoutButton span {
-  margin-left: 0.8rem;
 }
 
 .navLink:hover {
@@ -99,16 +148,28 @@
 }
 
 .logoutButton {
-  margin-top: 1rem; /* Space above logout */
-  color: var(--error-light);
+  margin-top: 0; /* Remove auto margin */
+  /* padding-top: 1rem; Keep padding? */
+  /* border-top: 1px dashed var(--border-light); Keep border? */
 }
 
 .logoutButton:hover {
   background-color: rgba(239, 68, 68, 0.1);
 }
 
+/* REMOVED Styles for Dashboard Content inside Menu */
+/* .dashboardContentArea { ... } */
+/* .section { ... } */
+/* .section h2 { ... } */
+/* .section p { ... } */
 
-/* Dark Mode */
+.logoutAreaInMenu {
+  margin-top: 0; /* Remove auto margin */
+  /* padding-top: 1rem; Keep padding? */
+  /* border-top: 1px dashed var(--border-light); Keep border? */
+}
+
+/* Dark Mode Adjustments */
 @media (prefers-color-scheme: dark) {
   .header {
     background-color: var(--box-bg-dark);
@@ -122,8 +183,12 @@
   }
   .nav {
     background-color: var(--box-bg-dark);
-    border-bottom-color: var(--border-dark);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-right-color: var(--border-dark); /* Restore border-right */
+    /* Removed border-bottom-color */
+    box-shadow: 4px 0 6px rgba(0, 0, 0, 0.1);
+  }
+  .navLinksSection {
+    /* border-bottom-color: var(--border-dark); */
   }
   .navLink {
      color: var(--text-secondary-dark);
@@ -137,6 +202,28 @@
   }
    .logoutButton:hover {
     background-color: rgba(248, 113, 113, 0.1);
+  }
+  .logoutAreaInMenu {
+     /* border-top-color: var(--border-dark); */
+  }
+  /* Remove dark mode styles for dashboard content */
+  /* .section h2 { ... } */
+  /* .section p { ... } */
+
+  .menuHeader {
+    border-bottom-color: var(--border-dark);
+  }
+
+  .closeMenuButton .icon {
+    color: var(--text-secondary-dark);
+  }
+
+  .closeMenuButton:hover .icon {
+    color: var(--text-primary-dark);
+  }
+  
+  .navLinksSection {
+     /* border-bottom-color: none; */
   }
 }
 

@@ -1,13 +1,15 @@
 /* Layout.module.css */
 
 .layoutContainer {
-  display: flex;
+  /* display: flex; Removed */
   min-height: 100vh; /* Ensure layout takes full height */
 }
 
 .mainContent {
-  flex-grow: 1; /* Allow main content to take remaining space */
-  margin-left: 250px; /* Same as sidebar width */
+  /* flex-grow: 1; Removed */
+  /* margin-left: 250px; Removed */
   padding: 1.5rem; /* Add padding around the main content */
+  /* padding-top: calc(60px + 1.5rem); Removed */
   /* Background is handled by body */
+  /* This area might be empty or show minimal content */
 } 
