@@ -1,0 +1,278 @@
+/* LoginPage.module.css */
+
+/* Add keyframes for entrance animation */
+@keyframes fadeInScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Light Mode Variables */
+:root {
+  --bg-light: #EDE8F5; /* Very light lavender */
+  --box-bg-light: #FFFFFF; /* White */
+  --text-primary-light: #3D52A0; /* Strong indigo-blue */
+  --text-secondary-light: #8697C4; /* Muted slate blue */
+  --accent-primary-light: #7091E6; /* Soft periwinkle blue */
+  --accent-secondary-light: #3D52A0; /* Strong indigo-blue (for hover) */
+  --border-light: #ADBBDA; /* Pale dusty blue */
+  --error-light: #EF4444; /* Red */
+  --success-light: #10B981; /* Green */
+}
+
+/* Dark Mode Variables */
+:root {
+  --bg-dark: #0B0C10; /* Very dark gray */
+  --box-bg-dark: #1F2833; /* Dark charcoal blue */
+  --text-primary-dark: #C5C6C7; /* Light gray */
+  --text-secondary-dark: #9CA3AF; /* Medium Gray */
+  --accent-primary-dark: #45A29E; /* Muted teal */
+  --accent-secondary-dark: #66FCF1; /* Bright aqua */
+  --border-dark: #374151; /* Dark Gray Border */
+  --error-dark: #F87171; /* Lighter Red */
+}
+
+.loginContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+.loginBox {
+  background-color: var(--box-bg-light);
+  padding: 2.5rem 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  border: 1px solid var(--border-light);
+  transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+  animation: fadeInScaleUp 0.5s ease-out forwards;
+}
+
+.title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary-light);
+  transition: color 0.3s ease;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary-light);
+  margin-bottom: 1.5rem;
+  transition: color 0.3s ease;
+}
+
+.loginForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.inputGroup {
+  text-align: left;
+  position: relative; /* Needed for absolute positioning of label */
+  margin-top: 0.8rem; /* Add margin for spacing */
+}
+
+.label {
+  position: absolute;
+  left: 1rem; /* Start inside, aligned with input padding */
+  top: 50%;  /* Center vertically initially */
+  transform: translateY(-50%); /* Precise vertical centering */
+  font-size: 1rem;
+  color: var(--text-secondary-light);
+  pointer-events: none;
+  transition: all 0.2s ease-out; /* Transition everything */
+  background: none; /* Ensure no background initially */
+  padding: 0; /* No padding initially */
+}
+
+.input {
+  width: 100%;
+  /* Adjust padding: more top padding */
+  padding: 1.2rem 1rem 0.6rem 1rem;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: var(--box-bg-light); /* Match box bg */
+  color: var(--text-primary-light);
+  transition: border-color 0.2s ease, background-color 0.3s ease, color 0.3s ease;
+  /* Removed transform/box-shadow transitions from input itself */
+}
+
+/* Styles for when the label should float */
+.input:focus + .label,
+.input:not(:placeholder-shown) + .label {
+  top: 0; /* Position label at the top border line */
+  left: 0.8rem; /* Indent slightly from the left edge */
+  transform: translateY(-50%) scale(1); /* Move halfway up the border line, no scaling needed */
+  font-size: 0.75rem; /* Make font smaller */
+  color: var(--accent-primary-light);
+  background-color: var(--box-bg-light); /* CRUCIAL: Match the login box bg */
+  padding: 0 0.4rem; /* Horizontal padding creates the 'notch' */
+  pointer-events: auto; /* Optional: allow interaction */
+  /* font-weight: 500; */ /* Optional: Adjust font weight */
+}
+
+.input:hover {
+  /* transform: none; Removed - no hover transform needed here */
+  border-color: var(--text-secondary-light); /* Simple border highlight on hover */
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent-primary-light); /* Highlight border color on focus */
+  box-shadow: none; /* Remove focus box-shadow */
+  /* transform: none; Removed - no focus transform */
+}
+
+.button {
+  padding: 0.9rem;
+  margin-top: 1rem; /* Add margin above button */
+  background-color: var(--accent-primary-light);
+  color: #FFFFFF; /* Changed from --bg-dark to white */
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.button:hover {
+  background-color: var(--accent-secondary-light);
+  color: #FFFFFF; /* Ensure hover state also uses white text */
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.button:active {
+  transform: translateY(0px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.errorMessage {
+  color: var(--error-light);
+  background-color: rgba(239, 68, 68, 0.1);
+  padding: 0.8rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--error-light);
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.signupLink {
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary-light);
+  transition: color 0.3s ease;
+}
+
+.signupLink a {
+  color: var(--accent-primary-light);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.signupLink a:hover {
+  text-decoration: underline;
+  color: var(--accent-secondary-light);
+}
+
+/* Dark Mode Styles */
+@media (prefers-color-scheme: dark) {
+  .loginContainer {
+    /* background-color: var(--bg-dark); REMOVED */
+  }
+
+  .loginBox {
+    background-color: var(--box-bg-dark);
+    border-color: var(--border-dark);
+  }
+
+  .title {
+    color: var(--text-primary-dark);
+  }
+
+  .subtitle {
+    color: var(--text-secondary-dark);
+  }
+
+  .label {
+    color: var(--text-secondary-dark);
+  }
+
+  .input {
+    background-color: var(--box-bg-dark); /* Dark input background */
+    border-color: var(--border-dark);
+    color: var(--text-primary-dark);
+  }
+
+  .input:focus + .label,
+  .input:not(:placeholder-shown) + .label {
+    color: var(--accent-secondary-dark);
+    background-color: var(--box-bg-dark); /* CRUCIAL: Match the dark login box bg */
+  }
+
+  .input:hover {
+    border-color: var(--text-secondary-dark);
+  }
+
+  .input:focus {
+    border-color: var(--accent-secondary-dark);
+  }
+
+  .button {
+    /* Keep button colors same for dark/light unless specified */
+    /* You might want a slightly different shade in dark mode */
+     background-color: var(--accent-secondary-dark); /* Use bright cyan for dark mode button */
+     color: var(--bg-dark);
+  }
+
+  .button:hover {
+    background-color: var(--accent-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .button:active {
+    transform: translateY(0px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .errorMessage {
+    color: var(--error-dark);
+    background-color: rgba(248, 113, 113, 0.1);
+    border-color: var(--error-dark);
+  }
+
+  .signupLink {
+    color: var(--text-secondary-dark);
+  }
+
+  .signupLink a {
+    color: var(--text-primary-dark);
+  }
+} 

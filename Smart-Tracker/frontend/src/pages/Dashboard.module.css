@@ -1,0 +1,61 @@
+/* Dashboard.module.css */
+
+/* Reuse color variables from other modules if defined globally, */
+/* or redefine/import them here if scoped */
+/* Assuming variables are available globally or imported */
+
+.dashboardPageContent {
+  /* Styles for the content area within the main layout */
+}
+
+.pageTitle { /* New style for dashboard title */
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--text-primary-light);
+  margin-bottom: 1.5rem;
+}
+
+.mainContent {
+  display: grid;
+  gap: 1.5rem;
+  /* Basic grid layout, adjust columns as needed */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.section {
+  background-color: var(--box-bg-light); /* Use theme box bg */
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-light);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.section h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text-primary-light);
+}
+
+.section p {
+  color: var(--text-secondary-light);
+}
+
+/* Dark Mode Styles */
+@media (prefers-color-scheme: dark) {
+  .pageTitle {
+    color: var(--text-primary-dark);
+  }
+   .section {
+    background-color: var(--box-bg-dark);
+    border-color: var(--border-dark);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  .section h2 {
+    color: var(--text-primary-dark);
+  }
+  .section p {
+     color: var(--text-secondary-dark);
+  }
+} 
