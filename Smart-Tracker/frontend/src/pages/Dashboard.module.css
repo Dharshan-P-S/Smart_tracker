@@ -62,6 +62,68 @@
 
 /* Add styles for other sections later */
 
+/* NEW: Main Content Area Layout */
+.mainArea {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Default: 2 equal columns */
+  gap: 1.5rem;
+}
+
+/* NEW: Shared Box Style for Sections */
+.sectionBox {
+  background-color: var(--box-bg-light);
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-light);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+  display: flex; /* Added for internal layout */
+  flex-direction: column; /* Added for internal layout */
+}
+
+/* NEW: Section Title Style */
+.sectionTitle {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text-primary-light);
+}
+
+/* NEW: Specific Section Styles (can add more later) */
+.transactionsSection {
+  /* Styles specific to transactions section if needed */
+}
+
+.chartSection {
+  /* Styles specific to chart section if needed */
+  align-items: center; /* Center chart horizontally */
+}
+
+/* NEW: Chart Container Style */
+.chartContainer {
+  width: 100%;
+  height: 300px; /* Fixed height for the chart */
+}
+
+/* NEW: Placeholder Content Style */
+.placeholderContent {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary-light);
+  font-style: italic;
+  min-height: 150px; /* Give it some minimum size */
+  text-align: center;
+}
+
+/* Responsive Adjustments for smaller screens */
+@media (max-width: 768px) {
+  .mainArea {
+    grid-template-columns: 1fr; /* Stack columns */
+  }
+}
+
 /* Dark Mode */
 @media (prefers-color-scheme: dark) {
   .pageTitle {
@@ -86,4 +148,20 @@
   .summaryValue.expense {
      color: #F87171; /* Lighter Red */
   }
+
+  .sectionBox {
+    background-color: var(--box-bg-dark);
+    border-color: var(--border-dark);
+  }
+
+  .sectionTitle {
+     color: var(--text-primary-dark);
+  }
+
+  .placeholderContent {
+     color: var(--text-secondary-dark);
+  }
+
+  /* Ensure chart tooltips/legends have dark mode styles */
+  /* Recharts usually needs specific prop overrides for theme */
 } 
