@@ -195,7 +195,7 @@ function IncomePage() {
                                      <YAxis tickFormatter={formatCurrency} width={80} />
                                      <Tooltip formatter={(value, name, props) => [formatCurrency(value), `Amount (${props.payload.description})`]} />
                                      <Legend />
-                                     <Bar dataKey="amount" fill="#34D399" name="Income Amount" barSize={50}/>
+                                     <Bar dataKey="amount" fill="#34D399" name="Income Amount" barSize={50} radius={[5, 5, 0, 0]}/>
                                  </BarChart>
                              </ResponsiveContainer>
                          ) : (
