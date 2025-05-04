@@ -511,7 +511,7 @@
 
 /* NEW: Style for the Transactions Page wrapper */
 .transactionsPageContainer {
-  padding: 2rem; /* Add padding around the whole page content */
+  padding: 2rem 1rem; /* Add padding around the whole page content */
   /* Alternatively, use margin: */
   /* margin: 2rem; */
   max-width: 1200px; /* Optional: Set a max-width for larger screens */

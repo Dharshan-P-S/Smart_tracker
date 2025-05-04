@@ -223,7 +223,14 @@ function Dashboard() {
             setAllCategories(updatedCategories);
             localStorage.setItem('allCategories', JSON.stringify(updatedCategories));
         }
-        // --- End of Update --- 
+        // --- End of Update ---
+
+        // --- Dispatch event if income was added ---
+        if (newTransaction.type === 'income') {
+            console.log("Dispatching income-updated event"); // For debugging
+            window.dispatchEvent(new CustomEvent('income-updated'));
+        }
+        // --- End of dispatch ---
 
     } catch (err) {
         console.error("Error adding transaction:", err);
