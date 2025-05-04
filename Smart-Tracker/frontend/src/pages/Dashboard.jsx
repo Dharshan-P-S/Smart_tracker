@@ -31,6 +31,7 @@ function Dashboard() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true); // Loading state for initial fetch
   const [error, setError] = useState(null); // Error state
+  const [allCategories, setAllCategories] = useState([]); // State for shared, persistent categories
 
   // Form state
   const [type, setType] = useState('expense');
@@ -99,10 +100,47 @@ function Dashboard() {
     }
   };
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []); // Fetch data on component mount
+  // --- Fetch shared categories --- 
+  const fetchAllCategories = async () => {
+    try {
+      const response = await fetch('/api/categories/all'); // Assumed endpoint
+      if (!response.ok) {
+        console.error("Failed to fetch all categories, status:", response.status);
+        // Don't throw an error here, suggestions are just a bonus
+        return; 
+      }
+      const categories = await response.json();
+      if (Array.isArray(categories)) {
+          setAllCategories(categories);
+          localStorage.setItem('allCategories', JSON.stringify(categories));
+      } else {
+          console.error("Fetched categories is not an array:", categories);
+      }
+    } catch (err) {
+      console.error("Error fetching all categories:", err);
+      // Don't set main error state, suggestions are optional
+    }
+  };
 
+  useEffect(() => {
+    // Fetch user-specific data first
+    fetchDashboardData();
+
+    // Load shared categories from localStorage or fetch
+    const storedCategories = localStorage.getItem('allCategories');
+    if (storedCategories) {
+        try {
+            setAllCategories(JSON.parse(storedCategories));
+        } catch (e) {
+            console.error("Error parsing stored categories:", e);
+            localStorage.removeItem('allCategories'); // Clear invalid data
+            fetchAllCategories(); // Fetch fresh if parsing fails
+        }
+    } else {
+        fetchAllCategories();
+    }
+
+  }, []); // Fetch data on component mount
 
   const totalBalance = totalIncome - totalExpense;
 
@@ -169,7 +207,15 @@ function Dashboard() {
         setAmount('');
         setDescription('');
         setCategory('');
-        await fetchDashboardData(); // Re-fetch dashboard data
+        await fetchDashboardData(); // Re-fetch user-specific dashboard data
+
+        // --- Update shared categories list (Optional Enhancement) ---
+        if (!allCategories.includes(newTransaction.category)) {
+            const updatedCategories = [...allCategories, newTransaction.category];
+            setAllCategories(updatedCategories);
+            localStorage.setItem('allCategories', JSON.stringify(updatedCategories));
+        }
+        // --- End of Update --- 
 
     } catch (err) {
         console.error("Error adding transaction:", err);
@@ -273,9 +319,9 @@ function Dashboard() {
             <Link to="/transactions" className={styles.seeAllButton}>See All</Link>
           </div>
            {transactions.length > 0 ? (
-             <ul className={styles.transactionList}>
-               {transactions.slice(0, 5).map((tx) => (
-                 <li
+             <div className={styles.transactionList}>
+               {transactions.slice(0, 5).map((tx) => (<>
+                 <div
                    key={tx._id || tx.id}
                    className={`${styles.transactionItem} ${
                      tx.type === 'income' ? styles.incomeBorder : styles.expenseBorder
@@ -290,9 +336,9 @@ function Dashboard() {
                    <span className={`${styles.transactionAmount} ${tx.type === 'income' ? styles.income : styles.expense}`}>
                      {tx.type === 'income' ? '+' : '-'} {formatCurrency(tx.amount)}
                    </span>
-                 </li>
+                 </div></>
                ))}
-             </ul>
+             </div>
            ) : (
              <div className={styles.placeholderContent}>
                No recent transactions. Add one below!
@@ -366,6 +412,7 @@ function Dashboard() {
                onChange={(e) => setDescription(e.target.value)}
                placeholder="e.g., Coffee, Salary" required
                className={styles.formInput} disabled={isSubmitting}
+               autoComplete="off" // Disable browser autocomplete
              />
            </div>
            <div className={styles.formGroup}>
@@ -375,7 +422,15 @@ function Dashboard() {
                onChange={(e) => setCategory(e.target.value)}
                placeholder="e.g., Food, Bills, Paycheck" required
                className={styles.formInput} disabled={isSubmitting}
+               list="category-suggestions" // Link to datalist
              />
+             {/* Datalist for category suggestions */}
+             <datalist id="category-suggestions">
+               {/* Map over the shared, persistent list */}
+               {allCategories.map((cat, index) => (
+                 <option key={index} value={cat} />
+               ))}
+             </datalist>
            </div>
            <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
              {isSubmitting ? 'Adding...' : 'Add Transaction'}

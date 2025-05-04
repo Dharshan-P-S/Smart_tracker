@@ -60,9 +60,9 @@ function TransactionsPage() {
                 {!loading && !error && (
                      <section className={`${styles.sectionBox} ${styles.transactionsSection}`}> {/* Reuse section box */}
                         {transactions.length > 0 ? (
-                            <ul className={styles.transactionList} style={{borderTop: 'none'}}> {/* Reuse list style, remove top border */}
+                            <div className={styles.transactionList} style={{borderTop: 'none'}}> {/* Reuse list style, remove top border */}
                                 {transactions.map((tx) => (
-                                    <li
+                                    <div
                                         key={tx._id} // Use _id from MongoDB
                                         className={`${styles.transactionItem} ${
                                             tx.type === 'income' ? styles.incomeBorder : styles.expenseBorder
@@ -77,9 +77,9 @@ function TransactionsPage() {
                                         <span className={`${styles.transactionAmount} ${tx.type === 'income' ? styles.income : styles.expense}`}>
                                             {tx.type === 'income' ? '+' : '-'} {formatCurrency(tx.amount)}
                                         </span>
-                                    </li>
+                                    </div>
                                 ))}
-                            </ul>
+                            </div>
                         ) : (
                             <div className={styles.placeholderContent}>
                                 No transactions found.

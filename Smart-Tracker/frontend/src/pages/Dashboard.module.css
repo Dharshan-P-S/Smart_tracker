@@ -56,7 +56,7 @@
 
 /* Specific colors for income/expense */
 .summaryValue.income {
-  color: #10B981; /* Green */
+  color: #10B981; /* lightgreen */
 }
 
 .summaryValue.expense {
@@ -94,7 +94,7 @@
 
 /* NEW: Specific Section Styles (can add more later) */
 .transactionsSection {
-  /* Styles specific to transactions section if needed */
+  opacity: 1;
 }
 
 .chartSection {
@@ -106,6 +106,9 @@
 .chartContainer {
   width: 100%;
   height: 300px; /* Fixed height for the chart */
+  display: flex; /* Enable flexbox */
+  justify-content: center; /* Center chart horizontally */
+  align-items: center; /* Center chart vertically */
 }
 
 /* NEW: Placeholder Content Style */
@@ -146,10 +149,10 @@
      color: var(--text-primary-dark);
   }
   .summaryValue.income {
-     color: #34D399; /* Lighter Green */
+     color: lightgreen; /* Lighter lightgreen */
   }
   .summaryValue.expense {
-     color: #F87171; /* Lighter Red */
+     color: red; /* Lighter Red */
   }
 
   .sectionBox {
@@ -169,14 +172,27 @@
   /* Recharts usually needs specific prop overrides for theme */
 
   /* Removed specific icon stroke colors */
+
+  .transactionItem {
+    background-color: var(--bg-dark);
+  }
+
+  /* MODIFIED: Dark mode Income/Expense Border Style */
+  .incomeBorder {
+    border-color: #34D399 !important; /* Lighter Green */
+  }
+  .expenseBorder {
+    border-color: #F87171 !important; /* Lighter Red */
+  }
 }
 
-/* Styles for the summary icons (react-icons) */
+/* Styles for the summary icons */
 .summaryIcon {
-  width: 1.1em; /* Size relative to font size */
-  height: 1.1em;
-  margin-right: 0.5em; /* Space relative to font size */
-  /* color: currentColor; Inherits color by default */
+  width: 48px; /* Increased fixed size further */
+  height: 48px; /* Increased fixed size further */
+  margin-right: 0.5em; /* Keep space relative to font size */
+  vertical-align: middle; /* Better align image with text */
+  /* color property won't affect img tags directly */
 }
 
 /* Optional: Color specific icons */
@@ -192,11 +208,11 @@
 @media (prefers-color-scheme: dark) {
   /* ... existing dark mode styles ... */
   .incomeIconColor {
-    color: #34D399; /* Match dark mode income value color */
+    color: lightgreen; /* Match dark mode income value color */
   }
 
   .expenseIconColor {
-    color: #F87171; /* Match dark mode expense value color */
+    color: red; /* Match dark mode expense value color */
   }
 }
 
@@ -245,14 +261,16 @@
 .transactionItem {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: 1rem; /* Increased gap slightly */
-  padding: 0.85rem 0.5rem; /* Added horizontal padding */
-  border-bottom: 1px solid var(--border-light);
+  gap: 1rem;
+  /* Replaced border-bottom and padding-left with full box styles */
+  padding: 1rem; /* Padding inside the box */
+  border: 2px solid var(--border-light); /* Border on ALL sides - Increased width to 2px */
+  border-radius: 6px; /* Rounded corners for the box */
+  background-color: var(--bg-light); /* Background for the box */
   align-items: center;
   position: relative; /* Needed for pseudo-element borders */
-  transition: background-color 0.15s ease; /* Subtle hover effect */
-  /* Add left padding to make space for the border indicator */
-  padding-left: 1rem;
+  transition: background-color 0.15s ease, border-color 0.15s ease; /* Added border transition */
+  margin-bottom: 0.75rem; /* Keeps space between boxes */
 }
 
 .transactionItem:hover {
@@ -273,7 +291,7 @@
 
 /* NEW: Income Border Style */
 .incomeBorder::before {
-  background-color: #10B981; /* Green */
+  background-color:lightgreen; /* lightgreen */
 }
 
 /* NEW: Expense Border Style */
@@ -308,14 +326,16 @@
 }
 
 .transactionAmount.income {
-  color: #10B981; /* Green */
+  color: #10B981; /* lightgreen */
 }
 
 .transactionAmount.expense {
   color: #EF4444; /* Red */
 }
 
-
+.transactionsSection {
+  opacity: 1;
+}
 /* --- Styles for Add Transaction Section & Form --- */
 .addTransactionSection {
   margin-top: 1.5rem;
@@ -422,6 +442,11 @@
     color: var(--primary-accent-dark, #60a5fa);
     border-color: var(--primary-accent-dark, #60a5fa);
   }
+
+  .transactionItem {
+    background-color: var(--bg-dark);
+  }
+
   .seeAllButton:hover {
     background-color: var(--primary-accent-dark, #60a5fa);
     color: var(--button-text-dark, #1a202c); /* Darker text on hover maybe */
@@ -432,11 +457,11 @@
   }
 
   /* Adjust border indicator colors if needed for contrast */
-  .incomeBorder::before {
-    background-color: #34D399; /* Lighter Green */
+  .incomeBorder {
+    border-color: #34D399 !important; /* Lighter Green */
   }
-  .expenseBorder::before {
-    background-color: #F87171; /* Lighter Red */
+  .expenseBorder {
+    border-color: #F87171 !important; /* Lighter Red */
   }
 
   .formInput,
@@ -460,6 +485,13 @@
      background-color: var(--primary-accent-hover-dark, #2b6cb0);
   }
 
+  /* MODIFIED: Dark mode Income/Expense Border Style */
+  .incomeBorder {
+    border-color: #34D399 !important; /* Lighter Green */
+  }
+  .expenseBorder {
+    border-color: #F87171 !important; /* Lighter Red */
+  }
 }
 
 /* Ensure the border classes take precedence if needed */
@@ -472,10 +504,10 @@
 
 @media (prefers-color-scheme: dark) {
   .transactionItem.incomeBorder::before {
-     background-color: #34D399;
+     background-color: lightgreen;
   }
   .transactionItem.expenseBorder::before {
-     background-color: #F87171;
+     background-color: red;
   }
 }
 
