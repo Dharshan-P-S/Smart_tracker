@@ -5,7 +5,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 // Assuming you have a way to get the auth token (e.g., from context or local storage)
 // import { useAuth } from '../context/AuthContext'; // Example using context
 
-// -- Inline Icon Components ---
+// -- Inline Icon Components --
 
 const BalanceIcon = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`${styles.summaryIcon} ${className || ''}`}>
