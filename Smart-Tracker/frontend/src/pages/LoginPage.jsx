@@ -43,6 +43,10 @@ function LoginPage() {
 
       // Store token in localStorage
       localStorage.setItem('token', res.data.token);
+      // Store username in localStorage again
+      if (res.data.username) { // Check if username exists in response
+        localStorage.setItem('username', res.data.username);
+      }
 
       // Redirect to dashboard
       navigate('/dashboard'); // Navigate to the dashboard route

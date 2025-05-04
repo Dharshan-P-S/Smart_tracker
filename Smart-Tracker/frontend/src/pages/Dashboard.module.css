@@ -223,7 +223,8 @@
   display: flex;
   justify-content: space-between; /* Pushes title and button apart */
   align-items: center; /* Vertically aligns title and button */
-  margin-bottom: 1rem; /* Space below header */
+  margin-bottom: 1.5rem; /* Space below header - Increased */
+  margin-top: 1.5rem; /* Add space above the header */
 }
 
 /* Adjust section title margin since it's now in a flex container */
@@ -248,6 +249,27 @@
   color: var(--button-text-light, #ffffff);
 }
 
+/* NEW: Style for the PDF Download button (based on seeAllButton) */
+.pdfButton {
+  padding: 0.3rem 0.8rem;
+  font-size: 1rem; /* Keep the override from inline style */
+  font-weight: 500;
+  text-decoration: none;
+  /* Make it a filled button in light mode */
+  color: var(--button-text-light, #ffffff); /* White text */
+  background-color: var(--primary-accent-light, #3b82f6); /* Blue background */
+  border: 1px solid var(--primary-accent-light, #3b82f6); /* Matching border */
+  border-radius: 4px;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease; /* Added border-color transition */
+  cursor: pointer;
+}
+
+.pdfButton:hover {
+  /* Darker blue on hover */
+  background-color: var(--primary-accent-hover-light, #2563eb);
+  border-color: var(--primary-accent-hover-light, #2563eb);
+  color: var(--button-text-light, #ffffff); /* Keep text white */
+}
 
 .transactionList {
   list-style: none;

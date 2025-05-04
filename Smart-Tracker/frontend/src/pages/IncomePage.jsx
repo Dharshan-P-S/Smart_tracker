@@ -26,7 +26,7 @@ function IncomePage() {
     const [allIncomeTransactions, setAllIncomeTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [username, setUsername] = useState('CurrentUser'); // Placeholder
+    const [username, setUsername] = useState(() => localStorage.getItem('username') || 'User');
 
     // --- State for Editing ---
     const [editingTxId, setEditingTxId] = useState(null);
@@ -178,7 +178,7 @@ function IncomePage() {
              <div className={styles.dashboardPageContent}>
                 <div className={styles.sectionHeader}>
                    <h1 className={styles.pageTitle}>Income Overview</h1>
-                    <button onClick={handleDownloadPDF} className={styles.seeAllButton} style={{fontSize: '1rem'}}>
+                    <button onClick={handleDownloadPDF} className={styles.pdfButton} style={{fontSize: '1rem'}}>
                        Download PDF
                     </button>
                 </div>
