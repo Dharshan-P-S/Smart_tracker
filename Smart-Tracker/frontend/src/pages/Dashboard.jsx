@@ -335,7 +335,7 @@ function Dashboard() {
           </div>
            {transactions.length > 0 ? (
              <div className={styles.transactionList}>
-               {transactions.slice(0, 5).map((tx) => (<>
+               {transactions.slice(0, 5).map((tx) => (
                  <div
                    key={tx._id || tx.id}
                    className={`${styles.transactionItem} ${
@@ -351,7 +351,7 @@ function Dashboard() {
                    <span className={`${styles.transactionAmount} ${tx.type === 'income' ? styles.income : styles.expense}`}>
                      {tx.type === 'income' ? '+' : '-'} {formatCurrency(tx.amount)}
                    </span>
-                 </div></>
+                 </div>
                ))}
              </div>
            ) : (

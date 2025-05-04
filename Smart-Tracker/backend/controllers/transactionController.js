@@ -139,8 +139,60 @@ const getAllTransactions = async (req, res) => {
     }
 };
 
+// @desc    Update a transaction (description & category only)
+// @route   PUT /api/transactions/:id
+// @access  Public (Temporarily)
+const updateTransaction = async (req, res) => {
+  try {
+    const userId = TEMP_USER_ID; // <-- Use temporary ID
+    const transactionId = req.params.id;
+    const { description, category } = req.body;
+
+    // Basic validation
+    if (!description || !category) {
+      return res.status(400).json({ message: 'Description and category are required' });
+    }
+     if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+      return res.status(400).json({ message: 'Invalid transaction ID format' });
+    }
+
+    // Find the transaction by ID and ensure it belongs to the user
+    const transaction = await Transaction.findOne({
+      _id: transactionId,
+      user: userId 
+    });
+
+    if (!transaction) {
+      return res.status(404).json({ message: 'Transaction not found or not authorized' });
+    }
+
+    // Update the fields
+    transaction.description = description;
+    transaction.category = category;
+    // Optionally add validation for max length etc. here if needed
+
+    const updatedTransaction = await transaction.save();
+
+    console.log(`Transaction ${transactionId} updated successfully.`);
+    res.status(200).json(updatedTransaction);
+
+  } catch (error) {
+    console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+    console.error('!!! Error updating transaction in Controller:');
+    console.error('!!! Temp User ID:', TEMP_USER_ID);
+    console.error('!!! Transaction ID:', req.params.id);
+    console.error('!!! Error:', error);
+    console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+    if (error instanceof mongoose.Error.ValidationError) {
+         return res.status(400).json({ message: error.message });
+     }
+    res.status(500).json({ message: 'Server error while updating transaction.' });
+  }
+};
+
 module.exports = {
   addTransaction,
   getDashboardData,
   getAllTransactions,
+  updateTransaction,
 }; 

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 // Import PDF generation libraries
 import jsPDF from 'jspdf';
-import 'jspdf-autotable'; // Import the autoTable plugin
+import autoTable from 'jspdf-autotable'; // Import autoTable function explicitly
 
 import styles from './Dashboard.module.css';
 
@@ -29,6 +29,10 @@ function IncomePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [username, setUsername] = useState('CurrentUser'); // Placeholder - How do we get the real username?
+
+    // --- State for Editing ---
+    const [editingTxId, setEditingTxId] = useState(null); // ID of the transaction being edited
+    const [editFormData, setEditFormData] = useState({ description: '', category: '' });
 
     // TODO: Replace placeholder logic with actual username retrieval
     // useEffect(() => {
@@ -87,7 +91,75 @@ function IncomePage() {
         };
     }, []); // Empty dependency array means this setup runs only once on mount
 
-    // --- Prepare data for Bar Chart (Individual Transactions) ---
+    // --- Edit Handlers ---
+    const handleEditClick = (tx) => {
+        setEditingTxId(tx._id);
+        setEditFormData({ description: tx.description, category: tx.category });
+    };
+
+    const handleCancelEdit = () => {
+        setEditingTxId(null);
+        setEditFormData({ description: '', category: '' });
+    };
+
+    const handleEditFormChange = (e) => {
+        const { name, value } = e.target;
+        setEditFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSaveEdit = async (txId) => {
+        setError(null); // Clear previous errors
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            setError("Authentication token not found.");
+            return;
+        }
+
+        // Basic validation
+        if (!editFormData.description.trim() || !editFormData.category.trim()) {
+            alert("Description and Category cannot be empty.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/transactions/${txId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    description: editFormData.description,
+                    category: editFormData.category,
+                    // Include other fields if the backend expects them, otherwise backend should ignore
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: 'Update failed with non-JSON response' }));
+                throw new Error(errorData.message || `Failed to update transaction: ${response.statusText}`);
+            }
+
+            // Option 1: Re-fetch all data (simpler)
+            // fetchAllTransactions(); 
+
+            // Option 2: Update local state (more performant)
+            setAllIncomeTransactions(prevTxs => 
+                prevTxs.map(tx => 
+                    tx._id === txId ? { ...tx, ...editFormData } : tx
+                )
+            );
+
+            handleCancelEdit(); // Exit editing mode
+
+        } catch (err) {
+            console.error("Error updating transaction:", err);
+            setError(`Update Error: ${err.message}`);
+            // Optionally keep editing mode open on error?
+        }
+    };
+
+    // --- Chart Data Prep (existing) ---
     // Map each transaction to a chart data point
     const chartData = allIncomeTransactions.map((tx, index) => ({
         // Use date for the axis, maybe add index if dates clash visually?
@@ -119,8 +191,8 @@ function IncomePage() {
             tableRows.push(transactionData);
         });
 
-        // Add table to PDF
-        doc.autoTable({
+        // Add table to PDF using the imported function
+        autoTable(doc, { // Call autoTable explicitly
             head: [tableColumn],
             body: tableRows,
             startY: 30, // Start table below title
@@ -144,7 +216,7 @@ function IncomePage() {
     if (loading) {
         return <div className={styles.dashboardPageContent}><p>Loading income data...</p></div>;
     }
-    if (error) {
+    if (error && !error.startsWith('Update Error:')) { // Don't show page-level error for update failures, handle inline
         return <div className={styles.dashboardPageContent}><p style={{ color: 'red' }}>Error: {error}</p></div>;
     }
 
@@ -186,8 +258,11 @@ function IncomePage() {
                      <section className={`${styles.sectionBox} ${styles.transactionsSection}`} style={{gridColumn: '1 / -1'}}> {/* Make section span both columns */}
                          <div className={styles.sectionHeader}>
                              <h2 className={styles.sectionTitle}>All Income Transactions</h2>
-                             {/* Removed See All Button */}
                          </div>
+                          {/* Display Update Error here */} 
+                         {error && error.startsWith('Update Error:') && (
+                           <p style={{ color: 'red', marginBottom: '1rem' }}>{error}</p>
+                         )}
                          {allIncomeTransactions.length > 0 ? (
                              <div className={styles.transactionList}>
                                  {/* Map over ALL income transactions */}
@@ -199,16 +274,56 @@ function IncomePage() {
                                          <span className={styles.transactionDate}>
                                              {formatDate(tx.date)}
                                          </span>
-                                         <span className={styles.transactionDesc}>
-                                             {tx.description} ({tx.category})
-                                         </span>
-                                         <span className={`${styles.transactionAmount} ${styles.income}`}>
-                                             {'+'} {formatCurrency(tx.amount)}
-                                         </span>
-                                         {/* Placeholder Buttons */}
+                                         {/* Conditional Rendering for Edit Mode */} 
+                                         {editingTxId === tx._id ? (
+                                             <>
+                                                 {/* Edit Form Inputs */}
+                                                 <input 
+                                                     type="text"
+                                                     name="description"
+                                                     value={editFormData.description}
+                                                     onChange={handleEditFormChange}
+                                                     className={styles.formInput} // Reuse form styles?
+                                                     style={{fontSize: '0.9rem', padding: '0.4rem'}} // Basic inline styles
+                                                 />
+                                                 <input 
+                                                     type="text"
+                                                     name="category"
+                                                     value={editFormData.category}
+                                                     onChange={handleEditFormChange}
+                                                     className={styles.formInput} 
+                                                      style={{fontSize: '0.9rem', padding: '0.4rem'}}
+                                                 />
+                                                 <span className={`${styles.transactionAmount} ${styles.income}`}> 
+                                                     {/* Amount not editable */} 
+                                                    {'+'} {formatCurrency(tx.amount)}
+                                                 </span>
+                                             </>
+                                         ) : (
+                                             <>
+                                                 {/* Display Spans */}
+                                                 <span className={styles.transactionDesc}>
+                                                     {tx.description} ({tx.category})
+                                                 </span>
+                                                 <span className={`${styles.transactionAmount} ${styles.income}`}> 
+                                                    {'+'} {formatCurrency(tx.amount)}
+                                                 </span>
+                                             </>
+                                         )}
+
+                                         {/* Conditional Buttons */} 
                                          <div style={{ display: 'flex', gap: '0.5rem', gridColumn: '1 / -1', marginTop: '0.5rem', justifyContent: 'flex-end' }}>
-                                             <button style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}>Edit</button>
-                                             <button style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', backgroundColor: '#F87171', color: 'white', border:'none' }}>Delete</button>
+                                             {editingTxId === tx._id ? (
+                                                 <>
+                                                     <button onClick={() => handleSaveEdit(tx._id)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', backgroundColor: '#34D399', color: 'white', border:'none' }}>Save</button>
+                                                     <button onClick={handleCancelEdit} style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}>Cancel</button>
+                                                 </>
+                                             ) : (
+                                                 <>
+                                                     <button onClick={() => handleEditClick(tx)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}>Edit</button>
+                                                     <button style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', backgroundColor: '#F87171', color: 'white', border:'none' }}>Delete</button>
+                                                 </>
+                                             )}
                                          </div>
                                      </div>
                                  ))}
