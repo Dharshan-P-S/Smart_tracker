@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom'; // Import Link
 import styles from './Dashboard.module.css'; // Import the styles
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'; // Import Recharts components
-import { FaWallet, FaArrowTrendUp, FaArrowTrendDown } from "react-icons/fa6"; // Import react-icons
 // Assuming you have a way to get the auth token (e.g., from context or local storage)
 // import { useAuth } from '../context/AuthContext'; // Example using context
 
@@ -235,19 +234,31 @@ function Dashboard() {
       <section className={styles.summarySection}>
          <div className={styles.summaryItem}>
            <div className={styles.summaryTitle}>
-              <FaWallet className={styles.summaryIcon} /> Total Balance
+              <img 
+                src="https://cdn-icons-png.flaticon.com/128/869/869067.png" 
+                alt="Balance icon" 
+                className={styles.summaryIcon} 
+              /> Total Balance
            </div>
            <div className={styles.summaryValue}>{formatCurrency(totalBalance)}</div>
          </div>
          <div className={styles.summaryItem}>
            <div className={styles.summaryTitle}>
-             <FaArrowTrendUp className={`${styles.summaryIcon} ${styles.incomeIconColor}`} /> Total Income
+             <img 
+               src="https://cdn-icons-png.flaticon.com/128/10365/10365322.png" 
+               alt="Income icon" 
+               className={`${styles.summaryIcon} ${styles.incomeIconColor}`} 
+             /> Total Income
            </div>
            <div className={`${styles.summaryValue} ${styles.income}`}>{formatCurrency(totalIncome)}</div>
          </div>
          <div className={styles.summaryItem}>
            <div className={styles.summaryTitle}>
-             <FaArrowTrendDown className={`${styles.summaryIcon} ${styles.expenseIconColor}`} /> Total Expense
+             <img 
+               src="https://cdn-icons-png.flaticon.com/128/8733/8733406.png" 
+               alt="Expense icon" 
+               className={`${styles.summaryIcon} ${styles.expenseIconColor}`} 
+             /> Total Expense
            </div>
            <div className={`${styles.summaryValue} ${styles.expense}`}>{formatCurrency(totalExpense)}</div>
          </div>
