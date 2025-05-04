@@ -17,6 +17,7 @@ console.log('Backend server starting...');
 
 // Define Routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/transactions', require('./routes/transactionRoutes'));
 
 // Basic route
 app.get('/', (req, res) => res.send('API Running'));

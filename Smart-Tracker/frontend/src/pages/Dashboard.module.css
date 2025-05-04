@@ -198,4 +198,311 @@
   .expenseIconColor {
     color: #F87171; /* Match dark mode expense value color */
   }
-} 
+}
+
+/* --- Styles for Recent Transactions List --- */
+
+/* NEW: Header container for title and button */
+.sectionHeader {
+  display: flex;
+  justify-content: space-between; /* Pushes title and button apart */
+  align-items: center; /* Vertically aligns title and button */
+  margin-bottom: 1rem; /* Space below header */
+}
+
+/* Adjust section title margin since it's now in a flex container */
+.sectionTitle {
+  margin-bottom: 0; /* Remove bottom margin from title itself */
+}
+
+/* NEW: Style for the See All button */
+.seeAllButton {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  color: var(--primary-accent-light, #3b82f6); /* Use accent color */
+  border: 1px solid var(--primary-accent-light, #3b82f6);
+  border-radius: 4px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.seeAllButton:hover {
+  background-color: var(--primary-accent-light, #3b82f6);
+  color: var(--button-text-light, #ffffff);
+}
+
+
+.transactionList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  /* Removed margin-top as sectionHeader adds space */
+  border-top: 1px solid var(--border-light);
+  flex-grow: 1;
+}
+
+.transactionItem {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1rem; /* Increased gap slightly */
+  padding: 0.85rem 0.5rem; /* Added horizontal padding */
+  border-bottom: 1px solid var(--border-light);
+  align-items: center;
+  position: relative; /* Needed for pseudo-element borders */
+  transition: background-color 0.15s ease; /* Subtle hover effect */
+  /* Add left padding to make space for the border indicator */
+  padding-left: 1rem;
+}
+
+.transactionItem:hover {
+  background-color: rgba(0, 0, 0, 0.03); /* Slight background on hover */
+}
+
+/* NEW: Border Indicators using ::before pseudo-element */
+.transactionItem::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px; /* Width of the indicator border */
+  /* Default background, can be transparent or match section bg */
+  background-color: transparent;
+}
+
+/* NEW: Income Border Style */
+.incomeBorder::before {
+  background-color: #10B981; /* Green */
+}
+
+/* NEW: Expense Border Style */
+.expenseBorder::before {
+  background-color: #EF4444; /* Red */
+}
+
+
+.transactionItem:last-child {
+  border-bottom: none;
+}
+
+.transactionDate {
+  font-size: 0.85rem;
+  color: var(--text-secondary-light);
+  white-space: nowrap;
+}
+
+.transactionDesc {
+  font-size: 0.95rem;
+  color: var(--text-primary-light);
+  /* Prevent text from overflowing */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transactionAmount {
+  font-weight: 600; /* Make amount slightly bolder */
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.transactionAmount.income {
+  color: #10B981; /* Green */
+}
+
+.transactionAmount.expense {
+  color: #EF4444; /* Red */
+}
+
+
+/* --- Styles for Add Transaction Section & Form --- */
+.addTransactionSection {
+  margin-top: 1.5rem;
+}
+
+.transactionForm {
+  display: grid;
+  /* Force a single column layout */
+  grid-template-columns: 1fr;
+  gap: 1rem; /* Adjust gap for vertical spacing */
+  margin-top: 1rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem; /* Slightly increased gap */
+}
+
+.formGroup label {
+  font-size: 0.85rem; /* Slightly smaller label */
+  font-weight: 600; /* Bolder label */
+  color: var(--text-secondary-light);
+  text-transform: uppercase; /* Uppercase labels */
+  letter-spacing: 0.5px; /* Add slight letter spacing */
+}
+
+.formInput,
+.transactionForm select {
+  padding: 0.75rem 1rem; /* Increased padding */
+  border: 1px solid var(--border-light);
+  border-radius: 6px; /* Slightly more rounded */
+  font-size: 1rem;
+  background-color: var(--input-bg-light, var(--bg-light)); /* Use specific input bg var if available */
+  color: var(--text-primary-light);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.formInput:focus,
+.transactionForm select:focus {
+  outline: none;
+  border-color: var(--primary-accent-light, #60a5fa);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3); /* Slightly larger focus shadow */
+}
+
+.formInput::placeholder {
+   color: var(--text-secondary-light);
+   opacity: 0.6; /* Slightly less visible placeholder */
+}
+
+.submitButton {
+  /* grid-column: 1 / -1; */ /* No longer needed */
+  padding: 0.85rem 1.5rem; /* Increased padding */
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--button-text-light, #ffffff);
+  background-color: var(--primary-accent-light, #3b82f6);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease; /* Added transform transition */
+  margin-top: 0.75rem; /* Slightly increased margin */
+}
+
+.submitButton:hover {
+  background-color: var(--primary-accent-hover-light, #2563eb);
+}
+
+.submitButton:active {
+   transform: scale(0.98); /* Slight press effect */
+}
+
+/* Responsive Adjustments */
+@media (max-width: 600px) {
+  /* Stack date/desc/amount on smaller screens maybe? */
+  .transactionItem {
+     grid-template-columns: 1fr auto; /* Desc/Category | Amount */
+     padding-left: 0.5rem; /* Adjust padding if border removed */
+  }
+   .transactionItem::before {
+     display: none; /* Hide side border on mobile? Optional */
+   }
+  .transactionDate {
+    grid-column: 1 / 2; /* Date above description */
+    margin-bottom: 0.2rem;
+    font-size: 0.8rem;
+  }
+   .transactionDesc {
+    grid-column: 1 / 2; /* Description below date */
+    white-space: normal; /* Allow wrap */
+  }
+   .transactionAmount {
+     grid-column: 2 / 3; /* Amount to the right */
+     grid-row: 1 / 3; /* Span both rows */
+     align-self: center; /* Vertically center amount */
+   }
+}
+
+
+/* Dark Mode Adjustments */
+@media (prefers-color-scheme: dark) {
+  /* ... existing dark mode styles ... */
+  .seeAllButton {
+    color: var(--primary-accent-dark, #60a5fa);
+    border-color: var(--primary-accent-dark, #60a5fa);
+  }
+  .seeAllButton:hover {
+    background-color: var(--primary-accent-dark, #60a5fa);
+    color: var(--button-text-dark, #1a202c); /* Darker text on hover maybe */
+  }
+
+  .transactionItem:hover {
+    background-color: rgba(255, 255, 255, 0.05); /* Slight background on hover */
+  }
+
+  /* Adjust border indicator colors if needed for contrast */
+  .incomeBorder::before {
+    background-color: #34D399; /* Lighter Green */
+  }
+  .expenseBorder::before {
+    background-color: #F87171; /* Lighter Red */
+  }
+
+  .formInput,
+  .transactionForm select {
+    background-color: var(--input-bg-dark, #2d3748);
+    border-color: var(--border-dark);
+    color: var(--text-primary-dark);
+  }
+
+   .formInput::placeholder {
+     color: var(--text-secondary-dark);
+     opacity: 0.6;
+   }
+
+   .submitButton {
+    background-color: var(--primary-accent-dark, #4299e1);
+    color: var(--button-text-dark, #ffffff);
+  }
+
+  .submitButton:hover {
+     background-color: var(--primary-accent-hover-dark, #2b6cb0);
+  }
+
+}
+
+/* Ensure the border classes take precedence if needed */
+.transactionItem.incomeBorder::before {
+  background-color: #10B981; /* Use specific colors directly */
+}
+.transactionItem.expenseBorder::before {
+  background-color: #EF4444; /* Use specific colors directly */
+}
+
+@media (prefers-color-scheme: dark) {
+  .transactionItem.incomeBorder::before {
+     background-color: #34D399;
+  }
+  .transactionItem.expenseBorder::before {
+     background-color: #F87171;
+  }
+}
+
+/* NEW: Style for the Transactions Page wrapper */
+.transactionsPageContainer {
+  padding: 2rem; /* Add padding around the whole page content */
+  /* Alternatively, use margin: */
+  /* margin: 2rem; */
+  max-width: 1200px; /* Optional: Set a max-width for larger screens */
+  margin-left: auto;  /* Optional: Center the content if max-width is set */
+  margin-right: auto; /* Optional: Center the content if max-width is set */
+}
+
+/* Dark Mode Adjustments */
+@media (prefers-color-scheme: dark) {
+  /* ... existing dark mode styles ... */
+
+   /* Optional: Adjust container background for dark mode if needed */
+   /* .transactionsPageContainer { */
+     /* background-color: var(--bg-dark); */
+   /* } */
+
+  .seeAllButton {
+    color: var(--primary-accent-dark, #60a5fa);
+    border-color: var(--primary-accent-dark, #60a5fa);
+  }
+  /* ... rest of dark mode styles ... */
+}
+
+/* --- End of file --- */ 

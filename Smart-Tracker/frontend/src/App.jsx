@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
+import TransactionsPage from './pages/TransactionsPage';
 import ProtectedRoute from './routing/ProtectedRoute';
 import Layout from './components/Layout';
 import './App.css';
@@ -22,7 +23,9 @@ function App() {
           </Route>
         </Route>
 
-        {/* Default route redirects to login */}
+        <Route path="/transactions" element={<TransactionsPage />} />
+
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>

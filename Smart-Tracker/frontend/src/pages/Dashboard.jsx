@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom'; // Import Link
 import styles from './Dashboard.module.css'; // Import the styles
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'; // Import Recharts components
 import { FaWallet, FaArrowTrendUp, FaArrowTrendDown } from "react-icons/fa6"; // Import react-icons
+// Assuming you have a way to get the auth token (e.g., from context or local storage)
+// import { useAuth } from '../context/AuthContext'; // Example using context
 
 // --- Inline Icon Components ---
 
@@ -24,102 +27,350 @@ const ExpenseIcon = ({ className }) => (
 );
 
 function Dashboard() {
-  // Hardcoded dummy data
-  const totalIncome = 1500;
-  const totalExpense = 900;
-  const totalBalance = totalIncome - totalExpense; // 600
+  const [totalIncome, setTotalIncome] = useState(0);
+  const [totalExpense, setTotalExpense] = useState(0);
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true); // Loading state for initial fetch
+  const [error, setError] = useState(null); // Error state
 
-  // Format currency function (basic example)
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
-    // Replace 'en-US' and 'USD' with appropriate locale/currency if needed
+  // Form state
+  const [type, setType] = useState('expense');
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false); // State for submission status
+
+  // const { token } = useAuth(); // Example: Get token from context
+
+  // --- Fetch initial dashboard data ---
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    let response; // Define response outside try block to access in finally/catch
+
+    try {
+      const token = localStorage.getItem('authToken'); // Example
+      if (!token) {
+        throw new Error("Authentication token not found.");
+      }
+
+      response = await fetch('/api/transactions/dashboard', { // Assign to outer response variable
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        // If response is not OK, try to read as text first for more helpful errors
+        const errorText = await response.text();
+        console.error("Error response body (text):", errorText); // Log the raw text
+        try {
+            // Try parsing as JSON in case the error response *is* JSON
+            const errorData = JSON.parse(errorText);
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        } catch (parseError) {
+            // If parsing failed, use the raw text (likely HTML) as the error hint
+             throw new Error(`HTTP error! status: ${response.status}. Response was not valid JSON: ${errorText.substring(0, 100)}...`);
+        }
+      }
+
+      // If response is OK, proceed to parse as JSON
+      const data = await response.json();
+      setTotalIncome(data.totalIncome || 0);
+      setTotalExpense(data.totalExpense || 0);
+      setTransactions(data.recentTransactions || []);
+
+    } catch (err) {
+      console.error("Detailed fetch error:", err); // Log the full error object
+      // Check if the error came from our specific !response.ok block or a network/JSON parse error
+      if (err instanceof Error && err.message.startsWith('HTTP error!')) {
+         setError(err.message);
+      } else {
+         // Network errors or other issues
+         setError(err.message || 'Failed to fetch dashboard data. Check network connection and console.');
+      }
+      // Clear data on error
+      setTotalIncome(0);
+      setTotalExpense(0);
+      setTransactions([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // --- Data for 3-Slice Pie Chart ---
+  useEffect(() => {
+    fetchDashboardData();
+  }, []); // Fetch data on component mount
+
+
+  const totalBalance = totalIncome - totalExpense;
+
+  // --- Handle Add Transaction ---
+  const handleAddTransaction = async (event) => {
+    event.preventDefault();
+    if (isSubmitting) return; // Prevent double submission
+
+     // Basic client-side validation
+    if (!amount || parseFloat(amount) <= 0) {
+        alert("Please enter a valid positive amount.");
+        return;
+    }
+    if (!description.trim()) {
+        alert("Please enter a description.");
+        return;
+    }
+     if (!category.trim()) {
+        alert("Please enter a category.");
+        return;
+    }
+
+
+    setIsSubmitting(true);
+    setError(null); // Clear previous fetch errors when submitting new
+
+    const newTransaction = {
+      type,
+      amount: parseFloat(amount),
+      description,
+      category,
+    };
+
+    let submitResponse; // Define outside try
+
+    try {
+        const token = localStorage.getItem('authToken'); // Example
+        if (!token) {
+            throw new Error("Authentication token not found.");
+        }
+
+        submitResponse = await fetch('/api/transactions', { // Assign to outer variable
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(newTransaction),
+        });
+
+        if (!submitResponse.ok) {
+            const errorText = await submitResponse.text();
+            console.error("Submit Error response body (text):", errorText); // Log raw text
+             try {
+                const errorData = JSON.parse(errorText);
+                throw new Error(errorData.message || `Failed to add transaction: ${submitResponse.statusText}`);
+             } catch (parseError) {
+                 throw new Error(`Failed to add transaction: ${submitResponse.statusText}. Response was not valid JSON: ${errorText.substring(0,100)}...`);
+             }
+        }
+
+        // Clear form and refresh data on success
+        setType('expense');
+        setAmount('');
+        setDescription('');
+        setCategory('');
+        await fetchDashboardData(); // Re-fetch dashboard data
+
+    } catch (err) {
+        console.error("Error adding transaction:", err);
+        // Set error state specifically for the submission attempt
+        setError(`Submit Error: ${err.message}` || 'Failed to add transaction.');
+        // Don't automatically alert here, let the UI display the error state
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
+
+
+  // Format currency function
+  const formatCurrency = (value) => {
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(0);
+    }
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(numValue);
+  };
+
+  // --- Prepare Pie Chart Data (Income, Expense, Balance) ---
+  // Always include all three slices. Use 0 if value is not positive.
   const pieChartData = [
-    { name: 'Income', value: totalIncome || 1 },        // Use 1 if zero
-    { name: 'Expenses', value: totalExpense || 1 },      // Use 1 if zero
-    { name: 'Balance', value: totalBalance >= 0 ? totalBalance : 1 }, // Use 1 if zero/negative
+    { name: 'Income', value: totalIncome > 0 ? totalIncome : 0 },
+    { name: 'Expenses', value: totalExpense > 0 ? totalExpense : 0 },
+    { name: 'Balance', value: totalBalance > 0 ? totalBalance : 0 },
   ];
-  // Colors: Green for Income, Red for Expense, Blue for Balance
-  const PIE_COLORS = ['#34D399', '#F87171', '#7091E6'];
+
+  // Define colors based on segment names - ensure all three are mapped
+  const colorMapping = {
+    'Income': '#34D399',    // Green
+    'Expenses': '#F87171',   // Red
+    'Balance': '#7091E6',   // Blue
+    // 'No Data' mapping is no longer needed as we always provide the three slices
+  };
+
+  // Check if there's any data at all to display a meaningful chart
+  // If all values are 0, the chart might look empty, which is expected.
+  const hasChartData = pieChartData.some(item => item.value > 0);
+
+
+  // --- Render Logic ---
+  if (loading) {
+      return <div className={styles.dashboardPageContent}><p>Loading dashboard...</p></div>;
+  }
+
+  // Display general fetch error if not loading and not a submission error
+//   if (error && !isSubmitting) {
+//       return <div className={styles.dashboardPageContent}><p>Error loading data: {error}</p></div>;
+//   }
+
 
   return (
     <div className={styles.dashboardPageContent}>
       <h1 className={styles.pageTitle}>Dashboard</h1>
 
+       {/* Display general fetch error messages (not related to submit) */}
+       {error && !error.startsWith('Submit Error:') && <div style={{ color: 'red', marginBottom: '1rem' }}>Error fetching data: {error}</div>}
+
       {/* Summary Section */}
       <section className={styles.summarySection}>
-        <div className={styles.summaryItem}>
-          <div className={styles.summaryTitle}>
-             <FaWallet className={styles.summaryIcon} /> {/* Use react-icon component */}
-             Total Balance
-          </div>
-          <div className={styles.summaryValue}>{formatCurrency(totalBalance)}</div>
-        </div>
-        <div className={styles.summaryItem}>
-          <div className={styles.summaryTitle}>
-            <FaArrowTrendUp className={`${styles.summaryIcon} ${styles.incomeIconColor}`} /> {/* Use react-icon component */}
-            Total Income
-          </div>
-          <div className={`${styles.summaryValue} ${styles.income}`}>{formatCurrency(totalIncome)}</div>
-        </div>
-        <div className={styles.summaryItem}>
-          <div className={styles.summaryTitle}>
-            <FaArrowTrendDown className={`${styles.summaryIcon} ${styles.expenseIconColor}`} /> {/* Use react-icon component */}
-            Total Expense
-          </div>
-          <div className={`${styles.summaryValue} ${styles.expense}`}>{formatCurrency(totalExpense)}</div>
-        </div>
+         <div className={styles.summaryItem}>
+           <div className={styles.summaryTitle}>
+              <FaWallet className={styles.summaryIcon} /> Total Balance
+           </div>
+           <div className={styles.summaryValue}>{formatCurrency(totalBalance)}</div>
+         </div>
+         <div className={styles.summaryItem}>
+           <div className={styles.summaryTitle}>
+             <FaArrowTrendUp className={`${styles.summaryIcon} ${styles.incomeIconColor}`} /> Total Income
+           </div>
+           <div className={`${styles.summaryValue} ${styles.income}`}>{formatCurrency(totalIncome)}</div>
+         </div>
+         <div className={styles.summaryItem}>
+           <div className={styles.summaryTitle}>
+             <FaArrowTrendDown className={`${styles.summaryIcon} ${styles.expenseIconColor}`} /> Total Expense
+           </div>
+           <div className={`${styles.summaryValue} ${styles.expense}`}>{formatCurrency(totalExpense)}</div>
+         </div>
       </section>
 
-      {/* Main Content Area (Transactions + Chart) */}
+      {/* Main Content Area */}
       <div className={styles.mainArea}>
-        {/* Recent Transactions Section (Left) */}
+        {/* Recent Transactions */}
         <section className={`${styles.sectionBox} ${styles.transactionsSection}`}>
-          <h2 className={styles.sectionTitle}>Recent Transactions</h2>
-          {/* Placeholder - Add TransactionList component later */}
-          <div className={styles.placeholderContent}>
-            Recent transactions list will go here...
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>Recent Transactions</h2>
+            <Link to="/transactions" className={styles.seeAllButton}>See All</Link>
           </div>
+           {transactions.length > 0 ? (
+             <ul className={styles.transactionList}>
+               {transactions.slice(0, 5).map((tx) => (
+                 <li
+                   key={tx._id || tx.id}
+                   className={`${styles.transactionItem} ${
+                     tx.type === 'income' ? styles.incomeBorder : styles.expenseBorder
+                   }`}
+                 >
+                   <span className={styles.transactionDate}>
+                      {new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                   </span>
+                   <span className={styles.transactionDesc}>
+                     {tx.description} ({tx.category})
+                   </span>
+                   <span className={`${styles.transactionAmount} ${tx.type === 'income' ? styles.income : styles.expense}`}>
+                     {tx.type === 'income' ? '+' : '-'} {formatCurrency(tx.amount)}
+                   </span>
+                 </li>
+               ))}
+             </ul>
+           ) : (
+             <div className={styles.placeholderContent}>
+               No recent transactions. Add one below!
+             </div>
+           )}
         </section>
 
-        {/* Updated 3-Slice Pie Chart Section */}
+        {/* Financial Overview Chart */}
         <section className={`${styles.sectionBox} ${styles.chartSection}`}>
-          <h2 className={styles.sectionTitle}>Financial Overview</h2>
-           <div className={styles.chartContainer}>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={pieChartData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                  nameKey="name"
-                >
-                  {pieChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatCurrency(value)} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+           <h2 className={styles.sectionTitle}>Financial Overview</h2>
+            <div className={styles.chartContainer}>
+              {/* Render the chart structure even if data is all zeros */}
+              {/* The visual appearance of zero-value slices depends on Recharts behavior */}
+              <ResponsiveContainer width="100%" height={300}>
+                 <PieChart>
+                   <Pie
+                     data={pieChartData} // Use the data with potentially zero values
+                     cx="50%"
+                     cy="50%"
+                     labelLine={false}
+                     outerRadius={100}
+                     fill="#8884d8"
+                     dataKey="value"
+                     nameKey="name"
+                   >
+                     {pieChartData.map((entry, index) => (
+                       // Use colorMapping based on entry name
+                       <Cell key={`cell-${index}`} fill={colorMapping[entry.name]} />
+                     ))}
+                   </Pie>
+                   {/* Tooltip should still show the correct value, even if 0 */}
+                   <Tooltip formatter={(value) => formatCurrency(value)} />
+                   {/* Legend will show all three items */}
+                   <Legend />
+                 </PieChart>
+               </ResponsiveContainer>
+              {/* Optional: Add a message if all data is zero */}
+              {!hasChartData && (
+                 <div className={styles.placeholderContent} style={{position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none'}}>No data to display in chart.</div>
+              )}
+           </div>
         </section>
       </div>
 
-      {/* Add other dashboard sections below later */}
-      {/* 
-      <section className={styles.section}>
-        <h2>Income/Expense Overview</h2>
-        <p>Transaction components placeholder...</p>
-      </section>
-       */}
-
+       {/* Add New Transaction Form Section */}
+       <section className={`${styles.sectionBox} ${styles.addTransactionSection}`}>
+         <h2 className={styles.sectionTitle}>Add New Transaction</h2>
+          {/* Display submission errors specifically here */}
+         {error && error.startsWith('Submit Error:') && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
+         <form onSubmit={handleAddTransaction} className={styles.transactionForm}>
+           <div className={styles.formGroup}>
+             <label htmlFor="type">Type:</label>
+             <select id="type" value={type} onChange={(e) => setType(e.target.value)} required className={styles.formInput} disabled={isSubmitting}>
+               <option value="expense">Expense</option>
+               <option value="income">Income</option>
+             </select>
+           </div>
+           <div className={styles.formGroup}>
+             <label htmlFor="amount">Amount:</label>
+             <input
+               type="number" id="amount" value={amount}
+               onChange={(e) => setAmount(e.target.value)}
+               placeholder="0.00" required step="0.01" min="0.01"
+               className={styles.formInput} disabled={isSubmitting}
+             />
+           </div>
+           <div className={styles.formGroup}>
+             <label htmlFor="description">Description:</label>
+             <input
+               type="text" id="description" value={description}
+               onChange={(e) => setDescription(e.target.value)}
+               placeholder="e.g., Coffee, Salary" required
+               className={styles.formInput} disabled={isSubmitting}
+             />
+           </div>
+           <div className={styles.formGroup}>
+             <label htmlFor="category">Category:</label>
+             <input
+               type="text" id="category" value={category}
+               onChange={(e) => setCategory(e.target.value)}
+               placeholder="e.g., Food, Bills, Paycheck" required
+               className={styles.formInput} disabled={isSubmitting}
+             />
+           </div>
+           <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
+             {isSubmitting ? 'Adding...' : 'Add Transaction'}
+           </button>
+         </form>
+       </section>
     </div>
   );
 }
