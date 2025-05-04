@@ -440,7 +440,10 @@ function Dashboard() {
       </div>
 
        {/* Add New Transaction Form Section */}
-       <section className={`${styles.sectionBox} ${styles.addTransactionSection}`}>
+       <section 
+         className={`${styles.sectionBox} ${styles.addTransactionSection}`}
+         style={{ width: '50%', marginRight: 'auto', marginLeft: 0 }} // Explicitly set width and keep left
+       >
          <h2 className={styles.sectionTitle}>Add New Transaction</h2>
           {/* Display submission errors specifically here */}
          {error && error.startsWith('Submit Error:') && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
