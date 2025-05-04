@@ -38,7 +38,8 @@ function Dashboard() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  const [recurrence, setRecurrence] = useState('once'); // Add state for recurrence
+  const [date, setDate] = useState('');
+  const [frequency, setFrequency] = useState('once'); // State for the new frequency dropdown
   const [isSubmitting, setIsSubmitting] = useState(false); // State for submission status
 
   // const { token } = useAuth(); // Example: Get token from context
@@ -176,12 +177,49 @@ function Dashboard() {
     setIsSubmitting(true);
     setError(null); // Clear previous fetch errors when submitting new
 
+    // --- Frequency Calculation ---
+    let finalAmount = parseFloat(amount);
+    const baseAmount = parseFloat(amount);
+
+    if (isNaN(baseAmount) || baseAmount <= 0) {
+        // Use alert for immediate user feedback on form validation
+        alert("Amount must be a positive number.");
+        // setError("Submit Error: Amount must be a positive number.");
+        setIsSubmitting(false);
+        return;
+    }
+
+    switch (frequency) {
+        case 'daily':
+            // Calculate days in the current month
+            const now = new Date(); 
+            // If a date input existed and was used, you'd use that date here:
+            // const targetDate = date ? new Date(date) : new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth(); // 0-indexed (0 for Jan, 11 for Dec)
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            finalAmount = baseAmount * daysInMonth;
+            break;
+        case 'weekly':
+            // Use average weeks per month multiplier (365.25 days / 7 days/week / 12 months)
+            const avgWeeksPerMonth = (365.25 / 7) / 12;
+            finalAmount = baseAmount * avgWeeksPerMonth;
+            break;
+        case 'once':
+        default:
+            // finalAmount is already set to baseAmount
+            break;
+    }
+    // Round to 2 decimal places for currency
+    finalAmount = Math.round(finalAmount * 100) / 100;
+    // --- End Frequency Calculation ---
+
     const newTransaction = {
       type,
-      amount: parseFloat(amount),
+      amount: finalAmount,
       description,
       category,
-      recurrence, // Include recurrence in the payload
+      frequency, // Include frequency in the payload
     };
 
     let submitResponse; // Define outside try
@@ -217,7 +255,7 @@ function Dashboard() {
         setAmount('');
         setDescription('');
         setCategory('');
-        setRecurrence('once'); // Reset recurrence on success
+        setFrequency('once'); // Reset frequency on success
         await fetchDashboardData(); // Re-fetch user-specific dashboard data
 
         // --- Update shared categories list (Optional Enhancement) ---
@@ -451,18 +489,18 @@ function Dashboard() {
              </datalist>
            </div>
            <div className={styles.formGroup}>
-             <label htmlFor="recurrence">Frequency</label>
+             <label htmlFor="frequency">Frequency:</label>
              <select
-               id="recurrence"
-               value={recurrence}
-               onChange={(e) => setRecurrence(e.target.value)}
+               id="frequency"
+               value={frequency}
+               onChange={(e) => setFrequency(e.target.value)}
                required
-               className={styles.formInput} // Reuse input style
+               className={styles.formInput}
+               disabled={isSubmitting}
              >
-               <option value="once">Once</option>
+               <option value="once">One-time</option>
                <option value="daily">Daily</option>
                <option value="weekly">Weekly</option>
-               <option value="monthly">Monthly</option>
              </select>
            </div>
            <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
