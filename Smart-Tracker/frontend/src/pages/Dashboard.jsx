@@ -163,6 +163,14 @@ function Dashboard() {
         return;
     }
 
+    // --- Check for sufficient balance before adding expense --- 
+    const currentBalance = totalIncome - totalExpense;
+    if (type === 'expense' && parseFloat(amount) > currentBalance) {
+        alert("Insufficient balance to add this expense.");
+        setIsSubmitting(false); // Reset submitting state
+        return; // Stop the function here
+    }
+    // --- End of balance check ---
 
     setIsSubmitting(true);
     setError(null); // Clear previous fetch errors when submitting new
