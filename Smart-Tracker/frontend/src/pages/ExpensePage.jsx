@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -22,8 +22,8 @@ const formatDate = (dateString) => {
     });
 };
 
-function IncomePage() {
-    const [allIncomeTransactions, setAllIncomeTransactions] = useState([]);
+function ExpensePage() {
+    const [allExpenseTransactions, setAllExpenseTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [username, setUsername] = useState(() => localStorage.getItem('username') || 'User');
@@ -49,14 +49,14 @@ function IncomePage() {
                 throw new Error(`HTTP error! status: ${response.status}. ${errorText}`);
             }
             const allData = await response.json();
-            const incomeData = (allData || []).filter(tx => tx.type === 'income');
-            incomeData.sort((a, b) => new Date(b.date) - new Date(a.date));
-            setAllIncomeTransactions(incomeData);
+            const expenseData = (allData || []).filter(tx => tx.type === 'expense');
+            expenseData.sort((a, b) => new Date(b.date) - new Date(a.date));
+            setAllExpenseTransactions(expenseData);
             setError(null); // Clear error only on successful fetch
         } catch (err) {
-            console.error("Error fetching transactions for Income page:", err);
+            console.error("Error fetching transactions for Expense page:", err);
             setError(err.message || 'Failed to fetch transactions.');
-            setAllIncomeTransactions([]);
+            setAllExpenseTransactions([]);
         } finally {
             setLoading(false);
         }
@@ -85,7 +85,7 @@ function IncomePage() {
             setCurrentBalance(balance); // Update state
             return balance; // Return fetched balance
         } catch (err) {
-             console.error("Error fetching balance for Income page:", err);
+             console.error("Error fetching balance for Expense page:", err);
              setError(err.message || 'Failed to fetch current balance.');
              setCurrentBalance(null); // Reset balance state on error
              return null; // Indicate failure
@@ -99,13 +99,13 @@ function IncomePage() {
 
     // --- Event Listener Effect ---
     useEffect(() => {
-        const handleIncomeUpdate = () => {
-            console.log("IncomePage received income-updated event, re-fetching...");
+        const handleExpenseUpdate = () => {
+            console.log("ExpensePage received expense-updated event, re-fetching...");
             fetchAllTransactions();
         };
-        window.addEventListener('income-updated', handleIncomeUpdate);
+        window.addEventListener('expense-updated', handleExpenseUpdate);
         return () => {
-            window.removeEventListener('income-updated', handleIncomeUpdate);
+            window.removeEventListener('expense-updated', handleExpenseUpdate);
         };
     }, []); // Listener setup runs once
 
@@ -153,7 +153,7 @@ function IncomePage() {
                 throw new Error(errorData.message || `Failed to update transaction: ${response.statusText}`);
             }
             // Update local state optimistically
-            setAllIncomeTransactions(prevTxs =>
+            setAllExpenseTransactions(prevTxs =>
                 prevTxs.map(tx =>
                     tx._id === txId ? { ...tx, ...editFormData } : tx
                 )
@@ -170,7 +170,7 @@ function IncomePage() {
         setError(null); // Clear previous errors specific to delete
 
         // Find the transaction amount locally first
-        const transactionToDelete = allIncomeTransactions.find(tx => tx._id === txId);
+        const transactionToDelete = allExpenseTransactions.find(tx => tx._id === txId);
         if (!transactionToDelete) {
             console.error("Transaction to delete not found locally:", txId);
             setError("Could not find the transaction to delete.");
@@ -190,7 +190,7 @@ function IncomePage() {
 
         // --- Check if deletion would result in negative balance ---
         if (fetchedBalance - transactionAmount < 0) {
-            alert(`Cannot delete this income transaction. Deleting ${formatCurrency(transactionAmount)} would result in a negative balance (${formatCurrency(fetchedBalance - transactionAmount)}).`);
+            alert(`Cannot delete this expense transaction. Deleting ${formatCurrency(transactionAmount)} would result in a negative balance (${formatCurrency(fetchedBalance - transactionAmount)}).`);
             return; // Stop the deletion
         }
         // --- End of balance check ---
@@ -202,7 +202,7 @@ function IncomePage() {
             return;
         }
 
-        if (!window.confirm("Are you sure you want to delete this income transaction?")) {
+        if (!window.confirm("Are you sure you want to delete this expense transaction?")) {
             return; // Stop if user cancels
         }
 
@@ -220,13 +220,13 @@ function IncomePage() {
             }
 
             // Remove the transaction from the local state
-            setAllIncomeTransactions(prevTxs => prevTxs.filter(tx => tx._id !== txId));
+            setAllExpenseTransactions(prevTxs => prevTxs.filter(tx => tx._id !== txId));
 
             // Update the balance state locally after successful deletion
             setCurrentBalance(prevBalance => prevBalance !== null ? prevBalance - transactionAmount : null);
 
             // Dispatch event to potentially update other components like Dashboard
-            window.dispatchEvent(new CustomEvent('transaction-deleted', { detail: { type: 'income', amount: transactionAmount } }));
+            window.dispatchEvent(new CustomEvent('transaction-deleted', { detail: { type: 'expense', amount: transactionAmount } }));
 
 
         } catch (err) {
@@ -236,9 +236,7 @@ function IncomePage() {
     };
 
     // --- Chart Data Prep (Individual Transactions) ---
-    const chartData = allIncomeTransactions.map((tx, index) => ({
-        // Use precise timestamp if available for slightly better sorting/potential differentiation, else use date
-        // Or just use date as before if timestamp isn't readily available or needed
+    const chartData = allExpenseTransactions.map((tx, index) => ({
         dateValue: tx.date ? new Date(tx.date) : new Date(0), // For sorting
         dateLabel: tx.date ? new Date(tx.date).toLocaleDateString('en-CA') : `tx_${index}`, // For display
         amount: tx.amount,
@@ -252,26 +250,26 @@ function IncomePage() {
         const tableColumn = ["Date", "Description", "Category", "Amount"];
         const tableRows = [];
         doc.setFontSize(18);
-        doc.text(`Income Transactions for ${username}`, 14, 22);
-        allIncomeTransactions.forEach(tx => {
+        doc.text(`Expense Transactions for ${username}`, 14, 22);
+        allExpenseTransactions.forEach(tx => {
             tableRows.push([
                 formatDate(tx.date), tx.description, tx.category, formatCurrency(tx.amount)
             ]);
         });
         autoTable(doc, {
             head: [tableColumn], body: tableRows, startY: 30, theme: 'grid',
-            styles: { fontSize: 10 }, headStyles: { fillColor: [22, 160, 133] }, margin: { top: 30 }
+            styles: { fontSize: 10 }, headStyles: { fillColor: [220, 53, 69] }, margin: { top: 30 }
         });
         const date = new Date();
         const dateStr = date.toLocaleDateString() + " " + date.toLocaleTimeString();
         doc.setFontSize(10);
         doc.text(`Generated on: ${dateStr}`, 14, doc.internal.pageSize.height - 10);
-        doc.save(`income-transactions-${username}-${new Date().toISOString().slice(0,10)}.pdf`);
+        doc.save(`expense-transactions-${username}-${new Date().toISOString().slice(0,10)}.pdf`);
     };
 
     // --- Loading/Error States ---
     if (loading) {
-        return <div className={styles.dashboardPageContent}><p>Loading income data...</p></div>;
+        return <div className={styles.dashboardPageContent}><p>Loading expense data...</p></div>;
     }
     // Don't show page-level error for update failures, handle inline
     if (error && !error.startsWith('Update Error:')) {
@@ -283,54 +281,52 @@ function IncomePage() {
         <div className={styles.transactionsPageContainer}>
              <div className={styles.dashboardPageContent}>
                 <div className={styles.sectionHeader}>
-                   <h1 className={styles.pageTitle}>Income Overview</h1>
+                   <h1 className={styles.pageTitle}>Expense Overview</h1>
                     <button onClick={handleDownloadPDF} className={styles.pdfButton} style={{fontSize: '1rem'}}>
                        Download PDF
                     </button>
                 </div>
 
-                {/* Bar Chart Section */}
+                {/* Line Chart Section */}
                  <section className={`${styles.sectionBox} ${styles.chartSection}`}>
-                     <h2 className={styles.sectionTitle}>Income Trend by Date</h2>
+                     <h2 className={styles.sectionTitle}>Expense Trend by Date</h2>
                      <div className={styles.chartContainer}>
                          {chartData.length > 0 ? (
                              <ResponsiveContainer width="100%" height={300}>
-                                 <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                 <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                                      <CartesianGrid strokeDasharray="3 3" />
                                      <XAxis dataKey="dateLabel" name="Date" />
                                      <YAxis tickFormatter={formatCurrency} width={80} />
-                                     {/* Tooltip for individual transaction */}
                                      <Tooltip formatter={(value, name, props) => {
                                          const formattedValue = formatCurrency(value);
                                          const description = props.payload.description || 'N/A';
                                          return [formattedValue, `Amount (${description})`];
                                      }} />
                                      <Legend />
-                                     {/* Ensure Bar name reflects individual amounts */}
-                                     <Bar dataKey="amount" fill="#34D399" name="Income Amount" barSize={50} radius={[5, 5, 0, 0]}/>
-                                 </BarChart>
+                                     <Line type="monotone" dataKey="amount" stroke="#F87171" name="Expense Amount" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                                 </LineChart>
                              </ResponsiveContainer>
                          ) : (
-                             <div className={styles.placeholderContent}>No income data available to display chart.</div>
+                             <div className={styles.placeholderContent}>No expense data available to display chart.</div>
                          )}
                      </div>
                  </section>
 
                  <div className={styles.mainArea}>
-                     {/* All Income Transactions Section */}
+                     {/* All Expense Transactions Section */}
                      <section className={`${styles.sectionBox} ${styles.transactionsSection}`} style={{gridColumn: '1 / -1'}}>
                          <div className={styles.sectionHeader}>
-                             <h2 className={styles.sectionTitle}>All Income Transactions</h2>
+                             <h2 className={styles.sectionTitle}>All Expense Transactions</h2>
                          </div>
                           {error && error.startsWith('Update Error:') && (
                            <p style={{ color: 'red', marginBottom: '1rem' }}>{error}</p>
                          )}
-                         {allIncomeTransactions.length > 0 ? (
+                         {allExpenseTransactions.length > 0 ? (
                              <div className={styles.transactionList}>
-                                 {allIncomeTransactions.map((tx) => (
+                                 {allExpenseTransactions.map((tx) => (
                                      <div
                                          key={tx._id}
-                                         className={`${styles.transactionItem} ${styles.incomeBorder}`}
+                                         className={`${styles.transactionItem} ${styles.expenseBorder}`}
                                      >
                                          {/* Column 1: Date */}
                                          <span style={{ gridColumn: '1 / 2' }} className={styles.transactionDate}>
@@ -358,8 +354,8 @@ function IncomePage() {
                                          )}
 
                                          {/* Column 4: Amount */}
-                                         <span style={{ gridColumn: '4 / 5' }} className={`${styles.transactionAmount} ${styles.income}`}>
-                                             {'+'} {formatCurrency(tx.amount)}
+                                         <span style={{ gridColumn: '4 / 5' }} className={`${styles.transactionAmount} ${styles.expense}`}>
+                                             {'-'} {formatCurrency(tx.amount)}
                                          </span>
 
                                          {/* Column 5: Action Buttons */}
@@ -381,7 +377,7 @@ function IncomePage() {
                              </div>
                          ) : (
                              <div className={styles.placeholderContent}>
-                                 No income transactions found. Add some on the Dashboard!
+                                 No expense transactions found. Add some on the Dashboard!
                              </div>
                          )}
                      </section>
@@ -391,4 +387,4 @@ function IncomePage() {
     );
 }
 
-export default IncomePage;
+export default ExpensePage; 

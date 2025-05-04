@@ -11,7 +11,8 @@ const TEMP_USER_ID = "605c72ef1e8d4e3e1c8b4567"; // Example valid 24-hex charact
 // @access  Public (Temporarily)
 const addTransaction = async (req, res) => {
   try {
-    const { type, amount, description, category, date } = req.body;
+    // Destructure all expected fields, including recurrence
+    const { type, amount, description, category, date, recurrence } = req.body;
     const userId = TEMP_USER_ID; // <-- Use temporary ID
 
     // Validation
@@ -24,6 +25,11 @@ const addTransaction = async (req, res) => {
      if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
         return res.status(400).json({ message: 'Amount must be a positive number' });
     }
+    // Optional: Validate recurrence if needed (should be handled by enum in model mostly)
+    const validRecurrences = ['once', 'daily', 'weekly', 'monthly'];
+    if (recurrence && !validRecurrences.includes(recurrence)) {
+        return res.status(400).json({ message: 'Invalid recurrence value' });
+    }
 
     const newTransaction = new Transaction({
       user: userId, // Use temp ID
@@ -32,6 +38,7 @@ const addTransaction = async (req, res) => {
       description,
       category,
       date: date ? new Date(date) : new Date(),
+      recurrence: recurrence || 'once', // Add recurrence, default to 'once' if not provided
     });
 
     const savedTransaction = await newTransaction.save();
@@ -190,9 +197,61 @@ const updateTransaction = async (req, res) => {
   }
 };
 
+// @desc    Delete a transaction
+// @route   DELETE /api/transactions/:id
+// @access  Public (Temporarily)
+const deleteTransaction = async (req, res) => {
+  try {
+    const userId = TEMP_USER_ID; // <-- Use temporary ID
+    const transactionId = req.params.id;
+
+    // Validate Transaction ID format
+    if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+      return res.status(400).json({ message: 'Invalid transaction ID format' });
+    }
+
+    // Find the transaction by ID and ensure it belongs to the user
+    const transaction = await Transaction.findOne({
+      _id: transactionId,
+      user: userId
+    });
+
+    // If transaction doesn't exist or doesn't belong to the user
+    if (!transaction) {
+      // Return 404 even if it exists but belongs to another user for security
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+
+    // Use deleteOne for Mongoose v6+ or remove() for older versions
+    // await transaction.remove(); // Older Mongoose
+    const deleteResult = await Transaction.deleteOne({ _id: transactionId, user: userId });
+
+    // Although we found it earlier, double-check the result of deleteOne
+    if (deleteResult.deletedCount === 0) {
+        // This case might happen due to race conditions or other issues
+        console.error(`Failed to delete transaction ${transactionId} even after finding it.`);
+        return res.status(404).json({ message: 'Transaction not found or could not be deleted' });
+    }
+
+    console.log(`Transaction ${transactionId} deleted successfully.`);
+    // Send back a success status, often with the ID of the deleted item
+    res.status(200).json({ success: true, message: 'Transaction deleted successfully', id: transactionId });
+
+  } catch (error) {
+    console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+    console.error('!!! Error deleting transaction in Controller:');
+    console.error('!!! Temp User ID:', TEMP_USER_ID);
+    console.error('!!! Transaction ID:', req.params.id);
+    console.error('!!! Error:', error);
+    console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+    res.status(500).json({ message: 'Server error while deleting transaction.' });
+  }
+};
+
 module.exports = {
   addTransaction,
   getDashboardData,
   getAllTransactions,
   updateTransaction,
+  deleteTransaction,
 }; 

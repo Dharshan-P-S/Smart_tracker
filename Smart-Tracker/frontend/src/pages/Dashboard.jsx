@@ -38,6 +38,7 @@ function Dashboard() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
+  const [recurrence, setRecurrence] = useState('once'); // Add state for recurrence
   const [isSubmitting, setIsSubmitting] = useState(false); // State for submission status
 
   // const { token } = useAuth(); // Example: Get token from context
@@ -180,6 +181,7 @@ function Dashboard() {
       amount: parseFloat(amount),
       description,
       category,
+      recurrence, // Include recurrence in the payload
     };
 
     let submitResponse; // Define outside try
@@ -215,6 +217,7 @@ function Dashboard() {
         setAmount('');
         setDescription('');
         setCategory('');
+        setRecurrence('once'); // Reset recurrence on success
         await fetchDashboardData(); // Re-fetch user-specific dashboard data
 
         // --- Update shared categories list (Optional Enhancement) ---
@@ -446,6 +449,21 @@ function Dashboard() {
                  <option key={index} value={cat} />
                ))}
              </datalist>
+           </div>
+           <div className={styles.formGroup}>
+             <label htmlFor="recurrence">Frequency</label>
+             <select
+               id="recurrence"
+               value={recurrence}
+               onChange={(e) => setRecurrence(e.target.value)}
+               required
+               className={styles.formInput} // Reuse input style
+             >
+               <option value="once">Once</option>
+               <option value="daily">Daily</option>
+               <option value="weekly">Weekly</option>
+               <option value="monthly">Monthly</option>
+             </select>
            </div>
            <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
              {isSubmitting ? 'Adding...' : 'Add Transaction'}

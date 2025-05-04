@@ -109,6 +109,7 @@
   display: flex; /* Enable flexbox */
   justify-content: center; /* Center chart horizontally */
   align-items: center; /* Center chart vertically */
+  position: relative; /* Add this line */
 }
 
 /* NEW: Placeholder Content Style */

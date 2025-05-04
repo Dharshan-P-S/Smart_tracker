@@ -1,5 +1,5 @@
 const express = require('express');
-const { addTransaction, getDashboardData, getAllTransactions, updateTransaction } = require('../controllers/transactionController');
+const { addTransaction, getDashboardData, getAllTransactions, updateTransaction, deleteTransaction } = require('../controllers/transactionController');
 // const { protect } = require('../middleware/authMiddleware'); // <-- Commented out
 
 const router = express.Router();
@@ -16,5 +16,7 @@ router.get('/dashboard', getDashboardData); // GET /api/transactions/dashboard
 router.get('/all', getAllTransactions); // Add the route for the new controller
 
 router.put('/:id', updateTransaction); // Add the PUT route for updates
+
+router.delete('/:id', deleteTransaction); // Add the DELETE route
 
 module.exports = router; 

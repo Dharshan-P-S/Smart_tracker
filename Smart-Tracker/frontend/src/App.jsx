@@ -5,6 +5,7 @@ import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
 import TransactionsPage from './pages/TransactionsPage';
 import IncomePage from './pages/IncomePage';
+import ExpensePage from './pages/ExpensePage';
 import ProtectedRoute from './routing/ProtectedRoute';
 import Layout from './components/Layout';
 import './App.css';
@@ -22,6 +23,7 @@ function App() {
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/income" element={<IncomePage />} />
+            <Route path="/expense" element={<ExpensePage />} />
           </Route>
         </Route>
 

@@ -33,6 +33,16 @@ const transactionSchema = new mongoose.Schema({
     required: true,
     default: Date.now, // Default to current date
   },
+  recurrence: {
+    type: String,
+    required: true,
+    enum: ['once', 'daily', 'weekly', 'monthly'],
+    default: 'once',
+  },
+  // Optional fields for recurrence tracking (add later if implementing scheduler)
+  // lastProcessedDate: { type: Date },
+  // recurringEndDate: { type: Date },
+  // originalRecurringTxId: { type: mongoose.Schema.Types.ObjectId, ref: 'Transaction' } // Links generated tx back to original
 }, {
   timestamps: true, // Adds createdAt and updatedAt fields
 });
