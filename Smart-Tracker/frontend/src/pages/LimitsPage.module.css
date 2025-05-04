@@ -1,0 +1,347 @@
++121/* General Page Container */
+.limitsPageContainer {
+    padding: 2rem;
+    max-width: 900px; /* Limit width for better readability */
+    margin: 2rem auto; /* Center the content */
+    background-color: #f9fafb; /* Light background */
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease; /* Added transitions */
+}
+
+.pageTitle {
+    text-align: center;
+    color: #1f2937; /* Dark gray */
+    margin-bottom: 2rem;
+    font-size: 2rem;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+/* Section Styling */
+.sectionBox {
+    background-color: #ffffff; /* White background for sections */
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.sectionTitle {
+    color: #374151; /* Medium gray */
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #e5e7eb; /* Light gray border */
+    padding-bottom: 0.5rem;
+    transition: color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Add Limit Form */
+.addForm {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto; /* Category, Amount, Button */
+    gap: 1rem;
+    align-items: flex-end; /* Align items to the bottom */
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+}
+
+.formGroup label {
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #4b5563; /* Gray */
+    transition: color 0.3s ease;
+}
+
+.formInput {
+    padding: 0.75rem;
+    border: 1px solid #d1d5db; /* Light gray border */
+    background-color: #fff; /* White background */
+    color: #1f2937; /* Dark text */
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background-color 0.3s ease, color 0.3s ease;
+}
+
+.formInput:focus {
+    outline: none;
+    border-color: #3b82f6; /* Blue focus */
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+.addButton {
+    padding: 0.75rem 1.5rem;
+    background-color: #10b981; /* Emerald green */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: background-color 0.2s ease-in-out;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+    height: fit-content; /* Match input height better */
+    align-self: flex-end; /* Align button itself to bottom */
+}
+
+.addButton:hover:not(:disabled) {
+    background-color: #059669; /* Darker emerald */
+}
+
+.addButton:disabled {
+    background-color: #9ca3af; /* Gray when disabled */
+    cursor: not-allowed;
+}
+
+/* Limits List */
+.limitsList {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.limitItem {
+    display: grid;
+    grid-template-columns: 1fr auto auto; /* Info, Status, Actions */
+    gap: 1rem;
+    align-items: center;
+    padding: 1rem;
+    background-color: #f3f4f6; /* Very light gray background */
+    border-radius: 6px;
+    border-left: 5px solid #6b7280; /* Default border color (gray) */
+    transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+.limitItem.exceeded {
+    border-left-color: #ef4444; /* Red border if exceeded */
+    background-color: #fee2e2; /* Light red background */
+}
+
+.limitInfo {
+    display: grid; /* Use grid for better alignment within the info block */
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* Responsive columns */
+    gap: 0.5rem 1rem; /* Row and column gap */
+    align-items: center;
+}
+
+.limitCategory {
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 1.1rem;
+    transition: color 0.3s ease;
+}
+
+.limitAmount,
+.limitSpending,
+.limitRemaining {
+    font-size: 0.95rem;
+    color: #4b5563;
+    transition: color 0.3s ease;
+}
+
+.limitRemaining.negativeRemaining {
+    color: #ef4444; /* Red text for negative remaining amount */
+    font-weight: 500;
+}
+
+.limitStatus {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.warningIcon {
+    color: #ef4444; /* Red */
+    font-size: 1.5rem;
+    transition: color 0.3s ease;
+}
+
+.limitActions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+/* Action Buttons (Edit/Delete) */
+.actionButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.4rem;
+    border-radius: 4px;
+    transition: background-color 0.2s ease, color 0.3s ease; /* Added color transition */
+    font-size: 1.1rem; /* Slightly larger icons */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.editButton {
+    color: #3b82f6; /* Blue */
+}
+.editButton:hover {
+    background-color: #dbeafe; /* Light blue hover */
+}
+
+.deleteButton {
+    color: #ef4444; /* Red */
+}
+.deleteButton:hover {
+    background-color: #fee2e2; /* Light red hover */
+}
+
+/* Error Message Styling */
+.errorMessage {
+    color: #ef4444; /* Red */
+    margin-top: 1rem;
+    text-align: center;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+/* Dark Mode Styles using CSS Variables */
+@media (prefers-color-scheme: dark) {
+  .limitsPageContainer {
+    background-color: var(--bg-dark, #111827); /* Use variable or fallback */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -4px rgba(0, 0, 0, 0.2); /* Adjusted shadow for dark */
+  }
+  .pageTitle {
+    color: var(--text-primary-dark, #f3f4f6);
+  }
+  .sectionBox {
+    background-color: var(--box-bg-dark, #1f2937);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3); /* Adjusted shadow */
+  }
+  .sectionTitle {
+    color: var(--text-secondary-dark, #d1d5db);
+    border-bottom-color: var(--border-dark, #4b5563);
+  }
+  .formGroup label {
+     color: var(--text-secondary-dark, #9ca3af);
+  }
+  .formInput {
+    border-color: var(--border-dark, #4b5563);
+    background-color: var(--input-bg-dark, #374151); /* Assuming an input bg variable */
+    color: var(--text-primary-dark, #f3f4f6);
+  }
+  .formInput:focus {
+     border-color: var(--accent-primary-dark, #60a5fa); /* Use accent color */
+     box-shadow: 0 0 0 3px var(--accent-focus-ring-dark, rgba(96, 165, 250, 0.4)); /* Use accent focus */
+  }
+  .addButton {
+     background-color: var(--accent-success-dark, #059669); /* Assuming success accent */
+  }
+  .addButton:hover:not(:disabled) {
+     background-color: var(--accent-success-hover-dark, #047857); /* Assuming hover variable */
+  }
+  .addButton:disabled {
+     background-color: var(--button-disabled-bg-dark, #4b5563);
+     color: var(--button-disabled-text-dark, #9ca3af);
+  }
+  .limitItem {
+    background-color: var(--item-bg-dark, #374151);
+    border-left-color: var(--border-dark, #6b7280);
+  }
+  .limitItem.exceeded {
+    border-left-color: var(--error-dark, #f87171); /* Use error variable */
+    background-color: var(--error-bg-dark, rgba(153, 27, 27, 0.3)); /* Use error bg variable */
+  }
+  .limitCategory {
+     color: var(--text-primary-dark, #f3f4f6);
+  }
+  .limitAmount,
+  .limitSpending,
+  .limitRemaining {
+     color: var(--text-secondary-dark, #d1d5db);
+  }
+  .limitRemaining.negativeRemaining {
+     color: var(--error-dark, #fca5a5); /* Use error variable */
+  }
+  .warningIcon {
+     color: var(--error-dark, #fca5a5); /* Use error variable */
+  }
+  .editButton {
+     color: var(--accent-primary-dark, #93c5fd); /* Use accent variable */
+  }
+  .editButton:hover {
+     background-color: var(--accent-primary-hover-bg-dark, rgba(30, 58, 138, 0.3)); /* Use accent hover bg */
+  }
+  .deleteButton {
+     color: var(--error-dark, #fca5a5); /* Use error variable */
+  }
+  .deleteButton:hover {
+     background-color: var(--error-hover-bg-dark, rgba(153, 27, 27, 0.3)); /* Use error hover bg */
+  }
+  .errorMessage {
+     color: var(--error-dark, #fca5a5); /* Use error variable */
+  }
+}
+
+/* Progress Bar Styles */
+.progressBarContainer {
+    grid-column: 1 / -1; /* Span across all columns in the info grid */
+    height: 10px; /* Adjust height as needed */
+    background-color: #e5e7eb; /* Light gray background */
+    border-radius: 5px;
+    overflow: hidden; /* Ensure fill stays within bounds */
+    margin-top: 0.5rem; /* Space above the bar */
+}
+@media (prefers-color-scheme: dark) {
+  .progressBarContainer {
+    background-color: var(--progress-bg-dark, #4b5563); /* Darker background */
+  }
+}
+
+.progressBarFill {
+    height: 100%;
+    background-color: #34d399; /* Green fill (adjust color as needed) */
+    border-radius: 5px;
+    transition: width 0.4s ease-out; /* Smooth transition for width changes */
+}
+/* Optional: Change fill color when exceeded */
+.limitItem.exceeded .progressBarFill {
+     background-color: #ef4444; /* Red fill when exceeded */
+}
+@media (prefers-color-scheme: dark) {
+  .progressBarFill {
+     background-color: var(--accent-success-dark, #34d399); /* Use success accent */
+  }
+   .limitItem.exceeded .progressBarFill {
+     background-color: var(--error-dark, #ef4444); /* Use error variable */
+  }
+}
+
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .addForm {
+        grid-template-columns: 1fr; /* Stack form elements */
+    }
+    .addButton {
+        width: 100%; /* Full width button on small screens */
+    }
+    .limitItem {
+        grid-template-columns: 1fr; /* Stack sections */
+        gap: 0.5rem;
+        text-align: center;
+    }
+    .limitInfo {
+         grid-template-columns: 1fr; /* Stack info items */
+         text-align: center;
+         gap: 0.25rem;
+    }
+     .limitActions {
+        justify-content: center; /* Center buttons */
+    }
+    .limitStatus {
+        margin-top: 0.5rem; /* Add space above warning icon */
+    }
+}

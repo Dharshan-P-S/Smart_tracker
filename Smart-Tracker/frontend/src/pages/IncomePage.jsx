@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { FaEdit, FaTrash } from 'react-icons/fa'; // Import icons
 
 import styles from './Dashboard.module.css';
 
@@ -371,8 +372,14 @@ function IncomePage() {
                                                  </>
                                              ) : (
                                                  <>
-                                                     <button onClick={() => handleEditClick(tx)} className={`${styles.actionButton} ${styles.editButton}`}>Edit</button>
-                                                     <button onClick={() => handleDelete(tx._id)} className={`${styles.actionButton} ${styles.deleteButton}`}>Delete</button>
+                                                     {/* Use FaEdit icon */}
+                                                     <button onClick={() => handleEditClick(tx)} className={`${styles.actionButton} ${styles.editButton}`} aria-label="Edit transaction">
+                                                         <FaEdit />
+                                                     </button>
+                                                     {/* Use FaTrash icon */}
+                                                     <button onClick={() => handleDelete(tx._id)} className={`${styles.actionButton} ${styles.deleteButton}`} aria-label="Delete transaction">
+                                                         <FaTrash />
+                                                     </button>
                                                  </>
                                              )}
                                          </div>

@@ -18,10 +18,11 @@ console.log('Backend server starting...');
 // Define Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/transactions', require('./routes/transactionRoutes'));
+app.use('/api/limits', require('./routes/limitRoutes')); // Add limit routes
 
 // Basic route
 app.get('/', (req, res) => res.send('API Running'));
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => console.log(`Server started on port ${PORT}`)); 
+app.listen(PORT, () => console.log(`Server started on port ${PORT}`));

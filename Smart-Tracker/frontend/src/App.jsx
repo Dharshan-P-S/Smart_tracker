@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import TransactionsPage from './pages/TransactionsPage';
 import IncomePage from './pages/IncomePage';
 import ExpensePage from './pages/ExpensePage';
+import LimitsPage from './pages/LimitsPage'; // Import the new LimitsPage
 import ProtectedRoute from './routing/ProtectedRoute';
 import Layout from './components/Layout';
 import './App.css';
@@ -24,6 +25,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/income" element={<IncomePage />} />
             <Route path="/expense" element={<ExpensePage />} />
+            <Route path="/limits" element={<LimitsPage />} /> {/* Add route for LimitsPage */}
           </Route>
         </Route>
 
