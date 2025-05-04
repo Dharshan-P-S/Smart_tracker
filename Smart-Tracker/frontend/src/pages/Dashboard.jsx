@@ -165,15 +165,6 @@ function Dashboard() {
         return;
     }
 
-    // --- Check for sufficient balance before adding expense --- 
-    const currentBalance = totalIncome - totalExpense;
-    if (type === 'expense' && parseFloat(amount) > currentBalance) {
-        alert("Insufficient balance to add this expense.");
-        setIsSubmitting(false); // Reset submitting state
-        return; // Stop the function here
-    }
-    // --- End of balance check ---
-
     setIsSubmitting(true);
     setError(null); // Clear previous fetch errors when submitting new
 
@@ -213,6 +204,15 @@ function Dashboard() {
     // Round to 2 decimal places for currency
     finalAmount = Math.round(finalAmount * 100) / 100;
     // --- End Frequency Calculation ---
+
+    // --- Check for sufficient balance AFTER calculation ---
+    const currentBalance = totalIncome - totalExpense;
+    if (type === 'expense' && finalAmount > currentBalance) {
+        alert(`Insufficient balance. Adding this expense (${formatCurrency(finalAmount)}) would exceed your current balance (${formatCurrency(currentBalance)}).`);
+        setIsSubmitting(false); // Reset submitting state
+        return; // Stop the function here
+    }
+    // --- End of balance check ---
 
     const newTransaction = {
       type,

@@ -178,23 +178,6 @@ function ExpensePage() {
         }
         const transactionAmount = transactionToDelete.amount;
 
-        // Fetch the current balance *before* attempting deletion
-        const fetchedBalance = await fetchBalance();
-
-        // If fetchBalance failed (returned null), an error is already set. Stop.
-        if (fetchedBalance === null) {
-             // Error message is already set by fetchBalance
-             console.log("Halting delete because balance fetch failed.");
-            return;
-        }
-
-        // --- Check if deletion would result in negative balance ---
-        if (fetchedBalance - transactionAmount < 0) {
-            alert(`Cannot delete this expense transaction. Deleting ${formatCurrency(transactionAmount)} would result in a negative balance (${formatCurrency(fetchedBalance - transactionAmount)}).`);
-            return; // Stop the deletion
-        }
-        // --- End of balance check ---
-
         // Proceed with deletion confirmation and request
         const token = localStorage.getItem('authToken');
         if (!token) {
@@ -223,11 +206,10 @@ function ExpensePage() {
             setAllExpenseTransactions(prevTxs => prevTxs.filter(tx => tx._id !== txId));
 
             // Update the balance state locally after successful deletion
-            setCurrentBalance(prevBalance => prevBalance !== null ? prevBalance - transactionAmount : null);
+            setCurrentBalance(prevBalance => prevBalance !== null ? prevBalance + transactionAmount : null);
 
             // Dispatch event to potentially update other components like Dashboard
             window.dispatchEvent(new CustomEvent('transaction-deleted', { detail: { type: 'expense', amount: transactionAmount } }));
-
 
         } catch (err) {
             console.error("Error deleting transaction:", err);
