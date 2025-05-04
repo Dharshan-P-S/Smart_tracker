@@ -105,7 +105,7 @@
 /* NEW: Chart Container Style */
 .chartContainer {
   width: 100%;
-  height: 300px; /* Fixed height for the chart */
+  height: 400px; /* Fixed height for the chart - Increased */
   display: flex; /* Enable flexbox */
   justify-content: center; /* Center chart horizontally */
   align-items: center; /* Center chart vertically */
@@ -258,7 +258,7 @@
 
 .transactionItem {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto auto; /* Date | Desc | Cat/Input | Amount | Actions */
   gap: 1rem;
   /* Replaced border-bottom and padding-left with full box styles */
   padding: 1rem; /* Padding inside the box */
@@ -533,6 +533,104 @@
     border-color: var(--primary-accent-dark, #60a5fa);
   }
   /* ... rest of dark mode styles ... */
+}
+
+/* --- Styles for Transaction Action Buttons --- */
+
+.actionButton {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 4px;
+  border: 1px solid transparent; /* Base border */
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* Default/Edit/Cancel Button Styles (Light) */
+.editButton,
+.cancelButton {
+  background-color: var(--bg-light);
+  color: var(--text-secondary-light);
+  border-color: var(--border-light);
+}
+
+.editButton:hover,
+.cancelButton:hover {
+  background-color: #f0f0f0; /* Slightly darker gray */
+  border-color: #d1d1d1;
+}
+
+/* Save Button Styles (Light) */
+.saveButton {
+   background-color: #34D399; /* Green */
+   color: white;
+   border-color: #34D399;
+}
+.saveButton:hover {
+   background-color: #10B981; /* Darker Green */
+   border-color: #10B981;
+}
+
+/* Delete Button Styles (Light) */
+.deleteButton {
+  background-color: #EF4444; /* Red */
+  color: white;
+  border-color: #EF4444;
+}
+
+.deleteButton:hover {
+  background-color: #DC2626; /* Darker Red */
+  border-color: #DC2626;
+}
+
+
+/* Dark Mode Overrides for Action Buttons */
+@media (prefers-color-scheme: dark) {
+  /* Dark Mode Overrides for Action Buttons */
+  /* Keep Cancel button dark mode style */
+  .cancelButton {
+    background-color: var(--bg-dark);
+    color: var(--text-secondary-dark);
+    border-color: var(--border-dark);
+  }
+
+  .cancelButton:hover {
+    background-color: #374151; /* Slightly lighter dark gray */
+    border-color: #4b5563;
+  }
+
+  /* Edit Button Dark Mode Styles - Explicit Blue */
+  .editButton {
+    background-color: #60a5fa; /* Lighter Blue for Dark Mode */
+    color: #ffffff; /* White text */
+    border-color: #60a5fa;
+  }
+
+  .editButton:hover {
+    background-color: #3b82f6; /* Standard Blue on hover */
+    border-color: #2563eb;
+  }
+
+  /* Save Button Styles (Dark) */
+  .saveButton {
+     background-color: #34D399; /* Keep green */
+     border-color: #34D399;
+  }
+  .saveButton:hover {
+     background-color: #10B981;
+     border-color: #10B981;
+  }
+
+  .deleteButton {
+    background-color: #F87171; /* Lighter Red */
+    border-color: #F87171;
+  }
+
+  .deleteButton:hover {
+    background-color: #EF4444; /* Darker Red */
+    border-color: #EF4444;
+  }
 }
 
 /* --- End of file --- */ 

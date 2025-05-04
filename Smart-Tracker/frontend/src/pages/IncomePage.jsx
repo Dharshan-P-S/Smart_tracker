@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-// Import PDF generation libraries
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable'; // Import autoTable function explicitly
+import autoTable from 'jspdf-autotable';
 
 import styles from './Dashboard.module.css';
 
@@ -23,73 +22,60 @@ const formatDate = (dateString) => {
     });
 };
 
-
 function IncomePage() {
     const [allIncomeTransactions, setAllIncomeTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [username, setUsername] = useState('CurrentUser'); // Placeholder - How do we get the real username?
+    const [username, setUsername] = useState('CurrentUser'); // Placeholder
 
     // --- State for Editing ---
-    const [editingTxId, setEditingTxId] = useState(null); // ID of the transaction being edited
+    const [editingTxId, setEditingTxId] = useState(null);
     const [editFormData, setEditFormData] = useState({ description: '', category: '' });
 
-    // TODO: Replace placeholder logic with actual username retrieval
-    // useEffect(() => {
-    //     const storedUsername = localStorage.getItem('username'); // Example
-    //     if (storedUsername) {
-    //         setUsername(storedUsername);
-    //     }
-    //     // Or fetch from an API endpoint like /api/users/me
-    // }, []);
+    // --- Fetch Transactions Effect ---
+    const fetchAllTransactions = async () => {
+        setLoading(true); // Set loading true at the start of fetch
+        // setError(null); // Clear previous fetch errors here if preferred
+        try {
+            const token = localStorage.getItem('authToken');
+            if (!token) throw new Error("Authentication token not found.");
+
+            const response = await fetch('/api/transactions/all', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}. ${errorText}`);
+            }
+            const allData = await response.json();
+            const incomeData = (allData || []).filter(tx => tx.type === 'income');
+            incomeData.sort((a, b) => new Date(b.date) - new Date(a.date));
+            setAllIncomeTransactions(incomeData);
+            setError(null); // Clear error only on successful fetch
+        } catch (err) {
+            console.error("Error fetching transactions for Income page:", err);
+            setError(err.message || 'Failed to fetch transactions.');
+            setAllIncomeTransactions([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchAllTransactions = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const token = localStorage.getItem('authToken');
-                if (!token) {
-                    throw new Error("Authentication token not found.");
-                }
-                const response = await fetch('/api/transactions/all', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`HTTP error! status: ${response.status}. ${errorText}`);
-                }
-                const allData = await response.json();
-                const incomeData = (allData || []).filter(tx => tx.type === 'income');
-                incomeData.sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort newest first
-                setAllIncomeTransactions(incomeData);
-            } catch (err) {
-                console.error("Error fetching transactions for Income page:", err);
-                setError(err.message || 'Failed to fetch transactions.');
-                setAllIncomeTransactions([]);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchAllTransactions();
-    }, []); // Fetch only once on component mount
+    }, []); // Initial fetch
 
-    // --- Effect to listen for updates triggered by Dashboard ---
+    // --- Event Listener Effect ---
     useEffect(() => {
         const handleIncomeUpdate = () => {
-            console.log("IncomePage received income-updated event, re-fetching..."); // For debugging
-            fetchAllTransactions(); // Re-fetch data when event is heard
+            console.log("IncomePage received income-updated event, re-fetching...");
+            fetchAllTransactions();
         };
-
-        console.log("IncomePage setting up event listener for income-updated"); // For debugging
         window.addEventListener('income-updated', handleIncomeUpdate);
-
-        // Cleanup function to remove the listener when the component unmounts
         return () => {
-            console.log("IncomePage cleaning up event listener for income-updated"); // For debugging
             window.removeEventListener('income-updated', handleIncomeUpdate);
         };
-    }, []); // Empty dependency array means this setup runs only once on mount
+    }, []); // Listener setup runs once
 
     // --- Edit Handlers ---
     const handleEditClick = (tx) => {
@@ -108,19 +94,16 @@ function IncomePage() {
     };
 
     const handleSaveEdit = async (txId) => {
-        setError(null); // Clear previous errors
+        setError(null);
         const token = localStorage.getItem('authToken');
         if (!token) {
             setError("Authentication token not found.");
             return;
         }
-
-        // Basic validation
         if (!editFormData.description.trim() || !editFormData.category.trim()) {
             alert("Description and Category cannot be empty.");
             return;
         }
-
         try {
             const response = await fetch(`/api/transactions/${txId}`, {
                 method: 'PUT',
@@ -131,92 +114,61 @@ function IncomePage() {
                 body: JSON.stringify({
                     description: editFormData.description,
                     category: editFormData.category,
-                    // Include other fields if the backend expects them, otherwise backend should ignore
                 }),
             });
-
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ message: 'Update failed with non-JSON response' }));
                 throw new Error(errorData.message || `Failed to update transaction: ${response.statusText}`);
             }
-
-            // Option 1: Re-fetch all data (simpler)
-            // fetchAllTransactions(); 
-
-            // Option 2: Update local state (more performant)
-            setAllIncomeTransactions(prevTxs => 
-                prevTxs.map(tx => 
+            // Update local state optimistically
+            setAllIncomeTransactions(prevTxs =>
+                prevTxs.map(tx =>
                     tx._id === txId ? { ...tx, ...editFormData } : tx
                 )
             );
-
             handleCancelEdit(); // Exit editing mode
-
         } catch (err) {
             console.error("Error updating transaction:", err);
             setError(`Update Error: ${err.message}`);
-            // Optionally keep editing mode open on error?
         }
     };
 
-    // --- Chart Data Prep (existing) ---
-    // Map each transaction to a chart data point
+    // --- Chart Data Prep ---
     const chartData = allIncomeTransactions.map((tx, index) => ({
-        // Use date for the axis, maybe add index if dates clash visually?
-        // Formatting date for display on axis
         date: tx.date ? new Date(tx.date).toLocaleDateString('en-CA') : `tx_${index}`,
         amount: tx.amount,
-        // Include description for tooltip
         description: tx.description
-    })).sort((a, b) => new Date(a.date) - new Date(b.date)); // Sort chronologically
+    })).sort((a, b) => new Date(a.date) - new Date(b.date));
 
     // --- PDF Download Handler ---
     const handleDownloadPDF = () => {
         const doc = new jsPDF();
         const tableColumn = ["Date", "Description", "Category", "Amount"];
         const tableRows = [];
-
-        // Add Title
         doc.setFontSize(18);
         doc.text(`Income Transactions for ${username}`, 14, 22);
-
-        // Prepare table data
         allIncomeTransactions.forEach(tx => {
-            const transactionData = [
-                formatDate(tx.date),
-                tx.description,
-                tx.category,
-                formatCurrency(tx.amount)
-            ];
-            tableRows.push(transactionData);
+            tableRows.push([
+                formatDate(tx.date), tx.description, tx.category, formatCurrency(tx.amount)
+            ]);
         });
-
-        // Add table to PDF using the imported function
-        autoTable(doc, { // Call autoTable explicitly
-            head: [tableColumn],
-            body: tableRows,
-            startY: 30, // Start table below title
-            theme: 'grid', // Options: 'striped', 'grid', 'plain'
-            styles: { fontSize: 10 },
-            headStyles: { fillColor: [22, 160, 133] }, // Green header
-            margin: { top: 30 }
-         });
-
-        // Add timestamp
+        autoTable(doc, {
+            head: [tableColumn], body: tableRows, startY: 30, theme: 'grid',
+            styles: { fontSize: 10 }, headStyles: { fillColor: [22, 160, 133] }, margin: { top: 30 }
+        });
         const date = new Date();
         const dateStr = date.toLocaleDateString() + " " + date.toLocaleTimeString();
         doc.setFontSize(10);
         doc.text(`Generated on: ${dateStr}`, 14, doc.internal.pageSize.height - 10);
-
-        // Save the PDF
         doc.save(`income-transactions-${username}-${new Date().toISOString().slice(0,10)}.pdf`);
     };
 
-
+    // --- Loading/Error States ---
     if (loading) {
         return <div className={styles.dashboardPageContent}><p>Loading income data...</p></div>;
     }
-    if (error && !error.startsWith('Update Error:')) { // Don't show page-level error for update failures, handle inline
+    // Don't show page-level error for update failures, handle inline
+    if (error && !error.startsWith('Update Error:')) {
         return <div className={styles.dashboardPageContent}><p style={{ color: 'red' }}>Error: {error}</p></div>;
     }
 
@@ -226,7 +178,6 @@ function IncomePage() {
              <div className={styles.dashboardPageContent}>
                 <div className={styles.sectionHeader}>
                    <h1 className={styles.pageTitle}>Income Overview</h1>
-                   {/* Download Button */}
                     <button onClick={handleDownloadPDF} className={styles.seeAllButton} style={{fontSize: '1rem'}}>
                        Download PDF
                     </button>
@@ -244,7 +195,7 @@ function IncomePage() {
                                      <YAxis tickFormatter={formatCurrency} width={80} />
                                      <Tooltip formatter={(value, name, props) => [formatCurrency(value), `Amount (${props.payload.description})`]} />
                                      <Legend />
-                                     <Bar dataKey="amount" fill="#34D399" name="Income Amount" barSize={15}/>
+                                     <Bar dataKey="amount" fill="#34D399" name="Income Amount" barSize={50}/>
                                  </BarChart>
                              </ResponsiveContainer>
                          ) : (
@@ -255,73 +206,61 @@ function IncomePage() {
 
                  <div className={styles.mainArea}>
                      {/* All Income Transactions Section */}
-                     <section className={`${styles.sectionBox} ${styles.transactionsSection}`} style={{gridColumn: '1 / -1'}}> {/* Make section span both columns */}
+                     <section className={`${styles.sectionBox} ${styles.transactionsSection}`} style={{gridColumn: '1 / -1'}}>
                          <div className={styles.sectionHeader}>
                              <h2 className={styles.sectionTitle}>All Income Transactions</h2>
                          </div>
-                          {/* Display Update Error here */} 
-                         {error && error.startsWith('Update Error:') && (
+                          {error && error.startsWith('Update Error:') && (
                            <p style={{ color: 'red', marginBottom: '1rem' }}>{error}</p>
                          )}
                          {allIncomeTransactions.length > 0 ? (
                              <div className={styles.transactionList}>
-                                 {/* Map over ALL income transactions */}
                                  {allIncomeTransactions.map((tx) => (
                                      <div
                                          key={tx._id}
                                          className={`${styles.transactionItem} ${styles.incomeBorder}`}
                                      >
-                                         <span className={styles.transactionDate}>
+                                         {/* Column 1: Date */}
+                                         <span style={{ gridColumn: '1 / 2' }} className={styles.transactionDate}>
                                              {formatDate(tx.date)}
                                          </span>
-                                         {/* Conditional Rendering for Edit Mode */} 
+
+                                         {/* Columns 2 & 3: Description and Category (Inputs or Spans) */}
                                          {editingTxId === tx._id ? (
                                              <>
-                                                 {/* Edit Form Inputs */}
-                                                 <input 
-                                                     type="text"
-                                                     name="description"
-                                                     value={editFormData.description}
-                                                     onChange={handleEditFormChange}
-                                                     className={styles.formInput} // Reuse form styles?
-                                                     style={{fontSize: '0.9rem', padding: '0.4rem'}} // Basic inline styles
+                                                 <input
+                                                     type="text" name="description" value={editFormData.description}
+                                                     onChange={handleEditFormChange} className={styles.formInput}
+                                                     style={{ gridColumn: '2 / 3', fontSize: '0.9rem', padding: '0.4rem' }}
                                                  />
-                                                 <input 
-                                                     type="text"
-                                                     name="category"
-                                                     value={editFormData.category}
-                                                     onChange={handleEditFormChange}
-                                                     className={styles.formInput} 
-                                                      style={{fontSize: '0.9rem', padding: '0.4rem'}}
+                                                 <input
+                                                     type="text" name="category" value={editFormData.category}
+                                                     onChange={handleEditFormChange} className={styles.formInput}
+                                                     style={{ gridColumn: '3 / 4', fontSize: '0.9rem', padding: '0.4rem' }}
                                                  />
-                                                 <span className={`${styles.transactionAmount} ${styles.income}`}> 
-                                                     {/* Amount not editable */} 
-                                                    {'+'} {formatCurrency(tx.amount)}
-                                                 </span>
                                              </>
                                          ) : (
-                                             <>
-                                                 {/* Display Spans */}
-                                                 <span className={styles.transactionDesc}>
-                                                     {tx.description} ({tx.category})
-                                                 </span>
-                                                 <span className={`${styles.transactionAmount} ${styles.income}`}> 
-                                                    {'+'} {formatCurrency(tx.amount)}
-                                                 </span>
-                                             </>
+                                             <span style={{ gridColumn: '2 / 4' }} className={styles.transactionDesc}>
+                                                 {tx.description} ({tx.category})
+                                             </span>
                                          )}
 
-                                         {/* Conditional Buttons */} 
-                                         <div style={{ display: 'flex', gap: '0.5rem', gridColumn: '1 / -1', marginTop: '0.5rem', justifyContent: 'flex-end' }}>
+                                         {/* Column 4: Amount */}
+                                         <span style={{ gridColumn: '4 / 5' }} className={`${styles.transactionAmount} ${styles.income}`}>
+                                             {'+'} {formatCurrency(tx.amount)}
+                                         </span>
+
+                                         {/* Column 5: Action Buttons */}
+                                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', gridColumn: '5 / 6', alignItems: 'center' }}>
                                              {editingTxId === tx._id ? (
                                                  <>
-                                                     <button onClick={() => handleSaveEdit(tx._id)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', backgroundColor: '#34D399', color: 'white', border:'none' }}>Save</button>
-                                                     <button onClick={handleCancelEdit} style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}>Cancel</button>
+                                                     <button onClick={() => handleSaveEdit(tx._id)} className={`${styles.actionButton} ${styles.saveButton}`}>Save</button>
+                                                     <button onClick={handleCancelEdit} className={`${styles.actionButton} ${styles.cancelButton}`}>Cancel</button>
                                                  </>
                                              ) : (
                                                  <>
-                                                     <button onClick={() => handleEditClick(tx)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}>Edit</button>
-                                                     <button style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', backgroundColor: '#F87171', color: 'white', border:'none' }}>Delete</button>
+                                                     <button onClick={() => handleEditClick(tx)} className={`${styles.actionButton} ${styles.editButton}`}>Edit</button>
+                                                     <button className={`${styles.actionButton} ${styles.deleteButton}`}>Delete</button>
                                                  </>
                                              )}
                                          </div>
