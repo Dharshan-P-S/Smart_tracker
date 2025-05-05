@@ -778,6 +778,15 @@
   width: fit-content; /* Button width fits content */
 }
 
+/* NEW: Style for the inline category warning message */
+.categoryWarningMessage {
+  color: #EF4444; /* Red color for warning */
+  font-size: 0.8rem;
+  margin-top: 0.2rem; /* Small space above the message */
+  /* Add padding or margin if needed for visual separation */
+}
+
+
 /* Responsive adjustments for form/limits container */
 @media (max-width: 992px) { /* Adjust breakpoint as needed */
   .formAndLimitsContainer {
@@ -799,6 +808,7 @@
   }
   .limitAmounts {
     /* Adjust colors if needed */
+    opacity: 1;
   }
   .limitSpent {
     color: var(--text-secondary-dark);
@@ -812,11 +822,16 @@
   .progressBar {
      /* Keep default blue or adjust */
      /* Overspent color is handled inline */
+     opacity: 1;
   }
   .limitsSeeAll {
     /* Inherits dark mode styles from .seeAllButton */
+    opacity: 1;
   }
   .limitExceededMessage {
+    color: #F87171; /* Lighter red for dark mode */
+  }
+  .categoryWarningMessage {
     color: #F87171; /* Lighter red for dark mode */
   }
 }

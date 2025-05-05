@@ -41,6 +41,7 @@ function Dashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [limits, setLimits] = useState([]); // State for limits, expecting { _id, category, amount, currentSpending, remainingAmount, exceeded }
   const [loadingLimits, setLoadingLimits] = useState(true);
+  const [categoryLimitWarning, setCategoryLimitWarning] = useState(null); // State for inline warning
 
 
   // --- Fetch initial dashboard data ---
@@ -204,6 +205,22 @@ function Dashboard() {
     };
   }, []); // Empty dependency array is fine as fetchLimits is stable within this scope now
 
+  // --- Effect to check limit status when category or type changes ---
+  useEffect(() => {
+    if (type === 'expense' && category.trim() !== '') {
+      const categoryTrimmed = category.trim();
+      const relevantLimit = limits.find(limit => limit.category.toLowerCase() === categoryTrimmed.toLowerCase());
+
+      if (relevantLimit && relevantLimit.exceeded) {
+        setCategoryLimitWarning(`Limit exceeded for "${relevantLimit.category}". Consider spending less for ${relevantLimit.category}.`);
+      } else {
+        setCategoryLimitWarning(null); // Clear warning if limit not exceeded or not found
+      }
+    } else {
+      setCategoryLimitWarning(null); // Clear warning if not an expense or category is empty
+    }
+  }, [category, type, limits]); // Re-run when category, type, or limits data changes
+
 
   const totalBalance = totalIncome - totalExpense;
 
@@ -279,6 +296,8 @@ function Dashboard() {
         return; // Stop the function here
     }
 
+    // Warning logic is now handled by useEffect and inline message.
+    // No need to block submission here.
 
     const newTransaction = {
       type,
@@ -602,6 +621,10 @@ function Dashboard() {
                    <option key={index} value={cat} />
                  ))}
                </datalist>
+               {/* Display inline category limit warning */}
+               {categoryLimitWarning && type === 'expense' && (
+                 <div className={styles.categoryWarningMessage}>{categoryLimitWarning}</div>
+               )}
              </div>
              <div className={styles.formGroup}>
                <label htmlFor="frequency">Frequency:</label>
