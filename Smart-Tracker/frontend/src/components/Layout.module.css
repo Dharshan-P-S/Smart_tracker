@@ -8,8 +8,10 @@
 .mainContent {
   /* flex-grow: 1; Removed */
   /* margin-left: 250px; Removed */
-  padding: 1.5rem; /* Add padding around the main content */
-  /* padding-top: calc(60px + 1.5rem); Removed */
+  padding-top: calc(60px + 1.5rem); /* Header height + desired space */
+  padding-right: 1.5rem;
+  padding-bottom: 1.5rem;
+  padding-left: 1.5rem;
   /* Background is handled by body */
   /* This area might be empty or show minimal content */
-} 
+}
