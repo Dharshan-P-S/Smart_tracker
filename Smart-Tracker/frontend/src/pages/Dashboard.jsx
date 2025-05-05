@@ -38,6 +38,7 @@ function Dashboard() {
   const [category, setCategory] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]); // Default to today
   const [frequency, setFrequency] = useState('once');
+  const [selectedDayOfWeek, setSelectedDayOfWeek] = useState(''); // New state for selected day of week
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [limits, setLimits] = useState([]);
   const [loadingLimits, setLoadingLimits] = useState(true);
@@ -300,6 +301,20 @@ function Dashboard() {
         setIsSubmitting(false);
         return;
     }
+
+    // Helper function to count occurrences of a day in the current month
+    const countDaysInMonth = (year, month, dayOfWeek) => {
+        let count = 0;
+        const date = new Date(year, month, 1);
+        while (date.getMonth() === month) {
+            if (date.getDay() === dayOfWeek) {
+                count++;
+            }
+            date.setDate(date.getDate() + 1);
+        }
+        return count;
+    };
+
     switch (frequency) {
         case 'daily':
             const now = new Date();
@@ -309,8 +324,17 @@ function Dashboard() {
             finalAmount = baseAmount * daysInMonth;
             break;
         case 'weekly':
-            const avgWeeksPerMonth = (365.25 / 7) / 12;
-            finalAmount = baseAmount * avgWeeksPerMonth;
+            if (selectedDayOfWeek === '') {
+                 alert("Please select a day of the week for weekly frequency.");
+                 setIsSubmitting(false);
+                 return;
+            }
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth(); // 0-indexed
+            const dayOfWeekInt = parseInt(selectedDayOfWeek, 10);
+            const occurrences = countDaysInMonth(currentYear, currentMonth, dayOfWeekInt);
+            finalAmount = baseAmount * occurrences;
             break;
         case 'once':
         default:
@@ -600,7 +624,7 @@ function Dashboard() {
             {/* Display submission errors specifically here */}
            {error && error.startsWith('Submit Error:') && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
            <form onSubmit={handleAddTransaction} className={styles.transactionForm}>
-              {/* ... (Keep existing form groups: type, date, amount, description, category, frequency) ... */}
+              {/* ... (Keep existing form groups: type, date, amount, description, category) ... */}
                <div className={styles.formGroup}>
                <label htmlFor="type">Type:</label>
                <select id="type" value={type} onChange={(e) => setType(e.target.value)} required className={styles.formInput} disabled={isSubmitting}>
@@ -677,6 +701,31 @@ function Dashboard() {
                  {/* <option value="monthly">Monthly</option>  Consider adding monthly if backend handles it */}
                </select>
              </div>
+
+             {/* New form group for day of the week, shown only for weekly frequency */}
+             {frequency === 'weekly' && (
+               <div className={styles.formGroup}>
+                 <label htmlFor="dayOfWeek">Day of Week:</label>
+                 <select
+                   id="dayOfWeek"
+                   value={selectedDayOfWeek}
+                   onChange={(e) => setSelectedDayOfWeek(e.target.value)}
+                   required
+                   className={styles.formInput}
+                   disabled={isSubmitting}
+                 >
+                   <option value="">Select Day</option>
+                   <option value="0">Sunday</option>
+                   <option value="1">Monday</option>
+                   <option value="2">Tuesday</option>
+                   <option value="3">Wednesday</option>
+                   <option value="4">Thursday</option>
+                   <option value="5">Friday</option>
+                   <option value="6">Saturday</option>
+                 </select>
+               </div>
+             )}
+
              <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
                {isSubmitting ? 'Adding...' : 'Add Transaction'}
              </button>
