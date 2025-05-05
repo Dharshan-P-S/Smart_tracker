@@ -1,19 +1,35 @@
 const Transaction = require('../models/Transaction');
-// const User = require('../models/User'); // Keep if needed for other logic
+const User = require('../models/User'); // <-- Import User model
 const mongoose = require('mongoose');
 
-// Placeholder for testing without authentication
-// *** Replace this with actual user ID from req.user when auth is added ***
-const TEMP_USER_ID = "605c72ef1e8d4e3e1c8b4567"; // Example valid 24-hex character ObjectId string
+// --- INSECURE PLACEHOLDER ---
+// Fetches the first user's ID to use in place of authenticated user.
+// DO NOT USE IN PRODUCTION. Authentication should be properly handled.
+// (Copied from limitController for consistency)
+const getPlaceholderUserId = async () => {
+    // Add error handling in case User model is missing or no users exist
+    if (!User) {
+        throw new Error("User model not available.");
+    }
+    const firstUser = await User.findOne().select('_id').lean(); // Use lean for performance
+    if (!firstUser) {
+        // It's better to throw an error here so the operation fails clearly
+        throw new Error("No users found in the database to use as a placeholder.");
+    }
+    // console.log("Using Placeholder User ID:", firstUser._id); // Optional debug log
+    return firstUser._id;
+};
+// --- END INSECURE PLACEHOLDER ---
+
 
 // @desc    Add a new transaction
 // @route   POST /api/transactions
 // @access  Public (Temporarily)
-const addTransaction = async (req, res) => {
+const addTransaction = async (req, res) => { // <-- Make async
   try {
     // Destructure all expected fields, including recurrence
     const { type, amount, description, category, date, recurrence } = req.body;
-    const userId = TEMP_USER_ID; // <-- Use temporary ID
+    const userId = await getPlaceholderUserId(); // <-- Use placeholder function
 
     // Validation
     if (!type || !amount || !description || !category) {
@@ -32,7 +48,7 @@ const addTransaction = async (req, res) => {
     }
 
     const newTransaction = new Transaction({
-      user: userId, // Use temp ID
+      user: userId, // <-- Use fetched placeholder ID
       type,
       amount: parseFloat(amount),
       description,
@@ -49,6 +65,9 @@ const addTransaction = async (req, res) => {
      if (error instanceof mongoose.Error.ValidationError) {
          return res.status(400).json({ message: error.message });
      }
+     if (error.message.includes("No users found")) { // Catch error from getPlaceholderUserId
+         return res.status(500).json({ message: error.message });
+     }
     res.status(500).json({ message: 'Server error while adding transaction' });
   }
 };
@@ -56,20 +75,19 @@ const addTransaction = async (req, res) => {
 // @desc    Get dashboard data (totals, recent transactions)
 // @route   GET /api/dashboard
 // @access  Public (Temporarily)
-const getDashboardData = async (req, res) => {
-  console.log("Attempting to fetch dashboard data for TEMP user:", TEMP_USER_ID);
+const getDashboardData = async (req, res) => { // <-- Make async
+  console.log("Attempting to fetch dashboard data...");
 
   try {
-    const userId = TEMP_USER_ID; // <-- Use temporary ID
+    const userId = await getPlaceholderUserId(); // <-- Use placeholder function
+    console.log("Using placeholder User ID for dashboard:", userId);
 
-    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-         console.error("Temporary User ID is missing or invalid:", userId);
-         return res.status(500).json({ message: 'Temporary User ID configuration error or invalid format.' });
-     }
+    // We already check if userId is valid within getPlaceholderUserId now
+    // if (!userId || !mongoose.Types.ObjectId.isValid(userId)) { ... } - Redundant
 
-    console.log(`Fetching transactions for temp user ID: ${userId}`);
+    console.log(`Fetching transactions for user ID: ${userId}`);
 
-    const recentTransactions = await Transaction.find({ user: userId }) // Use temp ID
+    const recentTransactions = await Transaction.find({ user: userId }) // Use fetched ID
       .sort({ date: -1 })
       .limit(5)
       .lean();
@@ -78,8 +96,8 @@ const getDashboardData = async (req, res) => {
 
     console.log("Calculating totals via aggregation...");
     const totals = await Transaction.aggregate([
-      // Use 'new' to construct the ObjectId
-      { $match: { user: new mongoose.Types.ObjectId(userId) } },
+      // Match using the fetched ObjectId
+      { $match: { user: userId } }, // Mongoose handles ObjectId conversion here
       {
         $group: {
           _id: '$type',
@@ -104,9 +122,12 @@ const getDashboardData = async (req, res) => {
   } catch (error) {
     console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
     console.error('!!! Error fetching dashboard data in Controller:');
-    console.error('!!! Temp User ID:', TEMP_USER_ID);
     console.error('!!! Error Name:', error.name);
     console.error('!!! Error Message:', error.message);
+    if (error.message.includes("No users found")) { // Specific message for placeholder issue
+        console.error('!!! Placeholder User ID issue.');
+        return res.status(500).json({ message: error.message });
+    }
     console.error('!!! Error Stack:');
     console.error(error.stack);
     console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
@@ -117,18 +138,14 @@ const getDashboardData = async (req, res) => {
 // @desc    Get ALL transactions for the temp user
 // @route   GET /api/transactions/all
 // @access  Public (Temporarily)
-const getAllTransactions = async (req, res) => {
-    console.log("Attempting to fetch ALL transactions for TEMP user:", TEMP_USER_ID);
+const getAllTransactions = async (req, res) => { // <-- Make async
+    console.log("Attempting to fetch ALL transactions...");
     try {
-        const userId = TEMP_USER_ID;
-
-         if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-            console.error("Temporary User ID is missing or invalid:", userId);
-            return res.status(500).json({ message: 'Temporary User ID configuration error or invalid format.' });
-        }
+        const userId = await getPlaceholderUserId(); // <-- Use placeholder function
+        console.log("Using placeholder User ID for all transactions:", userId);
 
         // Fetch all transactions for the user, sorted by date descending
-        const allTransactions = await Transaction.find({ user: userId })
+        const allTransactions = await Transaction.find({ user: userId }) // <-- Use fetched ID
             .sort({ date: -1 })
             .lean(); // Use lean for performance
 
@@ -139,8 +156,11 @@ const getAllTransactions = async (req, res) => {
     } catch (error) {
         console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
         console.error('!!! Error fetching ALL transactions in Controller:');
-        console.error('!!! Temp User ID:', TEMP_USER_ID);
         console.error('!!! Error:', error);
+         if (error.message.includes("No users found")) { // Catch error from getPlaceholderUserId
+            console.error('!!! Placeholder User ID issue.');
+            return res.status(500).json({ message: error.message });
+         }
         console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
         res.status(500).json({ message: 'Server error while fetching all transactions.' });
     }
@@ -149,9 +169,9 @@ const getAllTransactions = async (req, res) => {
 // @desc    Update a transaction (description & category only)
 // @route   PUT /api/transactions/:id
 // @access  Public (Temporarily)
-const updateTransaction = async (req, res) => {
+const updateTransaction = async (req, res) => { // <-- Make async
   try {
-    const userId = TEMP_USER_ID; // <-- Use temporary ID
+    const userId = await getPlaceholderUserId(); // <-- Use placeholder function
     const transactionId = req.params.id;
     const { description, category } = req.body;
 
@@ -166,7 +186,7 @@ const updateTransaction = async (req, res) => {
     // Find the transaction by ID and ensure it belongs to the user
     const transaction = await Transaction.findOne({
       _id: transactionId,
-      user: userId 
+      user: userId // <-- Use fetched ID
     });
 
     if (!transaction) {
@@ -186,9 +206,12 @@ const updateTransaction = async (req, res) => {
   } catch (error) {
     console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
     console.error('!!! Error updating transaction in Controller:');
-    console.error('!!! Temp User ID:', TEMP_USER_ID);
     console.error('!!! Transaction ID:', req.params.id);
     console.error('!!! Error:', error);
+    if (error.message.includes("No users found")) { // Catch error from getPlaceholderUserId
+        console.error('!!! Placeholder User ID issue.');
+        return res.status(500).json({ message: error.message });
+    }
     console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
     if (error instanceof mongoose.Error.ValidationError) {
          return res.status(400).json({ message: error.message });
@@ -200,9 +223,9 @@ const updateTransaction = async (req, res) => {
 // @desc    Delete a transaction
 // @route   DELETE /api/transactions/:id
 // @access  Public (Temporarily)
-const deleteTransaction = async (req, res) => {
+const deleteTransaction = async (req, res) => { // <-- Make async
   try {
-    const userId = TEMP_USER_ID; // <-- Use temporary ID
+    const userId = await getPlaceholderUserId(); // <-- Use placeholder function
     const transactionId = req.params.id;
 
     // Validate Transaction ID format
@@ -210,10 +233,12 @@ const deleteTransaction = async (req, res) => {
       return res.status(400).json({ message: 'Invalid transaction ID format' });
     }
 
-    // Find the transaction by ID and ensure it belongs to the user
+    // Find the transaction by ID and ensure it belongs to the user before deleting
+    // This findOne check is slightly redundant if deleteOne works, but good for clarity
+    // and potentially catching auth issues before attempting delete.
     const transaction = await Transaction.findOne({
       _id: transactionId,
-      user: userId
+      user: userId // <-- Use fetched ID
     });
 
     // If transaction doesn't exist or doesn't belong to the user
@@ -222,9 +247,8 @@ const deleteTransaction = async (req, res) => {
       return res.status(404).json({ message: 'Transaction not found' });
     }
 
-    // Use deleteOne for Mongoose v6+ or remove() for older versions
-    // await transaction.remove(); // Older Mongoose
-    const deleteResult = await Transaction.deleteOne({ _id: transactionId, user: userId });
+    // Use deleteOne for Mongoose v6+
+    const deleteResult = await Transaction.deleteOne({ _id: transactionId, user: userId }); // <-- Use fetched ID
 
     // Although we found it earlier, double-check the result of deleteOne
     if (deleteResult.deletedCount === 0) {
@@ -240,9 +264,12 @@ const deleteTransaction = async (req, res) => {
   } catch (error) {
     console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
     console.error('!!! Error deleting transaction in Controller:');
-    console.error('!!! Temp User ID:', TEMP_USER_ID);
     console.error('!!! Transaction ID:', req.params.id);
     console.error('!!! Error:', error);
+    if (error.message.includes("No users found")) { // Catch error from getPlaceholderUserId
+        console.error('!!! Placeholder User ID issue.');
+        return res.status(500).json({ message: error.message });
+    }
     console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
     res.status(500).json({ message: 'Server error while deleting transaction.' });
   }
@@ -254,4 +281,4 @@ module.exports = {
   getAllTransactions,
   updateTransaction,
   deleteTransaction,
-}; 
+};

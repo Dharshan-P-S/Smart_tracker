@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // <-- Import useCallback
 import { FaExclamationTriangle, FaEdit, FaTrash, FaPlus } from 'react-icons/fa'; // Icons
 import styles from './LimitsPage.module.css'; // We'll create this CSS module next
 
-// Reusable formatCurrency function (assuming it's available or define it here)
+// Reusable formatCurrency function (keep existing)
 const formatCurrency = (value) => {
     const numValue = parseFloat(value);
     if (isNaN(numValue)) {
@@ -18,10 +18,14 @@ function LimitsPage() {
     const [addFormData, setAddFormData] = useState({ category: '', amount: '' });
     const [isAdding, setIsAdding] = useState(false); // State for add form visibility/loading
 
-    // --- Fetch Limits ---
-    const fetchLimits = async () => {
+    // --- Fetch Limits (wrapped in useCallback) ---
+    const fetchLimits = useCallback(async () => {
+        // console.log("Fetching limits..."); // Optional debug log
+        // Don't set loading to true here if it's just a refresh,
+        // maybe only set loading on initial mount? Or accept a parameter.
+        // For simplicity, we'll keep setLoading(true) for now.
         setLoading(true);
-        setError(null);
+        setError(null); // Clear previous fetch errors
         try {
             const token = localStorage.getItem('authToken');
             if (!token) throw new Error("Authentication token not found.");
@@ -34,22 +38,45 @@ function LimitsPage() {
                 throw new Error(`HTTP error! status: ${response.status}. ${errorText}`);
             }
             const data = await response.json();
+            // console.log("Limits data received:", data); // Optional debug log
             setLimits(data);
         } catch (err) {
             console.error("Error fetching limits:", err);
+            // Display fetch errors, but maybe differentiate between initial load and refresh errors?
             setError(err.message || 'Failed to fetch limits.');
             setLimits([]); // Clear limits on error
         } finally {
             setLoading(false);
         }
-    };
+    // useCallback dependency array is empty because it doesn't depend on props or state
+    // that would change its behavior. localStorage/fetch are stable APIs.
+    }, []);
 
+    // --- Effect for Initial Fetch ---
     useEffect(() => {
         fetchLimits();
-    }, []); // Fetch on component mount
+    }, [fetchLimits]); // Depend on the stable fetchLimits function
+
+    // --- Effect for Listening to Transaction Updates ---
+    useEffect(() => {
+        const handleTransactionsUpdate = () => {
+            console.log('Transaction update detected by LimitsPage, refetching limits...');
+            fetchLimits(); // Call the memoized fetch function
+        };
+
+        // Add event listener
+        window.addEventListener('transactions-updated', handleTransactionsUpdate);
+
+        // Cleanup: remove event listener when component unmounts
+        return () => {
+            window.removeEventListener('transactions-updated', handleTransactionsUpdate);
+        };
+    }, [fetchLimits]); // Depend on fetchLimits so the listener always calls the latest version
+
 
     // --- Add Limit Handlers ---
     const handleAddFormChange = (e) => {
+        // ... (keep existing logic)
         const { name, value } = e.target;
         setAddFormData(prev => ({ ...prev, [name]: value }));
     };
@@ -57,17 +84,19 @@ function LimitsPage() {
     const handleAddSubmit = async (e) => {
         e.preventDefault();
         setIsAdding(true);
-        setError(null); // Clear previous add errors
+        // Clear only add-related errors, keep fetch errors if any
+        setError(prev => (prev && (prev.startsWith('Add Error:') || prev.includes('required') || prev.includes('number'))) ? null : prev);
+
 
         const { category, amount } = addFormData;
         if (!category.trim() || !amount) {
-            setError("Category and Amount are required.");
+            setError("Add Error: Category and Amount are required.");
             setIsAdding(false);
             return;
         }
         const numericAmount = parseFloat(amount);
         if (isNaN(numericAmount) || numericAmount < 0) {
-            setError("Amount must be a valid non-negative number.");
+            setError("Add Error: Amount must be a valid non-negative number.");
             setIsAdding(false);
             return;
         }
@@ -85,38 +114,43 @@ function LimitsPage() {
                 body: JSON.stringify({ category: category.trim(), amount: numericAmount }),
             });
 
-            const responseData = await response.json(); // Read response body regardless of status
+            const responseData = await response.json();
 
             if (!response.ok) {
-                 // Use message from backend if available, otherwise generic error
                 throw new Error(responseData.message || `Failed to add limit: ${response.statusText}`);
             }
 
-            // Add the new limit (with spending info from backend) to the state
+            // --- Correct State Update ---
+            // The backend now returns the new limit WITH calculated spending.
+            // Simply add it to the state. No need to call fetchLimits here.
             setLimits(prevLimits => [...prevLimits, responseData]);
             setAddFormData({ category: '', amount: '' }); // Reset form
 
         } catch (err) {
             console.error("Error adding limit:", err);
+            // Prepend "Add Error:" to differentiate from fetch/delete errors
             setError(`Add Error: ${err.message}`);
         } finally {
             setIsAdding(false);
         }
     };
 
-    // --- TODO: Edit and Delete Handlers ---
+    // --- Edit and Delete Handlers ---
     const handleEditClick = (limit) => {
-        // Placeholder for edit functionality
+        // ... (keep existing placeholder logic)
         console.log("Edit limit:", limit);
         alert("Edit functionality not yet implemented.");
+        // Note: If edit changes category/amount, you might want to refetch or update locally
+        // similar to how add/delete work. For now, it's just an alert.
     };
 
     const handleDeleteClick = async (limitId) => {
-        // Placeholder for delete functionality
+        // ... (keep existing logic)
         console.log("Delete limit ID:", limitId);
         if (!window.confirm("Are you sure you want to delete this limit?")) return;
 
-        setError(null);
+        // Clear only delete-related errors
+        setError(prev => (prev && prev.startsWith('Delete Error:')) ? null : prev);
         try {
              const token = localStorage.getItem('authToken');
             if (!token) throw new Error("Authentication token not found.");
@@ -132,7 +166,7 @@ function LimitsPage() {
                 throw new Error(responseData.message || `Failed to delete limit: ${response.statusText}`);
             }
 
-             // Remove limit from state
+            // Remove limit from state directly
             setLimits(prevLimits => prevLimits.filter(l => l._id !== limitId));
             alert(responseData.message || "Limit deleted successfully."); // Show success
 
@@ -144,12 +178,9 @@ function LimitsPage() {
 
 
     // --- Render Logic ---
-    if (loading) {
+    if (loading && limits.length === 0) { // Show loading only on initial load
         return <div className={styles.limitsPageContainer}><p>Loading limits...</p></div>;
     }
-
-    // Display general fetch error, but allow adding even if fetch failed initially
-    // Specific add/delete errors are shown near the form/list
 
     return (
         <div className={styles.limitsPageContainer}>
@@ -159,7 +190,8 @@ function LimitsPage() {
             <section className={`${styles.sectionBox} ${styles.addLimitSection}`}>
                 <h2 className={styles.sectionTitle}>Add New Limit</h2>
                 <form onSubmit={handleAddSubmit} className={styles.addForm}>
-                    <div className={styles.formGroup}>
+                    {/* ... (keep existing form inputs) ... */}
+                     <div className={styles.formGroup}>
                         <label htmlFor="category">Category:</label>
                         <input
                             type="text"
@@ -170,6 +202,7 @@ function LimitsPage() {
                             placeholder="e.g., Groceries, Dining Out"
                             required
                             className={styles.formInput}
+                            disabled={isAdding} // Disable while adding
                         />
                     </div>
                     <div className={styles.formGroup}>
@@ -185,13 +218,15 @@ function LimitsPage() {
                             min="0"
                             step="0.01"
                             className={styles.formInput}
+                            disabled={isAdding} // Disable while adding
                         />
                     </div>
                     <button type="submit" className={styles.addButton} disabled={isAdding}>
                         {isAdding ? 'Adding...' : <><FaPlus /> Add Limit</>}
                     </button>
                 </form>
-                 {error && (error.startsWith('Add Error:') || error === "Category and Amount are required." || error === "Amount must be a valid non-negative number.") && (
+                 {/* Display only Add-related errors here */}
+                 {error && error.startsWith('Add Error:') && (
                     <p className={styles.errorMessage}>{error}</p>
                 )}
             </section>
@@ -199,16 +234,15 @@ function LimitsPage() {
             {/* Display Existing Limits */}
             <section className={`${styles.sectionBox} ${styles.limitsListSection}`}>
                 <h2 className={styles.sectionTitle}>Your Limits</h2>
-                 {error && !error.startsWith('Add Error:') && !error.startsWith('Delete Error:') && ( // Show general fetch error here
-                    <p className={styles.errorMessage}>{error}</p>
-                )}
-                 {error && error.startsWith('Delete Error:') && ( // Show delete error here
+                 {/* Display Fetch/Delete errors here */}
+                 {error && !error.startsWith('Add Error:') && (
                     <p className={styles.errorMessage}>{error}</p>
                 )}
 
                 {limits.length > 0 ? (
                     <div className={styles.limitsList}>
                         {limits.map((limit) => (
+                            // ... (keep existing limit item rendering logic with progress bar etc.) ...
                             <div key={limit._id} className={`${styles.limitItem} ${limit.exceeded ? styles.exceeded : ''}`}>
                                 <div className={styles.limitInfo}>
                                     <span className={styles.limitCategory}>{limit.category}</span>
@@ -217,7 +251,6 @@ function LimitsPage() {
                                      <span className={`${styles.limitRemaining} ${limit.remainingAmount < 0 ? styles.negativeRemaining : ''}`}>
                                         Remaining: {formatCurrency(limit.remainingAmount)}
                                      </span>
-                                     {/* Progress Bar */}
                                      <div className={styles.progressBarContainer}>
                                          <div
                                              className={styles.progressBarFill}
@@ -243,8 +276,11 @@ function LimitsPage() {
                         ))}
                     </div>
                 ) : (
-                     !error && <p>No spending limits set yet. Add one above!</p> // Show only if no error and no limits
+                     // Show only if no error preventing display and no limits loaded
+                     !error && !loading && <p>No spending limits set yet. Add one above!</p>
                 )}
+                 {/* Optional: Show subtle loading indicator during refresh? */}
+                 {loading && limits.length > 0 && <p>Refreshing limits...</p>}
             </section>
         </div>
     );

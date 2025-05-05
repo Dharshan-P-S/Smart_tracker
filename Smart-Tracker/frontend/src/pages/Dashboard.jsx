@@ -5,25 +5,23 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 // Assuming you have a way to get the auth token (e.g., from context or local storage)
 // import { useAuth } from '../context/AuthContext'; // Example using context
 
-// -- Inline Icon Components --
-
+// -- Inline Icon Components -- (Keep existing SVGs)
 const BalanceIcon = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`${styles.summaryIcon} ${className || ''}`}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3" />
   </svg>
 );
-
 const IncomeIcon = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`${styles.summaryIcon} ${className || ''}`}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
   </svg>
 );
-
 const ExpenseIcon = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`${styles.summaryIcon} ${className || ''}`}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6 9 12.75l4.286-4.286a11.948 11.948 0 0 1 4.306 6.43l.776 2.898m0 0 3.182-5.511m-3.182 5.51-5.511-3.181" />
   </svg>
 );
+// (Keep other existing parts like formatCurrency, pie chart data, etc.)
 
 function Dashboard() {
   const [totalIncome, setTotalIncome] = useState(0);
@@ -38,78 +36,70 @@ function Dashboard() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  const [date, setDate] = useState(''); // State for the date input
+  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]); // Default to today
   const [frequency, setFrequency] = useState('once'); // State for the new frequency dropdown
   const [isSubmitting, setIsSubmitting] = useState(false); // State for submission status
 
-  // const { token } = useAuth(); // Example: Get token from context
-
   // --- Fetch initial dashboard data ---
   const fetchDashboardData = async () => {
-    setLoading(true);
-    setError(null);
-    let response; // Define response outside try block to access in finally/catch
+    // ... (keep existing fetchDashboardData logic)
+        setLoading(true);
+        setError(null);
+        let response; // Define response outside try block to access in finally/catch
 
-    try {
-      const token = localStorage.getItem('authToken'); // Example
-      if (!token) {
-        throw new Error("Authentication token not found.");
-      }
-
-      response = await fetch('/api/transactions/dashboard', { // Assign to outer response variable
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        // If response is not OK, try to read as text first for more helpful errors
-        const errorText = await response.text();
-        console.error("Error response body (text):", errorText); // Log the raw text
         try {
-            // Try parsing as JSON in case the error response *is* JSON
-            const errorData = JSON.parse(errorText);
-            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-        } catch (parseError) {
-            // If parsing failed, use the raw text (likely HTML) as the error hint
-             throw new Error(`HTTP error! status: ${response.status}. Response was not valid JSON: ${errorText.substring(0, 100)}...`);
+          const token = localStorage.getItem('authToken'); // Example
+          if (!token) {
+            throw new Error("Authentication token not found.");
+          }
+
+          response = await fetch('/api/transactions/dashboard', { // Assign to outer response variable
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Error response body (text):", errorText); // Log the raw text
+            try {
+                const errorData = JSON.parse(errorText);
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            } catch (parseError) {
+                 throw new Error(`HTTP error! status: ${response.status}. Response was not valid JSON: ${errorText.substring(0, 100)}...`);
+            }
+          }
+
+          const data = await response.json();
+          setTotalIncome(data.totalIncome || 0);
+          setTotalExpense(data.totalExpense || 0);
+          setTransactions(data.recentTransactions || []);
+
+        } catch (err) {
+          console.error("Detailed fetch error:", err); // Log the full error object
+          if (err instanceof Error && err.message.startsWith('HTTP error!')) {
+             setError(err.message);
+          } else {
+             setError(err.message || 'Failed to fetch dashboard data. Check network connection and console.');
+          }
+          setTotalIncome(0);
+          setTotalExpense(0);
+          setTransactions([]);
+        } finally {
+          setLoading(false);
         }
-      }
-
-      // If response is OK, proceed to parse as JSON
-      const data = await response.json();
-      setTotalIncome(data.totalIncome || 0);
-      setTotalExpense(data.totalExpense || 0);
-      setTransactions(data.recentTransactions || []);
-
-    } catch (err) {
-      console.error("Detailed fetch error:", err); // Log the full error object
-      // Check if the error came from our specific !response.ok block or a network/JSON parse error
-      if (err instanceof Error && err.message.startsWith('HTTP error!')) {
-         setError(err.message);
-      } else {
-         // Network errors or other issues
-         setError(err.message || 'Failed to fetch dashboard data. Check network connection and console.');
-      }
-      // Clear data on error
-      setTotalIncome(0);
-      setTotalExpense(0);
-      setTransactions([]);
-    } finally {
-      setLoading(false);
-    }
   };
 
-  // --- Fetch shared categories --- 
+   // --- Fetch shared categories ---
   const fetchAllCategories = async () => {
+    // ... (keep existing fetchAllCategories logic)
     try {
       const response = await fetch('/api/categories/all'); // Assumed endpoint
       if (!response.ok) {
         console.error("Failed to fetch all categories, status:", response.status);
-        // Don't throw an error here, suggestions are just a bonus
-        return; 
+        return;
       }
       const categories = await response.json();
       if (Array.isArray(categories)) {
@@ -120,15 +110,12 @@ function Dashboard() {
       }
     } catch (err) {
       console.error("Error fetching all categories:", err);
-      // Don't set main error state, suggestions are optional
     }
   };
 
   useEffect(() => {
-    // Fetch user-specific data first
+    // ... (keep existing useEffect logic for initial fetch and categories)
     fetchDashboardData();
-
-    // Load shared categories from localStorage or fetch
     const storedCategories = localStorage.getItem('allCategories');
     if (storedCategories) {
         try {
@@ -141,11 +128,11 @@ function Dashboard() {
     } else {
         fetchAllCategories();
     }
-
-  }, []); // Fetch data on component mount
+  }, []);
 
   // --- Log transactions grouped by category ---
   useEffect(() => {
+    // ... (keep existing useEffect logic for logging)
     if (transactions && transactions.length > 0) {
       console.log("Transactions fetched:", transactions); // Log raw transactions
       const groupedByCategory = transactions.reduce((acc, tx) => {
@@ -159,36 +146,31 @@ function Dashboard() {
       console.log("Transactions Grouped by Category:");
       console.table(groupedByCategory); // Use console.table for better readability if possible
     }
-  }, [transactions]); // Re-run when transactions state updates
+  }, [transactions]);
 
   const totalBalance = totalIncome - totalExpense;
 
   // --- Handle Add Transaction ---
   const handleAddTransaction = async (event) => {
     event.preventDefault();
-    if (isSubmitting) return; // Prevent double submission
+    if (isSubmitting) return;
 
-    // Basic client-side validation
-    if (!date) {
+    // ... (keep existing validation logic: date, future date, amount, description, category)
+     if (!date) {
         alert("Please select a date.");
         return;
     }
-
-    // More robust date comparison, ignoring timezones
     const [year, month, day] = date.split('-').map(Number);
     const selectedDateObj = new Date(year, month - 1, day); // Month is 0-indexed
-
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth(); // 0-indexed
     const currentDay = today.getDate();
     const todayDateObj = new Date(currentYear, currentMonth, currentDay); // Today at midnight local
-
     if (selectedDateObj > todayDateObj) {
         alert("Cannot add a transaction with a future date.");
         return;
     }
-
     if (!amount || parseFloat(amount) <= 0) {
         alert("Please enter a valid positive amount.");
         return;
@@ -202,73 +184,63 @@ function Dashboard() {
         return;
     }
 
-    setIsSubmitting(true);
-    setError(null); // Clear previous fetch errors when submitting new
 
-    // --- Frequency Calculation ---
+    setIsSubmitting(true);
+    setError(null);
+
+    // ... (keep existing frequency calculation logic)
     let finalAmount = parseFloat(amount);
     const baseAmount = parseFloat(amount);
-
     if (isNaN(baseAmount) || baseAmount <= 0) {
-        // Use alert for immediate user feedback on form validation
         alert("Amount must be a positive number.");
-        // setError("Submit Error: Amount must be a positive number.");
         setIsSubmitting(false);
         return;
     }
-
     switch (frequency) {
         case 'daily':
-            // Calculate days in the current month
-            const now = new Date(); 
-            // If a date input existed and was used, you'd use that date here:
-            // const targetDate = date ? new Date(date) : new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth(); // 0-indexed (0 for Jan, 11 for Dec)
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const now = new Date();
+            const yearFreq = now.getFullYear();
+            const monthFreq = now.getMonth();
+            const daysInMonth = new Date(yearFreq, monthFreq + 1, 0).getDate();
             finalAmount = baseAmount * daysInMonth;
             break;
         case 'weekly':
-            // Use average weeks per month multiplier (365.25 days / 7 days/week / 12 months)
             const avgWeeksPerMonth = (365.25 / 7) / 12;
             finalAmount = baseAmount * avgWeeksPerMonth;
             break;
         case 'once':
         default:
-            // finalAmount is already set to baseAmount
             break;
     }
-    // Round to 2 decimal places for currency
     finalAmount = Math.round(finalAmount * 100) / 100;
-    // --- End Frequency Calculation ---
 
-    // --- Check for sufficient balance AFTER calculation ---
+    // ... (keep existing balance check logic)
     const currentBalance = totalIncome - totalExpense;
     if (type === 'expense' && finalAmount > currentBalance) {
         alert(`Insufficient balance. Adding this expense (${formatCurrency(finalAmount)}) would exceed your current balance (${formatCurrency(currentBalance)}).`);
         setIsSubmitting(false); // Reset submitting state
         return; // Stop the function here
     }
-    // --- End of balance check ---
+
 
     const newTransaction = {
       type,
       amount: finalAmount,
       description,
       category,
-      date, // Include the date in the payload
-      frequency, // Include frequency in the payload
+      date,
+      frequency,
     };
 
-    let submitResponse; // Define outside try
+    let submitResponse;
 
     try {
-        const token = localStorage.getItem('authToken'); // Example
+        const token = localStorage.getItem('authToken');
         if (!token) {
             throw new Error("Authentication token not found.");
         }
 
-        submitResponse = await fetch('/api/transactions', { // Assign to outer variable
+        submitResponse = await fetch('/api/transactions', {
             method: 'POST',
             headers: {
             'Content-Type': 'application/json',
@@ -279,7 +251,7 @@ function Dashboard() {
 
         if (!submitResponse.ok) {
             const errorText = await submitResponse.text();
-            console.error("Submit Error response body (text):", errorText); // Log raw text
+            console.error("Submit Error response body (text):", errorText);
              try {
                 const errorData = JSON.parse(errorText);
                 throw new Error(errorData.message || `Failed to add transaction: ${submitResponse.statusText}`);
@@ -288,42 +260,86 @@ function Dashboard() {
              }
         }
 
-        // Clear form and refresh data on success
+        // Clear form
         setType('expense');
         setAmount('');
         setDescription('');
         setCategory('');
-        setFrequency('once'); // Reset frequency on success
-        await fetchDashboardData(); // Re-fetch user-specific dashboard data
+        setFrequency('once');
+        setDate(() => new Date().toISOString().split('T')[0]); // Reset date to today
 
-        // --- Update shared categories list (Optional Enhancement) ---
+        // Refresh dashboard data
+        await fetchDashboardData();
+
+        // --- >>> Dispatch event to notify other components <<< ---
+        console.log("Dispatching transactions-updated event after add");
+        window.dispatchEvent(new CustomEvent('transactions-updated'));
+        // --- >>> End Dispatch <<< ---
+
+        // ... (keep existing category update logic)
         if (!allCategories.includes(newTransaction.category)) {
             const updatedCategories = [...allCategories, newTransaction.category];
             setAllCategories(updatedCategories);
             localStorage.setItem('allCategories', JSON.stringify(updatedCategories));
         }
-        // --- End of Update ---
-
-        // --- Dispatch event if income was added ---
+         // Dispatch income-updated event (if needed elsewhere)
         if (newTransaction.type === 'income') {
-            console.log("Dispatching income-updated event"); // For debugging
+            console.log("Dispatching income-updated event");
             window.dispatchEvent(new CustomEvent('income-updated'));
         }
-        // --- End of dispatch ---
+
 
     } catch (err) {
         console.error("Error adding transaction:", err);
-        // Set error state specifically for the submission attempt
         setError(`Submit Error: ${err.message}` || 'Failed to add transaction.');
-        // Don't automatically alert here, let the UI display the error state
     } finally {
         setIsSubmitting(false);
     }
   };
 
+  // --- Handle Delete Transaction (Example - If you add delete buttons here) ---
+  // You might have this logic on a different page like TransactionList,
+  // but if you added delete buttons to the recent items here, you'd do this:
+  const handleDeleteTransaction = async (transactionId) => {
+      if (!window.confirm("Are you sure you want to delete this transaction?")) {
+          return;
+      }
+      setError(null); // Clear previous errors
+      try {
+          const token = localStorage.getItem('authToken');
+          if (!token) throw new Error("Authentication token not found.");
+
+          const response = await fetch(`/api/transactions/${transactionId}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.message || `Failed to delete transaction: ${response.statusText}`);
+          }
+
+          // Refresh dashboard data
+          await fetchDashboardData();
+
+          // --- >>> Dispatch event to notify other components <<< ---
+          console.log("Dispatching transactions-updated event after delete");
+          window.dispatchEvent(new CustomEvent('transactions-updated'));
+          // --- >>> End Dispatch <<< ---
+
+          alert("Transaction deleted successfully.");
+
+      } catch (err) {
+          console.error("Error deleting transaction:", err);
+          setError(`Delete Error: ${err.message}`);
+          // Optionally show the error in the UI near where the delete happened
+      }
+  };
+
 
   // Format currency function
   const formatCurrency = (value) => {
+    // ... (keep existing formatCurrency logic)
     const numValue = parseFloat(value);
     if (isNaN(numValue)) {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(0);
@@ -331,24 +347,19 @@ function Dashboard() {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(numValue);
   };
 
-  // --- Prepare Pie Chart Data (Income, Expense, Balance) ---
-  // Always include all three slices. Use 0 if value is not positive.
+  // --- Prepare Pie Chart Data ---
   const pieChartData = [
+    // ... (keep existing pieChartData logic)
     { name: 'Income', value: totalIncome > 0 ? totalIncome : 0 },
     { name: 'Expenses', value: totalExpense > 0 ? totalExpense : 0 },
     { name: 'Balance', value: totalBalance > 0 ? totalBalance : 0 },
   ];
-
-  // Define colors based on segment names - ensure all three are mapped
   const colorMapping = {
+    // ... (keep existing colorMapping logic)
     'Income': '#34D399',    // Green
     'Expenses': '#F87171',   // Red
     'Balance': '#7091E6',   // Blue
-    // 'No Data' mapping is no longer needed as we always provide the three slices
   };
-
-  // Check if there's any data at all to display a meaningful chart
-  // If all values are 0, the chart might look empty, which is expected.
   const hasChartData = pieChartData.some(item => item.value > 0);
 
 
@@ -357,47 +368,42 @@ function Dashboard() {
       return <div className={styles.dashboardPageContent}><p>Loading dashboard...</p></div>;
   }
 
-  // Display general fetch error if not loading and not a submission error
-//   if (error && !isSubmitting) {
-//       return <div className={styles.dashboardPageContent}><p>Error loading data: {error}</p></div>;
-//   }
-
-
   return (
     <div className={styles.dashboardPageContent}>
       <h1 className={styles.pageTitle}>Dashboard</h1>
 
-       {/* Display general fetch error messages (not related to submit) */}
-       {error && !error.startsWith('Submit Error:') && <div style={{ color: 'red', marginBottom: '1rem' }}>Error fetching data: {error}</div>}
+       {/* Display general fetch/delete error messages */}
+       {error && !error.startsWith('Submit Error:') && <div style={{ color: 'red', marginBottom: '1rem' }}>Error: {error}</div>}
 
       {/* Summary Section */}
       <section className={styles.summarySection}>
+         {/* ... (Keep existing summary items with icons/images) ... */}
          <div className={styles.summaryItem}>
            <div className={styles.summaryTitle}>
-              <img 
-                src="https://cdn-icons-png.flaticon.com/128/869/869067.png" 
-                alt="Balance icon" 
-                className={styles.summaryIcon} 
+              <img
+                src="https://cdn-icons-png.flaticon.com/128/869/869067.png"
+                alt="Balance icon"
+                className={styles.summaryIcon}
               /> Total Balance
            </div>
            <div className={styles.summaryValue}>{formatCurrency(totalBalance)}</div>
          </div>
          <div className={styles.summaryItem}>
            <div className={styles.summaryTitle}>
-             <img 
-               src="https://cdn-icons-png.flaticon.com/128/10365/10365322.png" 
-               alt="Income icon" 
-               className={`${styles.summaryIcon} ${styles.incomeIconColor}`} 
+             <img
+               src="https://cdn-icons-png.flaticon.com/128/10365/10365322.png"
+               alt="Income icon"
+               className={`${styles.summaryIcon} ${styles.incomeIconColor}`}
              /> Total Income
            </div>
            <div className={`${styles.summaryValue} ${styles.income}`}>{formatCurrency(totalIncome)}</div>
          </div>
          <div className={styles.summaryItem}>
            <div className={styles.summaryTitle}>
-             <img 
-               src="https://cdn-icons-png.flaticon.com/128/8733/8733406.png" 
-               alt="Expense icon" 
-               className={`${styles.summaryIcon} ${styles.expenseIconColor}`} 
+             <img
+               src="https://cdn-icons-png.flaticon.com/128/8733/8733406.png"
+               alt="Expense icon"
+               className={`${styles.summaryIcon} ${styles.expenseIconColor}`}
              /> Total Expense
            </div>
            <div className={`${styles.summaryValue} ${styles.expense}`}>{formatCurrency(totalExpense)}</div>
@@ -416,7 +422,7 @@ function Dashboard() {
              <div className={styles.transactionList}>
                {transactions.slice(0, 5).map((tx) => (
                  <div
-                   key={tx._id || tx.id}
+                   key={tx._id || tx.id} // Use _id from backend
                    className={`${styles.transactionItem} ${
                      tx.type === 'income' ? styles.incomeBorder : styles.expenseBorder
                    }`}
@@ -430,6 +436,8 @@ function Dashboard() {
                    <span className={`${styles.transactionAmount} ${tx.type === 'income' ? styles.income : styles.expense}`}>
                      {tx.type === 'income' ? '+' : '-'} {formatCurrency(tx.amount)}
                    </span>
+                   {/* Optional: Add a delete button here if needed */}
+                   {/* <button onClick={() => handleDeleteTransaction(tx._id)} style={{marginLeft: '10px', cursor: 'pointer'}}>X</button> */}
                  </div>
                ))}
              </div>
@@ -444,12 +452,11 @@ function Dashboard() {
         <section className={`${styles.sectionBox} ${styles.chartSection}`}>
            <h2 className={styles.sectionTitle}>Financial Overview</h2>
             <div className={styles.chartContainer}>
-              {/* Render the chart structure even if data is all zeros */}
-              {/* The visual appearance of zero-value slices depends on Recharts behavior */}
+              {/* ... (Keep existing chart rendering logic) ... */}
               <ResponsiveContainer width="100%" height={300}>
                  <PieChart>
                    <Pie
-                     data={pieChartData} // Use the data with potentially zero values
+                     data={pieChartData}
                      cx="50%"
                      cy="50%"
                      labelLine={false}
@@ -459,17 +466,13 @@ function Dashboard() {
                      nameKey="name"
                    >
                      {pieChartData.map((entry, index) => (
-                       // Use colorMapping based on entry name
                        <Cell key={`cell-${index}`} fill={colorMapping[entry.name]} />
                      ))}
                    </Pie>
-                   {/* Tooltip should still show the correct value, even if 0 */}
                    <Tooltip formatter={(value) => formatCurrency(value)} />
-                   {/* Legend will show all three items */}
                    <Legend />
                  </PieChart>
                </ResponsiveContainer>
-              {/* Optional: Add a message if all data is zero */}
               {!hasChartData && (
                  <div className={styles.placeholderContent} style={{position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none'}}>No data to display in chart.</div>
               )}
@@ -478,15 +481,16 @@ function Dashboard() {
       </div>
 
        {/* Add New Transaction Form Section */}
-       <section 
+       <section
          className={`${styles.sectionBox} ${styles.addTransactionSection}`}
-         style={{ width: '50%', marginRight: 'auto', marginLeft: 0 }} // Explicitly set width and keep left
+         style={{ width: '50%', marginRight: 'auto', marginLeft: 0 }}
        >
          <h2 className={styles.sectionTitle}>Add New Transaction</h2>
           {/* Display submission errors specifically here */}
          {error && error.startsWith('Submit Error:') && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
          <form onSubmit={handleAddTransaction} className={styles.transactionForm}>
-           <div className={styles.formGroup}>
+            {/* ... (Keep existing form groups: type, date, amount, description, category, frequency) ... */}
+             <div className={styles.formGroup}>
              <label htmlFor="type">Type:</label>
              <select id="type" value={type} onChange={(e) => setType(e.target.value)} required className={styles.formInput} disabled={isSubmitting}>
                <option value="expense">Expense</option>
@@ -531,9 +535,7 @@ function Dashboard() {
                className={styles.formInput} disabled={isSubmitting}
                list="category-suggestions" // Link to datalist
              />
-             {/* Datalist for category suggestions */}
              <datalist id="category-suggestions">
-               {/* Map over the shared, persistent list */}
                {allCategories.map((cat, index) => (
                  <option key={index} value={cat} />
                ))}
@@ -552,6 +554,7 @@ function Dashboard() {
                <option value="once">One-time</option>
                <option value="daily">Daily</option>
                <option value="weekly">Weekly</option>
+               {/* <option value="monthly">Monthly</option>  Consider adding monthly if backend handles it */}
              </select>
            </div>
            <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
