@@ -241,7 +241,7 @@ function Dashboard() {
       const categoryTrimmed = category.trim();
       const relevantLimit = limits.find(limit => limit.category.toLowerCase() === categoryTrimmed.toLowerCase());
 
-      if (relevantLimit && relevantLimit.exceeded) {
+      if (relevantLimit && (relevantLimit.exceeded || relevantLimit.remainingAmount <= 0)) {
         setCategoryLimitWarning(`Limit exceeded for "${relevantLimit.category}". Consider spending less for ${relevantLimit.category}.`);
       } else {
         setCategoryLimitWarning(null); // Clear warning if limit not exceeded or not found
