@@ -689,7 +689,7 @@ function Dashboard() {
             {limits.length > 0 ? (
               <>
                 <div className={styles.limitList}>
-                    {limits.slice(0, 3).map((limit) => {
+                    {limits.slice(0, 4).map((limit) => {
                         // Use fields directly from the API response (validated in fetchLimits)
                         const { amount: limitAmount, currentSpending: spentAmount, remainingAmount } = limit;
                         const percentage = limitAmount > 0 ? (spentAmount / limitAmount) * 100 : 0;
