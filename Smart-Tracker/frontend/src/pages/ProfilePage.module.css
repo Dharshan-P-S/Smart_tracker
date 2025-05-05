@@ -147,12 +147,12 @@
 }
 
 .editButton {
-  background-color: #ffc107; /* Yellow */
-  color: #333;
+  background-color: #a993ff; /* Yellow */
+
 }
 
 .editButton:hover {
-  background-color: #e0a800; /* Darker Yellow */
+  background-color: #6e44fb; /* Darker Yellow */
 }
 
 .saveButton {
