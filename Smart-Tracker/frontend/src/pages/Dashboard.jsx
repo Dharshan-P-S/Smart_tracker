@@ -38,7 +38,7 @@ function Dashboard() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState(''); // State for the date input
   const [frequency, setFrequency] = useState('once'); // State for the new frequency dropdown
   const [isSubmitting, setIsSubmitting] = useState(false); // State for submission status
 
@@ -144,6 +144,23 @@ function Dashboard() {
 
   }, []); // Fetch data on component mount
 
+  // --- Log transactions grouped by category ---
+  useEffect(() => {
+    if (transactions && transactions.length > 0) {
+      console.log("Transactions fetched:", transactions); // Log raw transactions
+      const groupedByCategory = transactions.reduce((acc, tx) => {
+        const categoryKey = tx.category || 'Uncategorized'; // Handle potential missing category
+        if (!acc[categoryKey]) {
+          acc[categoryKey] = [];
+        }
+        acc[categoryKey].push(tx);
+        return acc;
+      }, {});
+      console.log("Transactions Grouped by Category:");
+      console.table(groupedByCategory); // Use console.table for better readability if possible
+    }
+  }, [transactions]); // Re-run when transactions state updates
+
   const totalBalance = totalIncome - totalExpense;
 
   // --- Handle Add Transaction ---
@@ -151,7 +168,27 @@ function Dashboard() {
     event.preventDefault();
     if (isSubmitting) return; // Prevent double submission
 
-     // Basic client-side validation
+    // Basic client-side validation
+    if (!date) {
+        alert("Please select a date.");
+        return;
+    }
+
+    // More robust date comparison, ignoring timezones
+    const [year, month, day] = date.split('-').map(Number);
+    const selectedDateObj = new Date(year, month - 1, day); // Month is 0-indexed
+
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth(); // 0-indexed
+    const currentDay = today.getDate();
+    const todayDateObj = new Date(currentYear, currentMonth, currentDay); // Today at midnight local
+
+    if (selectedDateObj > todayDateObj) {
+        alert("Cannot add a transaction with a future date.");
+        return;
+    }
+
     if (!amount || parseFloat(amount) <= 0) {
         alert("Please enter a valid positive amount.");
         return;
@@ -219,6 +256,7 @@ function Dashboard() {
       amount: finalAmount,
       description,
       category,
+      date, // Include the date in the payload
       frequency, // Include frequency in the payload
     };
 
@@ -456,6 +494,16 @@ function Dashboard() {
              </select>
            </div>
            <div className={styles.formGroup}>
+             <label htmlFor="date">Date:</label>
+             <input
+               type="date" id="date" value={date}
+               onChange={(e) => setDate(e.target.value)}
+               required
+               className={styles.formInput} disabled={isSubmitting}
+               max={new Date().toISOString().split('T')[0]} // Set max date to today
+             />
+           </div>
+           <div className={styles.formGroup}>
              <label htmlFor="amount">Amount:</label>
              <input
                type="number" id="amount" value={amount}
@@ -515,4 +563,4 @@ function Dashboard() {
   );
 }
 
-export default Dashboard; 
+export default Dashboard;
