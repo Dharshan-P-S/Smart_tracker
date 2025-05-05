@@ -23,6 +23,10 @@ const UserSchema = new mongoose.Schema({
     minlength: 6,
     select: false, // Do not return password by default when querying users
   },
+  profilePicture: {
+    type: String, // Store image as Base64 string
+    default: null,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -47,4 +51,4 @@ UserSchema.methods.matchPassword = async function(enteredPassword) {
 };
 
 
-module.exports = mongoose.model('User', UserSchema); 
+module.exports = mongoose.model('User', UserSchema);

@@ -5,6 +5,15 @@ import styles from './Header.module.css';
 
 // --- Icon Components ---
 
+// Placeholder Profile Icon
+const ProfileIcon = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`${styles.navIcon} ${className || ''}`}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+  </svg>
+);
+
+
+
 const MenuIcon = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`${styles.icon} ${className || ''}`}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
@@ -160,6 +169,9 @@ function Header() {
             </Link>
             <Link to="/savings" className={styles.navLink} onClick={closeMenu}>
                <SavingsIcon /> <span>Savings</span>
+            </Link>
+            <Link to="/profile" className={styles.navLink} onClick={closeMenu}>
+               <ProfileIcon /> <span>Profile</span>
             </Link>
           </div>
 

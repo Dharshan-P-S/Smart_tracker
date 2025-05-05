@@ -1,5 +1,5 @@
 const express = require('express');
-const { getUserProfile } = require('../controllers/userController');
+const { getUserProfile, updateProfilePicture } = require('../controllers/userController');
 // const { protect } = require('../middleware/authMiddleware'); // Assuming protect middleware exists
 
 const router = express.Router();
@@ -9,5 +9,8 @@ const router = express.Router();
 
 // GET /api/users/me - Get current user's profile
 router.get('/me', getUserProfile);
+
+// PUT /api/users/me/profile-picture - Update current user's profile picture
+router.put('/me/profile-picture', updateProfilePicture);
 
 module.exports = router;

@@ -9,6 +9,7 @@ import ExpensePage from './pages/ExpensePage';
 import LimitsPage from './pages/LimitsPage'; // Import the new LimitsPage
 import OldTransactionsPage from './pages/OldTransactionsPage'; // Import the new OldTransactionsPage
 import SavingsPage from './pages/SavingsPage'; // Import the new SavingsPage
+import ProfilePage from './pages/ProfilePage'; // Import the new ProfilePage
 import ProtectedRoute from './routing/ProtectedRoute';
 import Layout from './components/Layout';
 import './App.css';
@@ -30,6 +31,7 @@ function App() {
             <Route path="/limits" element={<LimitsPage />} /> {/* Add route for LimitsPage */}
             <Route path="/old-transactions" element={<OldTransactionsPage />} /> {/* Add route for OldTransactionsPage */}
             <Route path="/savings" element={<SavingsPage />} /> {/* Add route for SavingsPage */}
+            <Route path="/profile" element={<ProfilePage />} /> {/* Add route for ProfilePage */}
           </Route>
         </Route>
 
