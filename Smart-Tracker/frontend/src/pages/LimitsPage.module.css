@@ -46,6 +46,29 @@
     align-items: flex-end; /* Align items to the bottom */
 }
 
+/* Styles for the edit form within a limit item */
+.editLimitForm {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Category and Amount inputs */
+    gap: 1rem;
+    align-items: flex-start; /* Align items to the top */
+    grid-column: 1 / -1; /* Span across the limit item grid */
+}
+
+/* Adjust form group within edit form if needed */
+.editLimitForm .formGroup {
+    margin-bottom: 0; /* Remove default margin */
+}
+
+/* Explicitly style inputs within the edit form */
+.editLimitForm .formInput {
+    /* Inherit base formInput styles */
+    /* Add a more prominent border for differentiation */
+    border: 1px solid var(--border-light); /* Use existing border variable */
+    /* Optional: Add a slight box-shadow on focus if needed */
+}
+
+
 .formGroup {
     display: flex;
     flex-direction: column;
@@ -170,7 +193,17 @@
     justify-content: flex-end;
 }
 
-/* Action Buttons (Edit/Delete) */
+/* Container for Save/Cancel buttons in edit mode */
+.editActions {
+    grid-column: 1 / -1; /* Span across the edit form grid */
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end; /* Align buttons to the right */
+    margin-top: 0.5rem; /* Space above buttons */
+}
+
+
+/* Action Buttons (Edit/Delete/Save/Cancel) */
 .actionButton {
     background: none;
     border: none;
@@ -197,6 +230,55 @@
 .deleteButton:hover {
     background-color: #fee2e2; /* Light red hover */
 }
+
+/* Save Button Styles (Light) */
+.saveButton {
+   background-color: #34D399; /* Green */
+   color: white;
+   border: none; /* Use border: none as base */
+   border-radius: 6px; /* Match form inputs */
+   padding: 0.75rem 1.5rem; /* Match add button padding */
+   font-size: 1rem; /* Match add button font size */
+   font-weight: 500; /* Match add button font weight */
+   transition: background-color 0.2s ease-in-out;
+   display: flex; /* Ensure flex properties */
+   align-items: center;
+   justify-content: center;
+   height: fit-content; /* Match input height better */
+}
+.saveButton:hover:not(:disabled) {
+   background-color: #059669; /* Darker Green */
+}
+.saveButton:disabled {
+    background-color: #9ca3af; /* Gray when disabled */
+    cursor: not-allowed;
+}
+
+
+/* Cancel Button Styles (Light) */
+.cancelButton {
+   background-color: #e5e7eb; /* Light gray */
+   color: #374151; /* Medium gray text */
+   border: none; /* Use border: none as base */
+   border-radius: 6px; /* Match form inputs */
+   padding: 0.75rem 1.5rem; /* Match add button padding */
+   font-size: 1rem; /* Match add button font size */
+   font-weight: 500; /* Match add button font weight */
+   transition: background-color 0.2s ease-in-out;
+   display: flex; /* Ensure flex properties */
+   align-items: center;
+   justify-content: center;
+   height: fit-content; /* Match input height better */
+}
+.cancelButton:hover:not(:disabled) {
+   background-color: #d1d5db; /* Darker light gray */
+}
+.cancelButton:disabled {
+    background-color: #9ca3af; /* Gray when disabled */
+    color: #d1d5db; /* Lighter gray text */
+    cursor: not-allowed;
+}
+
 
 /* Error Message Styling */
 .errorMessage {
@@ -280,6 +362,28 @@
   .deleteButton:hover {
      background-color: var(--error-hover-bg-dark, rgba(153, 27, 27, 0.3)); /* Use error hover bg */
   }
+  .saveButton {
+     background-color: var(--accent-success-dark, #059669); /* Use success accent */
+     color: var(--button-text-dark, #f3f4f6); /* White text */
+  }
+  .saveButton:hover:not(:disabled) {
+     background-color: var(--accent-success-hover-dark, #047857); /* Use hover variable */
+  }
+  .saveButton:disabled {
+     background-color: var(--button-disabled-bg-dark, #4b5563);
+     color: var(--button-disabled-text-dark, #9ca3af);
+  }
+  .cancelButton {
+     background-color: var(--button-secondary-bg-dark, #4b5563); /* Use secondary button bg */
+     color: var(--button-secondary-text-dark, #d1d5db); /* Use secondary button text */
+  }
+  .cancelButton:hover:not(:disabled) {
+     background-color: var(--button-secondary-hover-bg-dark, #6b7280); /* Use secondary hover bg */
+  }
+  .cancelButton:disabled {
+     background-color: var(--button-disabled-bg-dark, #4b5563);
+     color: var(--button-disabled-text-dark, #9ca3af);
+  }
   .errorMessage {
      color: var(--error-dark, #fca5a5); /* Use error variable */
   }
@@ -332,6 +436,10 @@
         grid-template-columns: 1fr; /* Stack sections */
         gap: 0.5rem;
         text-align: center;
+    }
+    /* Stack edit form inputs on smaller screens */
+    .editLimitForm {
+        grid-template-columns: 1fr;
     }
     .limitInfo {
          grid-template-columns: 1fr; /* Stack info items */

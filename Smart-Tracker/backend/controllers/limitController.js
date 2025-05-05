@@ -1,6 +1,7 @@
 const Limit = require('../models/Limit');
 const Transaction = require('../models/Transaction'); // Needed to calculate current spending
 const User = require('../models/User'); // Need User model for placeholder
+const mongoose = require('mongoose'); // Import mongoose for transaction
 
 // --- INSECURE PLACEHOLDER ---
 // Fetches the first user's ID to use in place of authenticated user.
@@ -165,20 +166,55 @@ exports.updateLimit = async (req, res) => {
         if (category !== undefined) updateFields.category = category.trim();
         if (amount !== undefined) updateFields.amount = amount;
 
-
-        // If category is being changed, check if a limit for the *new* category already exists
+        // --- NEW LOGIC: Handle merging limits if category is changed to an existing one ---
+        // Check if category is being changed AND if the new category already exists for another limit
         if (updateFields.category && updateFields.category !== limit.category) {
             const existingLimitForNewCategory = await Limit.findOne({
                 user: placeholderUserId, // Use placeholder ID
                 category: updateFields.category,
                 _id: { $ne: limitId } // Exclude the current limit being updated
             });
+
             if (existingLimitForNewCategory) {
-                return res.status(400).json({ message: `A limit for category '${updateFields.category}' already exists.` });
+                // If an existing limit is found for the new category, merge the amounts
+                existingLimitForNewCategory.amount += updateFields.amount !== undefined ? updateFields.amount : limit.amount; // Add the new amount, or the old amount if only category changed
+                await existingLimitForNewCategory.save();
+
+                // Delete the original limit
+                await Limit.findByIdAndDelete(limitId);
+
+                // Return the updated existing limit
+                 // Also return spending info (for current month) for the merged limit
+                 const now = new Date();
+                 const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                 const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+                 const spendingResult = await Transaction.aggregate([
+                     {
+                         $match: {
+                             user: placeholderUserId, // Use placeholder ID
+                             type: 'expense',
+                              // Case-insensitive category match
+                             category: { $regex: new RegExp(`^${existingLimitForNewCategory.category}$`, 'i') },
+                             date: { $gte: startOfMonth, $lte: endOfMonth } // Filter by current month
+                         }
+                     },
+                    { $group: { _id: null, totalSpending: { $sum: '$amount' } } }
+                ]);
+                const currentSpending = spendingResult.length > 0 ? spendingResult[0].totalSpending : 0;
+
+                return res.json({
+                     ...existingLimitForNewCategory.toObject(),
+                     currentSpending: currentSpending,
+                     remainingAmount: existingLimitForNewCategory.amount - currentSpending,
+                     exceeded: currentSpending > existingLimitForNewCategory.amount
+                });
             }
         }
+        // --- END NEW LOGIC ---
 
 
+        // If category is NOT being changed to an existing one, proceed with standard update
         limit = await Limit.findByIdAndUpdate(
             limitId,
             { $set: updateFields },

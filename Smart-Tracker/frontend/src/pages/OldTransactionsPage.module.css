@@ -1,0 +1,187 @@
+/* Using global variables defined in index.css or App.css */
+
+/* Default Light Mode Styles */
+.container {
+    padding: 20px;
+    max-width: 900px;
+    margin: 20px auto;
+    /* Mimic .sectionBox from Dashboard */
+    background-color: var(--box-bg-light, #f9f9f9);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border-light, #ddd);
+    color: var(--text-primary-light, #333);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+
+.container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    /* Mimic .sectionTitle from Dashboard */
+    color: var(--text-primary-light, #333);
+    font-size: 1.2rem; /* Match dashboard section title */
+    font-weight: 600;
+    transition: color 0.3s;
+}
+
+.transactionList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    margin-top: 1rem; /* Add some space like dashboard lists */
+}
+
+.transactionItem {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr 1fr; /* Date, Category, Description, Amount */
+    gap: 1rem; /* Match dashboard item gap */
+    padding: 1rem; /* Match dashboard item padding */
+    margin-bottom: 0.75rem; /* Match dashboard item margin */
+    border-radius: 6px; /* Match dashboard item radius */
+    /* Mimic .transactionItem background/border from Dashboard */
+    background-color: var(--bg-light, #fff);
+    border: 1px solid var(--border-light, #ddd); /* Use 1px border for consistency here */
+    align-items: center;
+    position: relative; /* For pseudo-element border */
+    transition: background-color 0.3s, border-color 0.3s, border-left-color 0.3s;
+}
+
+/* Use pseudo-element for side border like Dashboard */
+.transactionItem::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: transparent; /* Default */
+  border-top-left-radius: 6px; /* Match item radius */
+  border-bottom-left-radius: 6px; /* Match item radius */
+  transition: background-color 0.3s;
+}
+
+.transactionItem.income::before {
+  background-color: var(--income-color-light, #28a745); /* Or direct color like #10B981 */
+}
+
+.transactionItem.expense::before {
+  background-color: var(--expense-color-light, #dc3545); /* Or direct color like #EF4444 */
+}
+
+
+.transactionItem span {
+    font-size: 0.9rem;
+    color: var(--text-secondary-light, #555);
+}
+/* Amount styling */
+.transactionItem span:last-child {
+    color: var(--text-primary-light, #333);
+    font-weight: 600; /* Match dashboard amount */
+    font-size: 0.95rem; /* Match dashboard amount */
+    white-space: nowrap;
+    text-align: right; /* Align amount right */
+}
+/* Specific income/expense colors for amount text */
+.transactionItem.income span:last-child {
+    color: var(--income-color-light, #10B981);
+}
+.transactionItem.expense span:last-child {
+     color: var(--expense-color-light, #EF4444);
+}
+
+
+.error {
+    color: var(--error-color-light, #dc3545);
+    text-align: center;
+    margin-top: 20px;
+    font-weight: bold;
+    transition: color 0.3s;
+}
+
+.container p { /* Style for loading/no transactions text */
+     color: var(--text-secondary-light, #555);
+     transition: color 0.3s;
+     text-align: center; /* Center placeholder text */
+     padding: 2rem; /* Add padding */
+     font-style: italic;
+}
+
+/* Styles for Month Grouping */
+.monthGroup {
+    margin-top: 2rem; /* Add space between month groups */
+    padding-top: 1rem; /* Add padding above the heading */
+    border-top: 1px solid var(--border-light, #ddd); /* Separator line */
+}
+.monthGroup:first-of-type {
+    margin-top: 0; /* No top margin for the very first group */
+    padding-top: 0;
+    border-top: none; /* No separator line for the first group */
+}
+
+.monthHeading {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary-light, #333);
+    margin-bottom: 1rem; /* Space below heading */
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-light, #ddd); /* Underline heading */
+}
+
+
+/* Dark Mode Styles using prefers-color-scheme */
+@media (prefers-color-scheme: dark) {
+    .monthGroup {
+        border-top-color: var(--border-dark, #444);
+    }
+    .monthHeading {
+        color: var(--text-primary-dark, #e0e0e0);
+        border-bottom-color: var(--border-dark, #444);
+    }
+
+    .container {
+        background-color: var(--box-bg-dark, #1a1a1a);
+        color: var(--text-primary-dark, #e0e0e0);
+        border-color: var(--border-dark, #444);
+        box-shadow: 0 2px 4px rgba(255, 255, 255, 0.05);
+    }
+
+    .container h2 {
+        color: var(--text-primary-dark, #e0e0e0);
+    }
+
+    .transactionItem {
+        background-color: var(--bg-dark, #2a2a2a);
+        border-color: var(--border-dark, #444);
+    }
+
+    .transactionItem.income::before {
+        background-color: var(--income-color-dark, lightgreen); /* Match dashboard dark */
+    }
+
+    .transactionItem.expense::before {
+        background-color: var(--expense-color-dark, red); /* Match dashboard dark */
+    }
+
+     .transactionItem span {
+        color: var(--text-secondary-dark, #aaa);
+    }
+    .transactionItem span:last-child {
+        color: var(--text-primary-dark, #e0e0e0);
+    }
+    /* Specific income/expense colors for amount text in dark mode */
+    .transactionItem.income span:last-child {
+        color: var(--income-color-dark, lightgreen);
+    }
+    .transactionItem.expense span:last-child {
+         color: var(--expense-color-dark, red);
+    }
+
+
+    .error {
+        color: var(--error-color-dark, #ff6b6b);
+    }
+
+    .container p {
+        color: var(--text-secondary-dark, #aaa);
+    }
+}

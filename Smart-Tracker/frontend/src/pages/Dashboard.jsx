@@ -39,9 +39,10 @@ function Dashboard() {
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]); // Default to today
   const [frequency, setFrequency] = useState('once');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [limits, setLimits] = useState([]); // State for limits, expecting { _id, category, amount, currentSpending, remainingAmount, exceeded }
+  const [limits, setLimits] = useState([]);
   const [loadingLimits, setLoadingLimits] = useState(true);
-  const [categoryLimitWarning, setCategoryLimitWarning] = useState(null); // State for inline warning
+  const [categoryLimitWarning, setCategoryLimitWarning] = useState(null);
+  const [registrationDate, setRegistrationDate] = useState(null); // State for user registration date
 
 
   // --- Fetch initial dashboard data ---
@@ -132,7 +133,36 @@ function Dashboard() {
     } else {
         fetchAllCategories();
     }
-  }, []);
+    // Fetch user profile to get registration date
+    const fetchUserProfile = async () => {
+        try {
+            const token = localStorage.getItem('authToken');
+            if (!token) throw new Error("Auth token not found for profile fetch.");
+
+            const response = await fetch('/api/users/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error fetching profile! status: ${response.status}. ${errorText}`);
+            }
+            const profileData = await response.json();
+            if (profileData.createdAt) {
+                // Format date to YYYY-MM-DD for the input min attribute
+                const regDate = new Date(profileData.createdAt);
+                const formattedDate = regDate.toISOString().split('T')[0];
+                setRegistrationDate(formattedDate);
+                console.log("User registration date set:", formattedDate);
+            }
+        } catch (err) {
+            console.error("Error fetching user profile:", err);
+            // Don't necessarily set a page-level error, but log it.
+            // The date input will just lack a 'min' attribute if this fails.
+        }
+    };
+    fetchUserProfile(); // Call fetch profile on component mount
+
+  }, []); // End of initial useEffect
 
   // --- Log transactions grouped by category ---
   useEffect(() => {
@@ -585,7 +615,12 @@ function Dashboard() {
                  onChange={(e) => setDate(e.target.value)}
                  required
                  className={styles.formInput} disabled={isSubmitting}
-                 max={new Date().toISOString().split('T')[0]} // Set max date to today
+                 min={(() => {
+                   const today = new Date();
+                   const firstDayOfCurrentMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+                   return firstDayOfCurrentMonth.toISOString().split('T')[0];
+                 })()} // Set min date to the start of the current month (UTC)
+                 max={new Date().toISOString().split('T')[0]} // Set max date to today (local)
                />
              </div>
              <div className={styles.formGroup}>

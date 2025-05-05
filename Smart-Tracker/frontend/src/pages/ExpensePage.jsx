@@ -42,17 +42,19 @@ function ExpensePage() {
             const token = localStorage.getItem('authToken');
             if (!token) throw new Error("Authentication token not found.");
 
-            const response = await fetch('/api/transactions/all', {
+            // Fetch directly from the new endpoint for current month's expenses
+            const response = await fetch('/api/transactions/current-month/expense', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`HTTP error! status: ${response.status}. ${errorText}`);
             }
-            const allData = await response.json();
-            const expenseData = (allData || []).filter(tx => tx.type === 'expense');
+            // The response data is already filtered expenses for the current month
+            const expenseData = await response.json();
+            // Sorting might still be desired
             expenseData.sort((a, b) => new Date(b.date) - new Date(a.date));
-            setAllExpenseTransactions(expenseData);
+            setAllExpenseTransactions(expenseData); // Use the fetched data directly
             setError(null); // Clear error only on successful fetch
         } catch (err) {
             console.error("Error fetching transactions for Expense page:", err);

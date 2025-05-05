@@ -1,0 +1,135 @@
+/* SavingsPage.module.css - Themed */
+
+.savingsContainer {
+    padding: 20px;
+    max-width: 800px;
+    margin: 20px auto;
+    background-color: var(--box-bg-light); /* Use variable */
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border-light); /* Use variable */
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.savingsContainer h2 {
+    text-align: center;
+    color: var(--text-primary-light); /* Use variable */
+    margin-bottom: 30px;
+    font-size: 1.8rem; /* Match dashboard title */
+    font-weight: 600; /* Match dashboard title */
+}
+
+/* Container for the Recharts graph */
+.chartContainer {
+    height: 400px; /* Define a height for the chart */
+    width: 100%; /* Ensure it takes full width of its parent */
+    margin-bottom: 30px;
+    /* Optional: Add background or border for visibility during development */
+    /* background-color: #f0f0f0; */
+    /* border: 1px solid #ccc; */
+}
+
+
+.savingsList {
+    margin-top: 20px;
+    background-color: var(--bg-light); /* Use variable */
+    padding: 1.5rem; /* Match dashboard sectionBox padding */
+    border-radius: 8px; /* Match dashboard sectionBox */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border-light); /* Use variable */
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.savingsList h3 {
+    color: var(--text-primary-light); /* Use variable */
+    font-size: 1.2rem; /* Match dashboard sectionTitle */
+    font-weight: 600; /* Match dashboard sectionTitle */
+    margin-bottom: 1rem; /* Match dashboard sectionTitle */
+    border-bottom: 1px solid var(--border-light); /* Use variable */
+    padding-bottom: 10px;
+}
+
+.savingsList ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.savingsList li {
+    padding: 10px 5px; /* Adjusted padding */
+    border-bottom: 1px solid var(--border-light); /* Use variable */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95rem;
+    color: var(--text-primary-light); /* Use variable */
+    transition: border-color 0.3s ease, color 0.3s ease;
+}
+
+.savingsList li:last-child {
+    border-bottom: none;
+}
+
+/* Use dashboard income/expense colors */
+.positive {
+    color: #10B981; /* Dashboard income color (light) */
+    font-weight: bold;
+}
+
+.negative {
+    color: #EF4444; /* Dashboard expense color (light) */
+    font-weight: bold;
+}
+
+.error {
+    color: #EF4444; /* Dashboard expense color (light) */
+    text-align: center;
+    margin-top: 20px;
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+    .savingsContainer {
+        background-color: var(--box-bg-dark);
+        border-color: var(--border-dark);
+    }
+
+    .savingsContainer h2 {
+        color: var(--text-primary-dark);
+    }
+
+    /* Dark mode for chart container if needed, though Recharts handles most styling */
+    .chartContainer {
+        /* background-color: #333; */
+        opacity: 1;
+        /* border-color: #555; */
+    }
+
+
+    .savingsList {
+        background-color: var(--bg-dark);
+        border-color: var(--border-dark);
+    }
+
+    .savingsList h3 {
+        color: var(--text-primary-dark);
+        border-color: var(--border-dark);
+    }
+
+    .savingsList li {
+        border-color: var(--border-dark);
+        color: var(--text-primary-dark);
+    }
+
+    .positive {
+        color: lightgreen; /* Dashboard income color (dark) */
+    }
+
+    .negative {
+        color: red; /* Dashboard expense color (dark) */
+    }
+
+    .error {
+        color: #F87171; /* Lighter red for dark mode */
+    }
+}

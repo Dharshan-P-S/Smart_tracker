@@ -37,6 +37,42 @@ p, h1, h2, h3, h4, h5, h6 {
   isolation: isolate;
 }
 
+/* Define Global Theme Variables */
+:root {
+  /* Light Mode Defaults */
+  --bg-light: #ffffff;
+  --box-bg-light: #f9f9f9; /* Background for containers/boxes */
+  --input-bg-light: #ffffff;
+  --text-primary-light: #1f2937; /* Darker gray */
+  --text-secondary-light: #6b7280; /* Medium gray */
+  --border-light: #e5e7eb; /* Light gray border */
+  --primary-accent-light: #3b82f6; /* Blue */
+  --primary-accent-hover-light: #2563eb;
+  --button-text-light: #ffffff;
+  --income-color-light: #10B981; /* Tailwind Green 500 */
+  --expense-color-light: #EF4444; /* Tailwind Red 500 */
+  --error-color-light: #dc3545;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark Mode Overrides */
+    --bg-dark: #111827; /* Dark blue-gray */
+    --box-bg-dark: #1f2937; /* Slightly lighter dark */
+    --input-bg-dark: #374151; /* Even lighter dark */
+    --text-primary-dark: #f9fafb; /* Very light gray */
+    --text-secondary-dark: #9ca3af; /* Lighter gray */
+    --border-dark: #374151; /* Medium dark gray border */
+    --primary-accent-dark: #60a5fa; /* Lighter blue */
+    --primary-accent-hover-dark: #3b82f6;
+    --button-text-dark: #ffffff; /* Often still white */
+    --income-color-dark: #34D399; /* Tailwind Green 400 */
+    --expense-color-dark: #F87171; /* Tailwind Red 400 */
+    --error-color-dark: #ff6b6b;
+  }
+}
+
+
 /* Basic body styles */
 body {
   line-height: 1.6;
@@ -45,16 +81,20 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
                Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   /* Apply theme background color */
+  /* Apply theme background color */
   background-color: var(--bg-light);
   color: var(--text-primary-light);
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Dark Mode body styles */
+/* Dark Mode body styles are now handled by the :root variables */
+/* The @media query here is still useful for body-specific overrides if needed, */
+/* but the main theme colors are set in :root */
 @media (prefers-color-scheme: dark) {
   body {
-    background-color: var(--bg-dark);
-    color: var(--text-primary-dark);
+     background-color: var(--bg-dark);
+     color: var(--text-primary-dark);
+     /* Add any other body-specific dark mode styles here */
   }
 }
 

@@ -19,6 +19,7 @@ console.log('Backend server starting...');
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/transactions', require('./routes/transactionRoutes'));
 app.use('/api/limits', require('./routes/limitRoutes')); // Add limit routes
+app.use('/api/users', require('./routes/userRoutes')); // Add user routes
 
 // Basic route
 app.get('/', (req, res) => res.send('API Running'));

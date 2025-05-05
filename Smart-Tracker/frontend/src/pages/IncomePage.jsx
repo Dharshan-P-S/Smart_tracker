@@ -42,17 +42,19 @@ function IncomePage() {
             const token = localStorage.getItem('authToken');
             if (!token) throw new Error("Authentication token not found.");
 
-            const response = await fetch('/api/transactions/all', {
+            // Fetch directly from the new endpoint for current month's income
+            const response = await fetch('/api/transactions/current-month/income', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`HTTP error! status: ${response.status}. ${errorText}`);
             }
-            const allData = await response.json();
-            const incomeData = (allData || []).filter(tx => tx.type === 'income');
+            // The response data is already filtered income for the current month
+            const incomeData = await response.json();
+            // Sorting might still be desired
             incomeData.sort((a, b) => new Date(b.date) - new Date(a.date));
-            setAllIncomeTransactions(incomeData);
+            setAllIncomeTransactions(incomeData); // Use the fetched data directly
             setError(null); // Clear error only on successful fetch
         } catch (err) {
             console.error("Error fetching transactions for Income page:", err);

@@ -31,6 +31,25 @@ const IncomeIcon = ({ className }) => (
   </svg>
 );
 
+// --- Define Old Transactions Icon (Clock History) ---
+const OldTransactionsIcon = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`${styles.navIcon} ${className || ''}`}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+  </svg>
+);
+
+// --- Define Savings Icon (Piggy Bank - Placeholder/Simple) ---
+const SavingsIcon = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`${styles.navIcon} ${className || ''}`}>
+    {/* Simple Piggy Bank representation */}
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3zm0 11.25c-4.56 0-8.25-3.69-8.25-8.25S7.44 2.75 12 2.75s8.25 3.69 8.25 8.25S16.56 19.25 12 19.25zM12 6.75a.75.75 0 0 0-.75.75v1.5a.75.75 0 0 0 1.5 0v-1.5a.75.75 0 0 0-.75-.75z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12h-9" /> {/* Slot */}
+    {/* Optional feet */}
+    {/* <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 16.5a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0zM9.75 16.5a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0z" /> */}
+  </svg>
+);
+
+
 // --- Define Expense Icon (User provided SVG - Down Trend) ---
 const ExpenseIcon = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" id="down-trend" data-name="Flat Line" className={`${styles.navIcon} ${className || ''}`}>
@@ -135,6 +154,12 @@ function Header() {
             {/* Changed Settings to Limits */}
             <Link to="/limits" className={styles.navLink} onClick={closeMenu}>
                <FaBan className={styles.navIcon} /> <span>Limits</span>
+            </Link>
+            <Link to="/old-transactions" className={styles.navLink} onClick={closeMenu}>
+               <OldTransactionsIcon /> <span>Old Transactions</span>
+            </Link>
+            <Link to="/savings" className={styles.navLink} onClick={closeMenu}>
+               <SavingsIcon /> <span>Savings</span>
             </Link>
           </div>
 

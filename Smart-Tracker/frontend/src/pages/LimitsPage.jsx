@@ -17,6 +17,9 @@ function LimitsPage() {
     const [error, setError] = useState(null);
     const [addFormData, setAddFormData] = useState({ category: '', amount: '' });
     const [isAdding, setIsAdding] = useState(false); // State for add form visibility/loading
+    const [editingLimitId, setEditingLimitId] = useState(null); // State to track which limit is being edited
+    const [editFormData, setEditFormData] = useState({ category: '', amount: '' }); // State for edit form data
+    const [isSaving, setIsSaving] = useState(false); // State for save loading
 
     // --- Fetch Limits (wrapped in useCallback) ---
     const fetchLimits = useCallback(async () => {
@@ -135,15 +138,80 @@ function LimitsPage() {
         }
     };
 
-    // --- Edit and Delete Handlers ---
+    // --- Edit Handlers ---
     const handleEditClick = (limit) => {
-        // ... (keep existing placeholder logic)
-        console.log("Edit limit:", limit);
-        alert("Edit functionality not yet implemented.");
-        // Note: If edit changes category/amount, you might want to refetch or update locally
-        // similar to how add/delete work. For now, it's just an alert.
+        setEditingLimitId(limit._id);
+        setEditFormData({ category: limit.category, amount: limit.amount.toString() }); // Set initial form data
+        setError(null); // Clear any previous errors when starting edit
     };
 
+    const handleEditFormChange = (e) => {
+        const { name, value } = e.target;
+        setEditFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleCancelClick = () => {
+        setEditingLimitId(null);
+        setEditFormData({ category: '', amount: '' });
+        setError(null); // Clear errors on cancel
+    };
+
+    const handleSaveClick = async (limitId) => {
+        setIsSaving(true);
+        setError(null); // Clear previous save errors
+
+        const { category, amount } = editFormData;
+        if (!category.trim() || !amount) {
+            setError("Edit Error: Category and Amount are required.");
+            setIsSaving(false);
+            return;
+        }
+        const numericAmount = parseFloat(amount);
+        if (isNaN(numericAmount) || numericAmount < 0) {
+            setError("Edit Error: Amount must be a valid non-negative number.");
+            setIsSaving(false);
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('authToken');
+            if (!token) throw new Error("Authentication token not found.");
+
+            // Call the backend update endpoint with the edited data
+            const response = await fetch(`/api/limits/${limitId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ category: category.trim(), amount: numericAmount }),
+            });
+
+            const responseData = await response.json();
+
+            if (!response.ok) {
+                throw new Error(responseData.message || `Failed to update limit: ${response.statusText}`);
+            }
+
+            // Update the limits state based on the backend response
+            // The backend now handles merging and returns the updated/merged limit.
+            // We need to refetch the entire list to ensure the state is correct
+            // if a limit was deleted and another updated.
+            await fetchLimits(); // Refetch all limits to get the correct state after potential merge/delete
+
+            setEditingLimitId(null); // Exit edit mode
+            setEditFormData({ category: '', amount: '' }); // Clear edit form data
+
+        } catch (err) {
+            console.error("Error saving limit:", err);
+            setError(`Edit Error: ${err.message}`);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+
+    // --- Delete Handler ---
     const handleDeleteClick = async (limitId) => {
         // ... (keep existing logic)
         console.log("Delete limit ID:", limitId);
@@ -242,36 +310,80 @@ function LimitsPage() {
                 {limits.length > 0 ? (
                     <div className={styles.limitsList}>
                         {limits.map((limit) => (
-                            // ... (keep existing limit item rendering logic with progress bar etc.) ...
                             <div key={limit._id} className={`${styles.limitItem} ${limit.exceeded ? styles.exceeded : ''}`}>
-                                <div className={styles.limitInfo}>
-                                    <span className={styles.limitCategory}>{limit.category}</span>
-                                    <span className={styles.limitAmount}>Limit: {formatCurrency(limit.amount)}</span>
-                                    <span className={styles.limitSpending}>Spent: {formatCurrency(limit.currentSpending)}</span>
-                                     <span className={`${styles.limitRemaining} ${limit.remainingAmount < 0 ? styles.negativeRemaining : ''}`}>
-                                        Remaining: {formatCurrency(limit.remainingAmount)}
-                                     </span>
-                                     <div className={styles.progressBarContainer}>
-                                         <div
-                                             className={styles.progressBarFill}
-                                             style={{ width: `${Math.min(100, (limit.amount > 0 ? (limit.currentSpending / limit.amount) * 100 : 0))}%` }}
-                                             title={`Spent ${((limit.amount > 0 ? (limit.currentSpending / limit.amount) * 100 : 0)).toFixed(1)}%`}
-                                         ></div>
-                                     </div>
-                                 </div>
-                                 <div className={styles.limitStatus}>
-                                      {limit.exceeded && (
-                                         <FaExclamationTriangle className={styles.warningIcon} title="Limit Exceeded!" />
-                                     )}
-                                </div>
-                                <div className={styles.limitActions}>
-                                    <button onClick={() => handleEditClick(limit)} className={`${styles.actionButton} ${styles.editButton}`} aria-label="Edit limit">
-                                        <FaEdit />
-                                    </button>
-                                    <button onClick={() => handleDeleteClick(limit._id)} className={`${styles.actionButton} ${styles.deleteButton}`} aria-label="Delete limit">
-                                        <FaTrash />
-                                    </button>
-                                </div>
+                                {editingLimitId === limit._id ? (
+                                    // Edit mode
+                                    <div className={styles.editLimitForm}>
+                                        <div className={styles.formGroup}>
+                                            <label htmlFor={`edit-category-${limit._id}`}>Category:</label>
+                                            <input
+                                                type="text"
+                                                id={`edit-category-${limit._id}`}
+                                                name="category"
+                                                value={editFormData.category}
+                                                onChange={handleEditFormChange}
+                                                required
+                                                className={styles.formInput}
+                                                disabled={isSaving}
+                                            />
+                                        </div>
+                                        <div className={styles.formGroup}>
+                                            <label htmlFor={`edit-amount-${limit._id}`}>Limit Amount ($):</label>
+                                            <input
+                                                type="number"
+                                                id={`edit-amount-${limit._id}`}
+                                                name="amount"
+                                                value={editFormData.amount}
+                                                onChange={handleEditFormChange}
+                                                required
+                                                min="0"
+                                                step="0.01"
+                                                className={styles.formInput}
+                                                disabled={isSaving}
+                                            />
+                                        </div>
+                                        <div className={styles.editActions}>
+                                            <button onClick={() => handleSaveClick(limit._id)} className={`${styles.actionButton} ${styles.saveButton}`} aria-label="Save limit" disabled={isSaving}>
+                                                {isSaving ? 'Saving...' : 'Save'}
+                                            </button>
+                                            <button onClick={handleCancelClick} className={`${styles.actionButton} ${styles.cancelButton}`} aria-label="Cancel edit" disabled={isSaving}>
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    // View mode
+                                    <>
+                                        <div className={styles.limitInfo}>
+                                            <span className={styles.limitCategory}>{limit.category}</span>
+                                            <span className={styles.limitAmount}>Limit: {formatCurrency(limit.amount)}</span>
+                                            <span className={styles.limitSpending}>Spent: {formatCurrency(limit.currentSpending)}</span>
+                                            <span className={`${styles.limitRemaining} ${limit.remainingAmount < 0 ? styles.negativeRemaining : ''}`}>
+                                                Remaining: {formatCurrency(limit.remainingAmount)}
+                                            </span>
+                                            <div className={styles.progressBarContainer}>
+                                                <div
+                                                    className={styles.progressBarFill}
+                                                    style={{ width: `${Math.min(100, (limit.amount > 0 ? (limit.currentSpending / limit.amount) * 100 : 0))}%` }}
+                                                    title={`Spent ${((limit.amount > 0 ? (limit.currentSpending / limit.amount) * 100 : 0)).toFixed(1)}%`}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                        <div className={styles.limitStatus}>
+                                            {limit.exceeded && (
+                                                <FaExclamationTriangle className={styles.warningIcon} title="Limit Exceeded!" />
+                                            )}
+                                        </div>
+                                        <div className={styles.limitActions}>
+                                            <button onClick={() => handleEditClick(limit)} className={`${styles.actionButton} ${styles.editButton}`} aria-label="Edit limit">
+                                                <FaEdit />
+                                            </button>
+                                            <button onClick={() => handleDeleteClick(limit._id)} className={`${styles.actionButton} ${styles.deleteButton}`} aria-label="Delete limit">
+                                                <FaTrash />
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         ))}
                     </div>

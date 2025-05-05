@@ -1,5 +1,16 @@
 const express = require('express');
-const { addTransaction, getDashboardData, getAllTransactions, updateTransaction, deleteTransaction } = require('../controllers/transactionController');
+// Import the newly added controller functions
+const {
+    addTransaction,
+    getDashboardData,
+    getAllTransactions,
+    updateTransaction,
+    deleteTransaction,
+    getOldTransactions,
+    getCurrentMonthIncome,  // Import needed function
+    getCurrentMonthExpense, // Import needed function
+    getMonthlySavings // Add this import
+} = require('../controllers/transactionController');
 // const { protect } = require('../middleware/authMiddleware'); // <-- Commented out
 
 const router = express.Router();
@@ -19,4 +30,17 @@ router.put('/:id', updateTransaction); // Add the PUT route for updates
 
 router.delete('/:id', deleteTransaction); // Add the DELETE route
 
-module.exports = router; 
+// GET /api/transactions/old (New Route for old transactions)
+router.get('/old', getOldTransactions);
+
+// GET /api/transactions/current-month/income (New Route for current month income)
+router.get('/current-month/income', getCurrentMonthIncome);
+
+// GET /api/transactions/current-month/expense (New Route for current month expense)
+router.get('/current-month/expense', getCurrentMonthExpense);
+
+// GET /api/transactions/savings/monthly (New Route for monthly savings)
+router.get('/savings/monthly', getMonthlySavings);
+
+
+module.exports = router;
