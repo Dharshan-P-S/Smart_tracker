@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom'; // Import Link
-import styles from './Dashboard.module.css'; // Import the styles
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'; // Import Recharts components
+import { Link } from 'react-router-dom';
+import styles from './Dashboard.module.css';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 // Assuming you have a way to get the auth token (e.g., from context or local storage)
 // import { useAuth } from '../context/AuthContext'; // Example using context
 
@@ -37,8 +37,11 @@ function Dashboard() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]); // Default to today
-  const [frequency, setFrequency] = useState('once'); // State for the new frequency dropdown
-  const [isSubmitting, setIsSubmitting] = useState(false); // State for submission status
+  const [frequency, setFrequency] = useState('once');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [limits, setLimits] = useState([]); // State for limits, expecting { _id, category, amount, currentSpending, remainingAmount, exceeded }
+  const [loadingLimits, setLoadingLimits] = useState(true);
+
 
   // --- Fetch initial dashboard data ---
   const fetchDashboardData = async () => {
@@ -147,6 +150,60 @@ function Dashboard() {
       console.table(groupedByCategory); // Use console.table for better readability if possible
     }
   }, [transactions]);
+
+  // --- Fetch Limits (Backend calculates spending) ---
+  const fetchLimits = async () => {
+    setLoadingLimits(true);
+    // Keep existing errors unless this fetch specifically fails
+    // setError(null);
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) throw new Error("Authentication token not found.");
+
+      const response = await fetch('/api/limits', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to fetch limits: ${response.statusText}`);
+      }
+      const data = await response.json();
+      // Validate data structure slightly - ensure amount/spending are numbers
+      const validatedLimits = data.map(limit => ({
+        ...limit,
+        amount: (typeof limit.amount === 'number' && !isNaN(limit.amount)) ? limit.amount : 0,
+        currentSpending: (typeof limit.currentSpending === 'number' && !isNaN(limit.currentSpending)) ? limit.currentSpending : 0,
+        remainingAmount: (typeof limit.remainingAmount === 'number' && !isNaN(limit.remainingAmount)) ? limit.remainingAmount : 0,
+      }));
+      setLimits(validatedLimits || []);
+    } catch (err) {
+      console.error("Error fetching limits:", err);
+      setError(prev => prev ? `${prev}\nLimits Error: ${err.message}` : `Limits Error: ${err.message}`);
+      setLimits([]); // Clear limits on error
+    } finally {
+      setLoadingLimits(false);
+    }
+  };
+
+  // Fetch limits on mount
+  useEffect(() => {
+    fetchLimits();
+  }, []);
+
+  // Refetch limits if a transaction is added/deleted elsewhere
+  useEffect(() => {
+    const handleTransactionsUpdate = () => {
+        console.log('Transaction update detected by Dashboard, refetching limits...');
+        fetchLimits();
+    };
+    window.addEventListener('transactions-updated', handleTransactionsUpdate);
+    return () => {
+        window.removeEventListener('transactions-updated', handleTransactionsUpdate);
+    };
+  }, []); // Empty dependency array is fine as fetchLimits is stable within this scope now
+
 
   const totalBalance = totalIncome - totalExpense;
 
@@ -297,6 +354,7 @@ function Dashboard() {
     }
   };
 
+
   // --- Handle Delete Transaction (Example - If you add delete buttons here) ---
   // You might have this logic on a different page like TransactionList,
   // but if you added delete buttons to the recent items here, you'd do this:
@@ -364,8 +422,10 @@ function Dashboard() {
 
 
   // --- Render Logic ---
-  if (loading) {
-      return <div className={styles.dashboardPageContent}><p>Loading dashboard...</p></div>;
+  // Combine loading states for dashboard data and limits
+  const isPageLoading = loading || loadingLimits;
+  if (isPageLoading) {
+      return <div className={styles.dashboardPageContent}><p>Loading dashboard data...</p></div>;
   }
 
   return (
@@ -477,91 +537,144 @@ function Dashboard() {
                  <div className={styles.placeholderContent} style={{position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none'}}>No data to display in chart.</div>
               )}
            </div>
-        </section>
+       </section>
       </div>
 
-       {/* Add New Transaction Form Section */}
-       <section
-         className={`${styles.sectionBox} ${styles.addTransactionSection}`}
-         style={{ width: '50%', marginRight: 'auto', marginLeft: 0 }}
-       >
-         <h2 className={styles.sectionTitle}>Add New Transaction</h2>
-          {/* Display submission errors specifically here */}
-         {error && error.startsWith('Submit Error:') && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
-         <form onSubmit={handleAddTransaction} className={styles.transactionForm}>
-            {/* ... (Keep existing form groups: type, date, amount, description, category, frequency) ... */}
+       {/* Container for Form and Limits */}
+       <div className={styles.formAndLimitsContainer}>
+         {/* Add New Transaction Form Section */}
+         <section
+           className={`${styles.sectionBox} ${styles.addTransactionSection}`}
+           // Removed inline style, control width via CSS module
+         >
+           <h2 className={styles.sectionTitle}>Add New Transaction</h2>
+            {/* Display submission errors specifically here */}
+           {error && error.startsWith('Submit Error:') && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
+           <form onSubmit={handleAddTransaction} className={styles.transactionForm}>
+              {/* ... (Keep existing form groups: type, date, amount, description, category, frequency) ... */}
+               <div className={styles.formGroup}>
+               <label htmlFor="type">Type:</label>
+               <select id="type" value={type} onChange={(e) => setType(e.target.value)} required className={styles.formInput} disabled={isSubmitting}>
+                 <option value="expense">Expense</option>
+                 <option value="income">Income</option>
+               </select>
+             </div>
              <div className={styles.formGroup}>
-             <label htmlFor="type">Type:</label>
-             <select id="type" value={type} onChange={(e) => setType(e.target.value)} required className={styles.formInput} disabled={isSubmitting}>
-               <option value="expense">Expense</option>
-               <option value="income">Income</option>
-             </select>
-           </div>
-           <div className={styles.formGroup}>
-             <label htmlFor="date">Date:</label>
-             <input
-               type="date" id="date" value={date}
-               onChange={(e) => setDate(e.target.value)}
-               required
-               className={styles.formInput} disabled={isSubmitting}
-               max={new Date().toISOString().split('T')[0]} // Set max date to today
-             />
-           </div>
-           <div className={styles.formGroup}>
-             <label htmlFor="amount">Amount:</label>
-             <input
-               type="number" id="amount" value={amount}
-               onChange={(e) => setAmount(e.target.value)}
-               placeholder="0.00" required step="0.01" min="0.01"
-               className={styles.formInput} disabled={isSubmitting}
-             />
-           </div>
-           <div className={styles.formGroup}>
-             <label htmlFor="description">Description:</label>
-             <input
-               type="text" id="description" value={description}
-               onChange={(e) => setDescription(e.target.value)}
-               placeholder="e.g., Coffee, Salary" required
-               className={styles.formInput} disabled={isSubmitting}
-               autoComplete="off" // Disable browser autocomplete
-             />
-           </div>
-           <div className={styles.formGroup}>
-             <label htmlFor="category">Category:</label>
-             <input
-               type="text" id="category" value={category}
-               onChange={(e) => setCategory(e.target.value)}
-               placeholder="e.g., Food, Bills, Paycheck" required
-               className={styles.formInput} disabled={isSubmitting}
-               list="category-suggestions" // Link to datalist
-             />
-             <datalist id="category-suggestions">
-               {allCategories.map((cat, index) => (
-                 <option key={index} value={cat} />
-               ))}
-             </datalist>
-           </div>
-           <div className={styles.formGroup}>
-             <label htmlFor="frequency">Frequency:</label>
-             <select
-               id="frequency"
-               value={frequency}
-               onChange={(e) => setFrequency(e.target.value)}
-               required
-               className={styles.formInput}
-               disabled={isSubmitting}
-             >
-               <option value="once">One-time</option>
-               <option value="daily">Daily</option>
-               <option value="weekly">Weekly</option>
-               {/* <option value="monthly">Monthly</option>  Consider adding monthly if backend handles it */}
-             </select>
-           </div>
-           <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
-             {isSubmitting ? 'Adding...' : 'Add Transaction'}
-           </button>
-         </form>
-       </section>
+               <label htmlFor="date">Date:</label>
+               <input
+                 type="date" id="date" value={date}
+                 onChange={(e) => setDate(e.target.value)}
+                 required
+                 className={styles.formInput} disabled={isSubmitting}
+                 max={new Date().toISOString().split('T')[0]} // Set max date to today
+               />
+             </div>
+             <div className={styles.formGroup}>
+               <label htmlFor="amount">Amount:</label>
+               <input
+                 type="number" id="amount" value={amount}
+                 onChange={(e) => setAmount(e.target.value)}
+                 placeholder="0.00" required step="0.01" min="0.01"
+                 className={styles.formInput} disabled={isSubmitting}
+               />
+             </div>
+             <div className={styles.formGroup}>
+               <label htmlFor="description">Description:</label>
+               <input
+                 type="text" id="description" value={description}
+                 onChange={(e) => setDescription(e.target.value)}
+                 placeholder="e.g., Coffee, Salary" required
+                 className={styles.formInput} disabled={isSubmitting}
+                 autoComplete="off" // Disable browser autocomplete
+               />
+             </div>
+             <div className={styles.formGroup}>
+               <label htmlFor="category">Category:</label>
+               <input
+                 type="text" id="category" value={category}
+                 onChange={(e) => setCategory(e.target.value)}
+                 placeholder="e.g., Food, Bills, Paycheck" required
+                 className={styles.formInput} disabled={isSubmitting}
+                 list="category-suggestions" // Link to datalist
+               />
+               <datalist id="category-suggestions">
+                 {allCategories.map((cat, index) => (
+                   <option key={index} value={cat} />
+                 ))}
+               </datalist>
+             </div>
+             <div className={styles.formGroup}>
+               <label htmlFor="frequency">Frequency:</label>
+               <select
+                 id="frequency"
+                 value={frequency}
+                 onChange={(e) => setFrequency(e.target.value)}
+                 required
+                 className={styles.formInput}
+                 disabled={isSubmitting}
+               >
+                 <option value="once">One-time</option>
+                 <option value="daily">Daily</option>
+                 <option value="weekly">Weekly</option>
+                 {/* <option value="monthly">Monthly</option>  Consider adding monthly if backend handles it */}
+               </select>
+             </div>
+             <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
+               {isSubmitting ? 'Adding...' : 'Add Transaction'}
+             </button>
+           </form>
+         </section>
+
+         {/* Spending Limits Section - Use limits state directly */}
+         <section className={`${styles.sectionBox} ${styles.limitsSection}`}>
+            <h2 className={styles.sectionTitle}>Spending Limits</h2>
+            {limits.length > 0 ? (
+              <>
+                <div className={styles.limitList}>
+                    {limits.slice(0, 3).map((limit) => {
+                        // Use fields directly from the API response (validated in fetchLimits)
+                        const { amount: limitAmount, currentSpending: spentAmount, remainingAmount } = limit;
+                        const percentage = limitAmount > 0 ? (spentAmount / limitAmount) * 100 : 0;
+
+                        return (
+                            <div key={limit._id} className={styles.limitItem}>
+                                <div className={styles.limitDetails}>
+                                    <span className={styles.limitCategory}>{limit.category}</span>
+                                    <div className={styles.limitAmounts}>
+                                        <span className={styles.limitSpent}>Spent: {formatCurrency(spentAmount)}</span>
+                                        {/* Use remainingAmount directly from API */}
+                                        <span className={styles.limitRemaining} style={{ color: remainingAmount < 0 ? '#EF4444' : '#10B981' }}>
+                                            {remainingAmount >= 0 ? `Remaining: ${formatCurrency(remainingAmount)}` : `Overspent: ${formatCurrency(Math.abs(remainingAmount))}`}
+                                        </span>
+                                    </div>
+                                </div>
+                                {/* Message for exceeded limits */}
+                                {limit.exceeded && (
+                                    <div className={styles.limitExceededMessage}>
+                                        Limit Reached!
+                                    </div>
+                                )}
+                                <div className={styles.limitTotal}>Limit: {formatCurrency(limitAmount)}</div>
+                                {/* Progress Bar */}
+                                <div className={styles.progressBarContainer}>
+                                    <div
+                                        className={styles.progressBar}
+                                        style={{ width: `${Math.min(percentage, 100)}%`, backgroundColor: percentage > 100 ? '#EF4444' : '#4299e1' }}
+                                    ></div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+                <Link to="/limits" className={`${styles.seeAllButton} ${styles.limitsSeeAll}`}>See All Limits</Link>
+              </>
+            ) : (
+                <div className={styles.placeholderContent}>
+                    No spending limits set yet. <Link to="/limits">Set one now!</Link>
+                </div>
+            )}
+         </section>
+       </div> {/* End of formAndLimitsContainer */}
     </div>
   );
 }
