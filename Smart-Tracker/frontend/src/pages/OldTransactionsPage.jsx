@@ -79,10 +79,13 @@ const OldTransactionsPage = () => {
                                 {groupedTransactions[monthYear].map(transaction => (
                                     <li key={transaction._id} className={`${styles.transactionItem} ${styles[transaction.type]}`}>
                                         <span>{new Date(transaction.date).toLocaleDateString()}</span>
-                                        <span>{transaction.category}</span>
-                                        <span>{transaction.description}</span>
+                                        {/* Add emoji span */}
+                                        <span className={styles.transactionDetails}>
+                                            {transaction.emoji && <span className={styles.transactionEmoji}>{transaction.emoji}</span>}
+                                            {transaction.description} ({transaction.category})
+                                        </span>
                                         {/* Conditionally add '-' for expenses */}
-                                        <span>{transaction.type === 'expense' ? '-' : ''}${transaction.amount.toFixed(2)}</span>
+                                        <span className={styles.transactionAmount}>{transaction.type === 'expense' ? '-' : ''}${transaction.amount.toFixed(2)}</span>
                                     </li>
                                 ))}
                             </ul>

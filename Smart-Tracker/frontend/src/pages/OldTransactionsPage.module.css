@@ -44,6 +44,8 @@
     align-items: center;
     position: relative; /* For pseudo-element border */
     transition: background-color 0.3s, border-color 0.3s, border-left-color 0.3s;
+    /* Adjust grid template if needed to accommodate combined details */
+    grid-template-columns: auto 1fr auto; /* Date | Details | Amount */
 }
 
 /* Use pseudo-element for side border like Dashboard */
@@ -73,8 +75,25 @@
     font-size: 0.9rem;
     color: var(--text-secondary-light, #555);
 }
+
+/* Style for the combined details span */
+.transactionDetails {
+    grid-column: 2 / 3; /* Span the second column */
+    /* Inherit general span styles or add specific ones */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Style for the emoji within details */
+.transactionEmoji {
+    margin-right: 0.5em;
+    font-size: 1em; /* Or adjust as needed */
+}
+
 /* Amount styling */
-.transactionItem span:last-child {
+.transactionAmount {
+    grid-column: 3 / 4; /* Amount in the third column */
     color: var(--text-primary-light, #333);
     font-weight: 600; /* Match dashboard amount */
     font-size: 0.95rem; /* Match dashboard amount */
@@ -82,10 +101,10 @@
     text-align: right; /* Align amount right */
 }
 /* Specific income/expense colors for amount text */
-.transactionItem.income span:last-child {
+.transactionItem.income .transactionAmount {
     color: var(--income-color-light, #10B981);
 }
-.transactionItem.expense span:last-child {
+.transactionItem.expense .transactionAmount {
      color: var(--expense-color-light, #EF4444);
 }
 
@@ -162,17 +181,20 @@
         background-color: var(--expense-color-dark, red); /* Match dashboard dark */
     }
 
-     .transactionItem span {
+     .transactionItem span { /* General span color */
         color: var(--text-secondary-dark, #aaa);
     }
-    .transactionItem span:last-child {
+     .transactionDetails { /* Details span color */
+        color: var(--text-primary-dark, #e0e0e0); /* Make details primary text color */
+     }
+    .transactionAmount { /* Amount span color */
         color: var(--text-primary-dark, #e0e0e0);
     }
     /* Specific income/expense colors for amount text in dark mode */
-    .transactionItem.income span:last-child {
+    .transactionItem.income .transactionAmount {
         color: var(--income-color-dark, lightgreen);
     }
-    .transactionItem.expense span:last-child {
+    .transactionItem.expense .transactionAmount {
          color: var(--expense-color-dark, red);
     }
 

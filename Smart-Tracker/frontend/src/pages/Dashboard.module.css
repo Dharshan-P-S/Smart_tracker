@@ -331,6 +331,11 @@
   white-space: nowrap;
 }
 
+.transactionEmoji {
+  margin-right: 0.5em; /* Space between emoji and description */
+  font-size: 1em; /* Inherit size or set explicitly */
+}
+
 .transactionDesc {
   font-size: 0.95rem;
   color: var(--text-primary-light);
@@ -786,7 +791,92 @@
   /* Add padding or margin if needed for visual separation */
 }
 
+/* Styles for the category input container (no longer needs special emoji button styles) */
+.categoryInputContainer {
+  display: flex; /* Keep if other elements might be added, otherwise can be removed if only input */
+  align-items: center;
+}
 
+/* Adjust the category input if it was relying on padding for an internal button */
+.categoryInputContainer input[type="text"] {
+  flex-grow: 1;
+  /* padding-right: normal; */ /* Reset padding if it was set for an internal button */
+}
+
+
+/* NEW: Styles for the emoji selector container (at the top of the form) */
+.emojiSelectorContainer {
+  position: relative; /* For positioning the picker */
+  display: inline-block; /* Or 'block' depending on desired layout with label */
+}
+
+/* Dashboard.module.css */
+
+/* ... other styles ... */
+
+/* UPDATED: Styles for the main emoji button (at the top of the form) */
+.emojiButton {
+  background-color: var(--input-bg-light, var(--bg-light));
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 0.5rem;         /* Make padding uniform for better centering */
+  font-size: 1.8rem;       /* Slightly larger emoji if desired */
+  color: var(--text-primary-light); /* Explicitly set text color */
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  min-width: 48px;         /* Adjust size as needed */
+  min-height: 48px;        /* ADD: Ensure minimum height */
+  display: inline-flex;    /* ADD: Use flexbox for alignment */
+  align-items: center;     /* ADD: Vertically center content */
+  justify-content: center; /* ADD: Horizontally center content */
+  line-height: 1;          /* ADD: Prevent extra line spacing */
+  /* text-align: center; */ /* No longer needed with justify-content */
+  box-sizing: border-box;  /* Ensure padding/border are included in size */
+}
+
+.emojiButton:hover {
+  border-color: var(--primary-accent-light, #60a5fa);
+  background-color: #f0f0f0; /* Or use a variable */
+}
+
+.emojiButton:focus {
+  outline: none;
+  border-color: var(--primary-accent-light, #60a5fa);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
+}
+
+/* ... other styles ... */
+
+/* ADD: Dark Mode styles for the emoji button */
+@media (prefers-color-scheme: dark) {
+  /* ... other dark mode styles ... */
+
+  .emojiButton {
+    background-color: var(--input-bg-dark, #2d3748);
+    border-color: var(--border-dark);
+    color: var(--text-primary-dark);
+  }
+
+  .emojiButton:hover {
+    border-color: var(--primary-accent-dark, #60a5fa);
+    background-color: #374151; /* Or use a variable */
+  }
+
+  .emojiButton:focus {
+     border-color: var(--primary-accent-dark, #60a5fa);
+     box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.4); /* Adjust focus shadow for dark */
+  }
+
+  .emojiPickerContainer {
+    background-color: var(--box-bg-dark);
+    border-color: var(--border-dark);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  /* ... rest of dark mode styles ... */
+}
+
+/* ... rest of the file ... */
 /* Responsive adjustments for form/limits container */
 @media (max-width: 992px) { /* Adjust breakpoint as needed */
   .formAndLimitsContainer {
@@ -794,8 +884,15 @@
   }
 }
 
-/* Dark Mode for Limits Section */
+/* Dark Mode for Emoji Picker */
 @media (prefers-color-scheme: dark) {
+  .emojiPickerContainer {
+    background-color: var(--box-bg-dark);
+    border-color: var(--border-dark);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Dark Mode for Limits Section */
   .limitItem {
     background-color: var(--bg-dark);
     border-color: var(--border-dark);

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom'; // Link is unused, consider removing if not needed elsewhere
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import Picker from 'emoji-picker-react'; // Import Picker
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { FaEdit, FaTrash } from 'react-icons/fa'; // Import icons
 
+// Import the SAME CSS module used by Dashboard
 import styles from './Dashboard.module.css';
 
 // Reusable formatCurrency function
@@ -18,7 +20,12 @@ const formatCurrency = (value) => {
 
 // Helper function to format date string
 const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+     // Add check for invalid date
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+        return 'Invalid Date';
+    }
+    return date.toLocaleDateString('en-US', {
         year: 'numeric', month: 'short', day: 'numeric'
     });
 };
@@ -28,21 +35,19 @@ function ExpensePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [username, setUsername] = useState(() => localStorage.getItem('username') || 'User');
-    const [currentBalance, setCurrentBalance] = useState(null);
+    const [currentBalance, setCurrentBalance] = useState(null); // Keep track of balance for validation (though not needed for expense delete)
 
     // --- State for Editing ---
     const [editingTxId, setEditingTxId] = useState(null);
-    const [editFormData, setEditFormData] = useState({ description: '', category: '' });
+    const [editFormData, setEditFormData] = useState({ description: '', category: '', emoji: '' });
+    const [showEditEmojiPicker, setShowEditEmojiPicker] = useState(false); // State for edit picker visibility
 
-    // --- Fetch Transactions Effect ---
+    // --- Fetch Transactions ---
     const fetchAllTransactions = async () => {
-        setLoading(true); // Set loading true at the start of fetch
-        // setError(null); // Clear previous fetch errors here if preferred
+        setLoading(true);
         try {
             const token = localStorage.getItem('authToken');
             if (!token) throw new Error("Authentication token not found.");
-
-            // Fetch directly from the new endpoint for current month's expenses
             const response = await fetch('/api/transactions/current-month/expense', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -50,12 +55,10 @@ function ExpensePage() {
                 const errorText = await response.text();
                 throw new Error(`HTTP error! status: ${response.status}. ${errorText}`);
             }
-            // The response data is already filtered expenses for the current month
             const expenseData = await response.json();
-            // Sorting might still be desired
-            expenseData.sort((a, b) => new Date(b.date) - new Date(a.date));
-            setAllExpenseTransactions(expenseData); // Use the fetched data directly
-            setError(null); // Clear error only on successful fetch
+            expenseData.sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort descending
+            setAllExpenseTransactions(expenseData);
+            setError(null);
         } catch (err) {
             console.error("Error fetching transactions for Expense page:", err);
             setError(err.message || 'Failed to fetch transactions.');
@@ -65,15 +68,14 @@ function ExpensePage() {
         }
     };
 
-    // --- Fetch Balance --- (New function)
+     // --- Fetch Balance (Optional - can be removed if not needed for expense page logic) ---
     const fetchBalance = async () => {
-        // We only need the balance, but the dashboard endpoint provides it
-        // Consider creating a dedicated /api/balance endpoint later for efficiency
-        setError(null); // Clear previous errors before fetching balance
+        setError(null);
         const token = localStorage.getItem('authToken');
         if (!token) {
-            setError("Authentication token not found for balance check.");
-            return null; // Indicate failure
+            // Don't necessarily set error, might just not display balance info
+            // setError("Authentication token not found for balance check.");
+            return null;
         }
         try {
             const response = await fetch('/api/transactions/dashboard', {
@@ -81,46 +83,57 @@ function ExpensePage() {
             });
             if (!response.ok) {
                  const errorText = await response.text();
-                 throw new Error(`HTTP error fetching balance! status: ${response.status}. ${errorText}`);
+                 // Don't throw page-level error for balance fetch failure here
+                 console.error(`HTTP error fetching balance! status: ${response.status}. ${errorText}`);
+                 return null;
             }
             const data = await response.json();
             const balance = (data.totalIncome || 0) - (data.totalExpense || 0);
-            setCurrentBalance(balance); // Update state
-            return balance; // Return fetched balance
+            setCurrentBalance(balance);
+            return balance;
         } catch (err) {
              console.error("Error fetching balance for Expense page:", err);
-             setError(err.message || 'Failed to fetch current balance.');
-             setCurrentBalance(null); // Reset balance state on error
-             return null; // Indicate failure
+             // Don't set page-level error
+             // setError(err.message || 'Failed to fetch current balance.');
+             setCurrentBalance(null);
+             return null;
         }
-        // No finally block needed here as we return directly
     };
 
+    // --- Effects ---
     useEffect(() => {
         fetchAllTransactions();
+        fetchBalance(); // Fetch initial balance (optional)
     }, []); // Initial fetch
 
-    // --- Event Listener Effect ---
     useEffect(() => {
-        const handleExpenseUpdate = () => {
-            console.log("ExpensePage received expense-updated event, re-fetching...");
+        const handleUpdate = () => {
+            console.log("ExpensePage received update event, re-fetching...");
             fetchAllTransactions();
+            fetchBalance(); // Re-fetch balance on any transaction update (optional)
         };
-        window.addEventListener('expense-updated', handleExpenseUpdate);
+        // Listen to multiple events
+        window.addEventListener('expense-updated', handleUpdate); // Less common, but maybe useful
+        window.addEventListener('transaction-deleted', handleUpdate);
+        window.addEventListener('transactions-updated', handleUpdate); // General update from dashboard
+
         return () => {
-            window.removeEventListener('expense-updated', handleExpenseUpdate);
+            window.removeEventListener('expense-updated', handleUpdate);
+            window.removeEventListener('transaction-deleted', handleUpdate);
+            window.removeEventListener('transactions-updated', handleUpdate);
         };
     }, []); // Listener setup runs once
 
     // --- Edit Handlers ---
     const handleEditClick = (tx) => {
         setEditingTxId(tx._id);
-        setEditFormData({ description: tx.description, category: tx.category });
+        setEditFormData({ description: tx.description, category: tx.category, emoji: tx.emoji || '' });
+        setShowEditEmojiPicker(false);
     };
 
     const handleCancelEdit = () => {
         setEditingTxId(null);
-        setEditFormData({ description: '', category: '' });
+        setShowEditEmojiPicker(false);
     };
 
     const handleEditFormChange = (e) => {
@@ -131,37 +144,44 @@ function ExpensePage() {
     const handleSaveEdit = async (txId) => {
         setError(null);
         const token = localStorage.getItem('authToken');
-        if (!token) {
-            setError("Authentication token not found.");
-            return;
-        }
+        if (!token) { setError("Authentication token not found."); return; }
         if (!editFormData.description.trim() || !editFormData.category.trim()) {
-            alert("Description and Category cannot be empty.");
-            return;
+            alert("Description and Category cannot be empty."); return;
         }
+
+        const originalTx = allExpenseTransactions.find(tx => tx._id === txId);
+         if (!originalTx) { setError("Original transaction not found for update."); return;}
+
         try {
             const response = await fetch(`/api/transactions/${txId}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({
-                    description: editFormData.description,
-                    category: editFormData.category,
+                    description: editFormData.description.trim(),
+                    category: editFormData.category.trim(),
+                    emoji: editFormData.emoji,
+                    // IMPORTANT: Send original amount and type if backend needs them for validation/updates
+                    // amount: originalTx.amount,
+                    // type: originalTx.type
                 }),
             });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ message: 'Update failed with non-JSON response' }));
                 throw new Error(errorData.message || `Failed to update transaction: ${response.statusText}`);
             }
-            // Update local state optimistically
+
             setAllExpenseTransactions(prevTxs =>
                 prevTxs.map(tx =>
-                    tx._id === txId ? { ...tx, ...editFormData } : tx
+                    tx._id === txId ? { ...tx,
+                       description: editFormData.description.trim(),
+                       category: editFormData.category.trim(),
+                       emoji: editFormData.emoji
+                      } : tx
                 )
             );
-            handleCancelEdit(); // Exit editing mode
+            fetchBalance(); // Refetch balance (optional)
+            handleCancelEdit();
+
         } catch (err) {
             console.error("Error updating transaction:", err);
             setError(`Update Error: ${err.message}`);
@@ -170,49 +190,35 @@ function ExpensePage() {
 
     // --- Delete Handler ---
     const handleDelete = async (txId) => {
-        setError(null); // Clear previous errors specific to delete
+        setError(null);
 
-        // Find the transaction amount locally first
         const transactionToDelete = allExpenseTransactions.find(tx => tx._id === txId);
-        if (!transactionToDelete) {
-            console.error("Transaction to delete not found locally:", txId);
-            setError("Could not find the transaction to delete.");
-            return;
-        }
+        if (!transactionToDelete) { setError("Could not find the transaction to delete."); return; }
         const transactionAmount = transactionToDelete.amount;
 
-        // Proceed with deletion confirmation and request
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-            setError("Authentication token not found.");
-            return;
-        }
+        // No balance check needed for deleting expenses
 
-        if (!window.confirm("Are you sure you want to delete this expense transaction?")) {
-            return; // Stop if user cancels
-        }
+        const token = localStorage.getItem('authToken');
+        if (!token) { setError("Authentication token not found."); return; }
+        if (!window.confirm("Are you sure you want to delete this expense transaction?")) { return; }
 
         try {
             const response = await fetch(`/api/transactions/${txId}`, {
                 method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
+                headers: { 'Authorization': `Bearer ${token}` },
             });
-
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ message: 'Deletion failed with non-JSON response' }));
                 throw new Error(errorData.message || `Failed to delete transaction: ${response.statusText}`);
             }
 
-            // Remove the transaction from the local state
             setAllExpenseTransactions(prevTxs => prevTxs.filter(tx => tx._id !== txId));
-
-            // Update the balance state locally after successful deletion
+            // Update balance state locally (add back the expense amount)
             setCurrentBalance(prevBalance => prevBalance !== null ? prevBalance + transactionAmount : null);
-
-            // Dispatch event to potentially update other components like Dashboard
-            window.dispatchEvent(new CustomEvent('transaction-deleted', { detail: { type: 'expense', amount: transactionAmount } }));
+            // Notify other components
+            window.dispatchEvent(new CustomEvent('transaction-deleted', { detail: { type: 'expense', amount: transactionAmount, id: txId } }));
+             // Dispatch general update too
+             window.dispatchEvent(new CustomEvent('transactions-updated'));
 
         } catch (err) {
             console.error("Error deleting transaction:", err);
@@ -220,14 +226,14 @@ function ExpensePage() {
         }
     };
 
-    // --- Chart Data Prep (Individual Transactions) ---
-    const chartData = allExpenseTransactions.map((tx, index) => ({
-        dateValue: tx.date ? new Date(tx.date) : new Date(0), // For sorting
-        dateLabel: tx.date ? new Date(tx.date).toLocaleDateString('en-CA') : `tx_${index}`, // For display
+    // --- Chart Data Prep ---
+    const chartData = allExpenseTransactions.map((tx) => ({
+        dateValue: tx.date ? new Date(tx.date) : new Date(0),
+        dateLabel: tx.date ? new Date(tx.date).toLocaleDateString('en-CA') : `tx_${tx._id}`, // Use ID for unique key
         amount: tx.amount,
         description: tx.description
     }))
-    .sort((a, b) => a.dateValue - b.dateValue); // Sort by date/time ascending
+    .sort((a, b) => a.dateValue - b.dateValue); // Sort ascending for chart
 
     // --- PDF Download Handler ---
     const handleDownloadPDF = () => {
@@ -236,14 +242,15 @@ function ExpensePage() {
         const tableRows = [];
         doc.setFontSize(18);
         doc.text(`Expense Transactions for ${username}`, 14, 22);
-        allExpenseTransactions.forEach(tx => {
+        // Use sorted transactions if needed for PDF consistency
+        [...allExpenseTransactions].sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(tx => {
             tableRows.push([
                 formatDate(tx.date), tx.description, tx.category, formatCurrency(tx.amount)
             ]);
         });
         autoTable(doc, {
             head: [tableColumn], body: tableRows, startY: 30, theme: 'grid',
-            styles: { fontSize: 10 }, headStyles: { fillColor: [220, 53, 69] }, margin: { top: 30 }
+            styles: { fontSize: 10 }, headStyles: { fillColor: [220, 53, 69] }, margin: { top: 30 } // Red header
         });
         const date = new Date();
         const dateStr = date.toLocaleDateString() + " " + date.toLocaleTimeString();
@@ -256,8 +263,7 @@ function ExpensePage() {
     if (loading) {
         return <div className={styles.dashboardPageContent}><p>Loading expense data...</p></div>;
     }
-    // Don't show page-level error for update failures, handle inline
-    if (error && !error.startsWith('Update Error:')) {
+    if (error && !error.startsWith('Update Error:') && !error.startsWith('Delete Error:')) {
         return <div className={styles.dashboardPageContent}><p style={{ color: 'red' }}>Error: {error}</p></div>;
     }
 
@@ -282,11 +288,7 @@ function ExpensePage() {
                                      <CartesianGrid strokeDasharray="3 3" />
                                      <XAxis dataKey="dateLabel" name="Date" />
                                      <YAxis tickFormatter={formatCurrency} width={80} />
-                                     <Tooltip formatter={(value, name, props) => {
-                                         const formattedValue = formatCurrency(value);
-                                         const description = props.payload.description || 'N/A';
-                                         return [formattedValue, `Amount (${description})`];
-                                     }} />
+                                     <Tooltip formatter={(value, name, props) => [formatCurrency(value), `Amount (${props.payload.description})`]}/>
                                      <Legend />
                                      <Line type="monotone" dataKey="amount" stroke="#F87171" name="Expense Amount" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                                  </LineChart>
@@ -301,9 +303,9 @@ function ExpensePage() {
                      {/* All Expense Transactions Section */}
                      <section className={`${styles.sectionBox} ${styles.transactionsSection}`} style={{gridColumn: '1 / -1'}}>
                          <div className={styles.sectionHeader}>
-                             <h2 className={styles.sectionTitle}>All Expense Transactions</h2>
+                             <h2 className={styles.sectionTitle}>Expense Transactions (Current Month)</h2>
                          </div>
-                          {error && error.startsWith('Update Error:') && (
+                         {(error && (error.startsWith('Update Error:') || error.startsWith('Delete Error:'))) && (
                            <p style={{ color: 'red', marginBottom: '1rem' }}>{error}</p>
                          )}
                          {allExpenseTransactions.length > 0 ? (
@@ -313,37 +315,66 @@ function ExpensePage() {
                                          key={tx._id}
                                          className={`${styles.transactionItem} ${styles.expenseBorder}`}
                                      >
-                                         {/* Column 1: Date */}
+                                         {/* Date */}
                                          <span style={{ gridColumn: '1 / 2' }} className={styles.transactionDate}>
                                              {formatDate(tx.date)}
                                          </span>
 
-                                         {/* Columns 2 & 3: Description and Category (Inputs or Spans) */}
                                          {editingTxId === tx._id ? (
-                                             <>
-                                                 <input
-                                                     type="text" name="description" value={editFormData.description}
-                                                     onChange={handleEditFormChange} className={styles.formInput}
-                                                     style={{ gridColumn: '2 / 3', fontSize: '0.9rem', padding: '0.4rem' }}
-                                                 />
-                                                 <input
-                                                     type="text" name="category" value={editFormData.category}
-                                                     onChange={handleEditFormChange} className={styles.formInput}
-                                                     style={{ gridColumn: '3 / 4', fontSize: '0.9rem', padding: '0.4rem' }}
-                                                 />
-                                             </>
+                                            <>
+                                                {/* Edit Inputs */}
+                                                <input
+                                                    type="text" name="description" value={editFormData.description}
+                                                    onChange={handleEditFormChange} className={styles.formInput}
+                                                    style={{ gridColumn: '2 / 3', fontSize: '0.9rem', padding: '0.4rem' }}
+                                                    required
+                                                />
+                                                <input
+                                                    type="text" name="category" value={editFormData.category}
+                                                    onChange={handleEditFormChange} className={styles.formInput}
+                                                    style={{ gridColumn: '3 / 4', fontSize: '0.9rem', padding: '0.4rem' }}
+                                                    required
+                                                />
+                                                 {/* Edit Emoji Picker Button and Container */}
+                                                 <div style={{ gridColumn: '1 / 2', gridRow: '2 / 3', marginTop: '0.5rem', position: 'relative', justifySelf:'start' }}>
+                                                   <button
+                                                     type="button"
+                                                     onClick={() => setShowEditEmojiPicker(prev => !prev)} // Toggle only this picker
+                                                     // ****** APPLY THE CSS CLASS HERE ******
+                                                     className={styles.emojiButton}
+                                                     // ************************************
+                                                     style={{fontSize: '1.2rem', padding: '0.4rem'}} // Keep inline style overrides if needed
+                                                     aria-label="Select icon"
+                                                   >
+                                                     {editFormData.emoji || '+'} {/* Default emoji */}
+                                                   </button>
+                                                   {showEditEmojiPicker && editingTxId === tx._id && ( // Show only if this row is editing AND picker toggled
+                                                     <div className={styles.emojiPickerContainer} style={{top: '100%', left: 0, right: 'auto'}}>
+                                                       <Picker
+                                                         onEmojiClick={(emojiData) => { // Renamed param
+                                                           setEditFormData(prev => ({ ...prev, emoji: emojiData.emoji }));
+                                                           setShowEditEmojiPicker(false); // Close picker on selection
+                                                         }}
+                                                         pickerStyle={{ width: '100%' }}
+                                                       />
+                                                     </div>
+                                                   )}
+                                                 </div>
+                                            </>
                                          ) : (
+                                            // Display Text
                                              <span style={{ gridColumn: '2 / 4' }} className={styles.transactionDesc}>
+                                                 {tx.emoji && <span className={styles.transactionEmoji}>{tx.emoji}</span>}
                                                  {tx.description} ({tx.category})
                                              </span>
                                          )}
 
-                                         {/* Column 4: Amount */}
+                                         {/* Amount */}
                                          <span style={{ gridColumn: '4 / 5' }} className={`${styles.transactionAmount} ${styles.expense}`}>
                                              {'-'} {formatCurrency(tx.amount)}
                                          </span>
 
-                                         {/* Column 5: Action Buttons */}
+                                         {/* Action Buttons */}
                                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', gridColumn: '5 / 6', alignItems: 'center' }}>
                                              {editingTxId === tx._id ? (
                                                  <>
@@ -352,11 +383,9 @@ function ExpensePage() {
                                                  </>
                                              ) : (
                                                  <>
-                                                     {/* Use FaEdit icon */}
                                                      <button onClick={() => handleEditClick(tx)} className={`${styles.actionButton} ${styles.editButton}`} aria-label="Edit transaction">
                                                          <FaEdit />
                                                      </button>
-                                                     {/* Use FaTrash icon */}
                                                      <button onClick={() => handleDelete(tx._id)} className={`${styles.actionButton} ${styles.deleteButton}`} aria-label="Delete transaction">
                                                          <FaTrash />
                                                      </button>
@@ -368,7 +397,7 @@ function ExpensePage() {
                              </div>
                          ) : (
                              <div className={styles.placeholderContent}>
-                                 No expense transactions found. Add some on the Dashboard!
+                                 No expense transactions found for the current month.
                              </div>
                          )}
                      </section>

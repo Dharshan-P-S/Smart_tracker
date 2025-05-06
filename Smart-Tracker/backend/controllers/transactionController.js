@@ -28,8 +28,8 @@ const getPlaceholderUserId = async () => {
 // @access  Public (Temporarily)
 const addTransaction = async (req, res) => { // <-- Make async
   try {
-    // Destructure all expected fields, including recurrence
-    const { type, amount, description, category, date, recurrence } = req.body;
+    // Destructure all expected fields, including recurrence and emoji
+    const { type, amount, description, category, emoji, date, recurrence } = req.body;
     const userId = await getPlaceholderUserId(); // <-- Use placeholder function
 
     // Validation
@@ -87,6 +87,7 @@ const addTransaction = async (req, res) => { // <-- Make async
       amount: parseFloat(amount),
       description,
       category,
+      emoji: emoji || '', // Add emoji, default to empty string if not provided
       date: date ? new Date(date) : new Date(),
       recurrence: recurrence || 'once', // Add recurrence, default to 'once' if not provided
     });
@@ -223,9 +224,10 @@ const updateTransaction = async (req, res) => { // <-- Make async
   try {
     const userId = await getPlaceholderUserId(); // <-- Use placeholder function
     const transactionId = req.params.id;
-    const { description, category } = req.body;
+    // Include emoji in the destructuring
+    const { description, category, emoji } = req.body;
 
-    // Basic validation
+    // Basic validation - Allow emoji to be optional (empty string is valid)
     if (!description || !category) {
       return res.status(400).json({ message: 'Description and category are required' });
     }
@@ -243,9 +245,11 @@ const updateTransaction = async (req, res) => { // <-- Make async
       return res.status(404).json({ message: 'Transaction not found or not authorized' });
     }
 
-    // Update the fields
+    // Update the fields, including emoji
     transaction.description = description;
     transaction.category = category;
+    // Set emoji, defaulting to empty string if null/undefined is passed
+    transaction.emoji = emoji !== undefined && emoji !== null ? emoji : '';
     // Optionally add validation for max length etc. here if needed
 
     const updatedTransaction = await transaction.save();

@@ -28,6 +28,12 @@ const transactionSchema = new mongoose.Schema({
     trim: true,
     maxlength: [50, 'Category cannot be more than 50 characters'],
   },
+  emoji: { // New field for storing the emoji
+    type: String,
+    trim: true,
+    maxlength: [5, 'Emoji cannot be more than 5 characters'], // Emojis are usually 1-2 chars, but allow for variation
+    default: '', // Default to empty string if no emoji is provided
+  },
   date: {
     type: Date,
     required: true,
@@ -50,4 +56,4 @@ const transactionSchema = new mongoose.Schema({
 // Optional: Indexing for faster queries based on user and date
 transactionSchema.index({ user: 1, date: -1 });
 
-module.exports = mongoose.model('Transaction', transactionSchema); 
+module.exports = mongoose.model('Transaction', transactionSchema);

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import styles from './Dashboard.module.css';
+import styles from './Dashboard.module.css'; // Make sure this path is correct
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import Picker from 'emoji-picker-react'; // Emoji picker library
 // Assuming you have a way to get the auth token (e.g., from context or local storage)
 // import { useAuth } from '../context/AuthContext'; // Example using context
 
@@ -36,6 +37,8 @@ function Dashboard() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
+  const [selectedEmoji, setSelectedEmoji] = useState(''); // New state for selected emoji
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false); // State to control emoji picker visibility
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]); // Default to today
   const [frequency, setFrequency] = useState('once');
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState(''); // New state for selected day of week
@@ -169,7 +172,7 @@ function Dashboard() {
   useEffect(() => {
     // ... (keep existing useEffect logic for logging)
     if (transactions && transactions.length > 0) {
-      console.log("Transactions fetched:", transactions); // Log raw transactions
+      // console.log("Transactions fetched:", transactions); // Log raw transactions
       const groupedByCategory = transactions.reduce((acc, tx) => {
         const categoryKey = tx.category || 'Uncategorized'; // Handle potential missing category
         if (!acc[categoryKey]) {
@@ -178,8 +181,8 @@ function Dashboard() {
         acc[categoryKey].push(tx);
         return acc;
       }, {});
-      console.log("Transactions Grouped by Category:");
-      console.table(groupedByCategory); // Use console.table for better readability if possible
+      // console.log("Transactions Grouped by Category:");
+      // console.table(groupedByCategory); // Use console.table for better readability if possible
     }
   }, [transactions]);
 
@@ -329,11 +332,11 @@ function Dashboard() {
                  setIsSubmitting(false);
                  return;
             }
-            const today = new Date();
-            const currentYear = today.getFullYear();
-            const currentMonth = today.getMonth(); // 0-indexed
+            const todayFreq = new Date(); // Renamed to avoid conflict with 'today' used above
+            const currentYearFreq = todayFreq.getFullYear();
+            const currentMonthFreq = todayFreq.getMonth(); // 0-indexed
             const dayOfWeekInt = parseInt(selectedDayOfWeek, 10);
-            const occurrences = countDaysInMonth(currentYear, currentMonth, dayOfWeekInt);
+            const occurrences = countDaysInMonth(currentYearFreq, currentMonthFreq, dayOfWeekInt);
             finalAmount = baseAmount * occurrences;
             break;
         case 'once':
@@ -357,7 +360,8 @@ function Dashboard() {
       type,
       amount: finalAmount,
       description,
-      category,
+      category, // Category will be just the text
+      emoji: selectedEmoji, // Send emoji as a separate field
       date,
       frequency,
     };
@@ -395,8 +399,10 @@ function Dashboard() {
         setAmount('');
         setDescription('');
         setCategory('');
+        setSelectedEmoji(''); // Reset selected emoji
         setFrequency('once');
         setDate(() => new Date().toISOString().split('T')[0]); // Reset date to today
+        setSelectedDayOfWeek(''); // Reset day of week
 
         // Refresh dashboard data
         await fetchDashboardData();
@@ -491,7 +497,9 @@ function Dashboard() {
     'Expenses': '#F87171',   // Red
     'Balance': '#7091E6',   // Blue
   };
-  const hasChartData = pieChartData.some(item => item.value > 0);
+  // Filter out entries with zero value before checking if there's data
+  const filteredPieData = pieChartData.filter(item => item.value > 0);
+  const hasChartData = filteredPieData.length > 0;
 
 
   // --- Render Logic ---
@@ -500,6 +508,9 @@ function Dashboard() {
   if (isPageLoading) {
       return <div className={styles.dashboardPageContent}><p>Loading dashboard data...</p></div>;
   }
+
+    // Debug log just before rendering
+    // console.log('Rendering with selectedEmoji:', selectedEmoji);
 
   return (
     <div className={styles.dashboardPageContent}>
@@ -510,7 +521,7 @@ function Dashboard() {
 
       {/* Summary Section */}
       <section className={styles.summarySection}>
-         {/* ... (Keep existing summary items with icons/images) ... */}
+         {/* Use img tags as originally provided */}
          <div className={styles.summaryItem}>
            <div className={styles.summaryTitle}>
               <img
@@ -564,7 +575,8 @@ function Dashboard() {
                       {new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                    </span>
                    <span className={styles.transactionDesc}>
-                     {tx.description} ({tx.category})
+                     {tx.emoji && <span className={styles.transactionEmoji}>{tx.emoji}</span>}
+                     {tx.description} ({tx.category}) {/* Kept category inline */}
                    </span>
                    <span className={`${styles.transactionAmount} ${tx.type === 'income' ? styles.income : styles.expense}`}>
                      {tx.type === 'income' ? '+' : '-'} {formatCurrency(tx.amount)}
@@ -585,11 +597,12 @@ function Dashboard() {
         <section className={`${styles.sectionBox} ${styles.chartSection}`}>
            <h2 className={styles.sectionTitle}>Financial Overview</h2>
             <div className={styles.chartContainer}>
-              {/* ... (Keep existing chart rendering logic) ... */}
-              <ResponsiveContainer width="100%" height={300}>
+             {hasChartData ? (
+               <ResponsiveContainer width="100%" height={300}>
                  <PieChart>
                    <Pie
-                     data={pieChartData}
+                     // Use filtered data for rendering
+                     data={filteredPieData}
                      cx="50%"
                      cy="50%"
                      labelLine={false}
@@ -598,7 +611,7 @@ function Dashboard() {
                      dataKey="value"
                      nameKey="name"
                    >
-                     {pieChartData.map((entry, index) => (
+                     {filteredPieData.map((entry, index) => (
                        <Cell key={`cell-${index}`} fill={colorMapping[entry.name]} />
                      ))}
                    </Pie>
@@ -606,8 +619,10 @@ function Dashboard() {
                    <Legend />
                  </PieChart>
                </ResponsiveContainer>
-              {!hasChartData && (
-                 <div className={styles.placeholderContent} style={{position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none'}}>No data to display in chart.</div>
+              ) : (
+                 <div className={styles.placeholderContent} style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                    No income, expense, or balance data yet.
+                 </div>
               )}
            </div>
        </section>
@@ -624,6 +639,33 @@ function Dashboard() {
             {/* Display submission errors specifically here */}
            {error && error.startsWith('Submit Error:') && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
            <form onSubmit={handleAddTransaction} className={styles.transactionForm}>
+              {/* Emoji Picker Section at the start of the form */}
+              <div className={styles.formGroup}>
+                <label htmlFor="emoji-picker-button">Icon:</label> {/* Point label to button ID */}
+                <div className={styles.emojiSelectorContainer}>
+                  <button
+                    id="emoji-picker-button"
+                    type="button"
+                    className={styles.emojiButton} // Uses the corrected CSS rule now
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    disabled={isSubmitting}
+                  >
+                    {selectedEmoji ? selectedEmoji : '+'} {/* This logic is correct */}
+                  </button>
+                  {showEmojiPicker && (
+                    <div className={styles.emojiPickerContainer}>
+                      <Picker onEmojiClick={(emojiData) => { // Renamed param for clarity
+                        // console.log('Emoji Clicked Data:', emojiData); // Debug log
+                        const emojiChar = emojiData.emoji;
+                        // console.log('>>> Emoji Clicked. Emoji Character:', emojiChar); // Debug log
+                        setSelectedEmoji(emojiChar);
+                        setShowEmojiPicker(false); // Close picker after selection
+                      }} />
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* ... (Keep existing form groups: type, date, amount, description, category) ... */}
                <div className={styles.formGroup}>
                <label htmlFor="type">Type:</label>
@@ -639,11 +681,12 @@ function Dashboard() {
                  onChange={(e) => setDate(e.target.value)}
                  required
                  className={styles.formInput} disabled={isSubmitting}
-                 min={(() => {
+                 // Use original min date logic based on profile or start of month
+                 min={registrationDate ? registrationDate : (() => {
                    const today = new Date();
                    const firstDayOfCurrentMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
                    return firstDayOfCurrentMonth.toISOString().split('T')[0];
-                 })()} // Set min date to the start of the current month (UTC)
+                 })()}
                  max={new Date().toISOString().split('T')[0]} // Set max date to today (local)
                />
              </div>
@@ -668,6 +711,7 @@ function Dashboard() {
              </div>
              <div className={styles.formGroup}>
                <label htmlFor="category">Category:</label>
+               {/* Use original input structure */}
                <input
                  type="text" id="category" value={category}
                  onChange={(e) => setCategory(e.target.value)}
@@ -735,28 +779,33 @@ function Dashboard() {
          {/* Spending Limits Section - Use limits state directly */}
          <section className={`${styles.sectionBox} ${styles.limitsSection}`}>
             <h2 className={styles.sectionTitle}>Spending Limits</h2>
-            {limits.length > 0 ? (
+            {loadingLimits ? (
+              <div className={styles.placeholderContent}>Loading limits...</div>
+            ) : limits.length > 0 ? (
               <>
                 <div className={styles.limitList}>
-                    {limits.slice(0, 4).map((limit) => {
+                    {limits.slice(0, 4).map((limit) => { // Keep slice(0, 4)
                         // Use fields directly from the API response (validated in fetchLimits)
                         const { amount: limitAmount, currentSpending: spentAmount, remainingAmount } = limit;
-                        const percentage = limitAmount > 0 ? (spentAmount / limitAmount) * 100 : 0;
+                        const percentage = limitAmount > 0 ? (spentAmount / limitAmount) * 100 : (spentAmount > 0 ? 101 : 0); // Handle 0 limit case
+                        const isOverspent = remainingAmount < 0 || limit.exceeded; // Use exceeded flag if available
 
                         return (
-                            <div key={limit._id} className={styles.limitItem}>
+                            <div key={limit._id || limit.category} className={styles.limitItem}>
                                 <div className={styles.limitDetails}>
                                     <span className={styles.limitCategory}>{limit.category}</span>
                                     <div className={styles.limitAmounts}>
                                         <span className={styles.limitSpent}>Spent: {formatCurrency(spentAmount)}</span>
                                         {/* Use remainingAmount directly from API */}
-                                        <span className={styles.limitRemaining} style={{ color: remainingAmount < 0 ? '#EF4444' : '#10B981' }}>
-                                            {remainingAmount >= 0 ? `Remaining: ${formatCurrency(remainingAmount)}` : `Overspent: ${formatCurrency(Math.abs(remainingAmount))}`}
+                                        <span className={styles.limitRemaining} style={{ color: isOverspent ? '#EF4444' : '#10B981' }}>
+                                            {isOverspent
+                                                ? `Overspent: ${formatCurrency(Math.abs(remainingAmount))}`
+                                                : `Remaining: ${formatCurrency(remainingAmount)}`}
                                         </span>
                                     </div>
                                 </div>
                                 {/* Message for exceeded limits */}
-                                {(limit.exceeded || remainingAmount <= 0) && (
+                                {isOverspent && (
                                     <div className={styles.limitExceededMessage}>
                                         Limit Reached!
                                     </div>
@@ -766,13 +815,17 @@ function Dashboard() {
                                 <div className={styles.progressBarContainer}>
                                     <div
                                         className={styles.progressBar}
-                                        style={{ width: `${Math.min(percentage, 100)}%`, backgroundColor: percentage > 100 ? '#EF4444' : '#4299e1' }}
+                                        style={{
+                                            width: `${Math.min(percentage, 100)}%`,
+                                            backgroundColor: isOverspent ? '#EF4444' : '#4299e1' // Keep original colors
+                                        }}
                                     ></div>
                                 </div>
                             </div>
                         );
                     })}
                 </div>
+                {/* Original See All Limits link */}
                 <Link to="/limits" className={`${styles.seeAllButton} ${styles.limitsSeeAll}`}>See All Limits</Link>
               </>
             ) : (
