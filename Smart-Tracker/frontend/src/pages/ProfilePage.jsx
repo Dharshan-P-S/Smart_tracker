@@ -3,41 +3,45 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import styles from './ProfilePage.module.css'; // Ensure this path is correct
 import { FaEdit, FaPen } from 'react-icons/fa';
+// Import BarChart components from recharts
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer
+} from 'recharts';
 
 function ProfilePage() {
   const [userProfile, setUserProfile] = useState(null);
   const [totalSavings, setTotalSavings] = useState(0);
+  const [monthlySavingsData, setMonthlySavingsData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // State for editing name
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState('');
-  const [isSubmittingName, setIsSubmittingName] = useState(false); // Specific submit state
+  const [isSubmittingName, setIsSubmittingName] = useState(false);
 
-  // State for email editing
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [otp, setOtp] = useState('');
   const [newEmail, setNewEmail] = useState('');
-  const [isSubmittingEmail, setIsSubmittingEmail] = useState(false); // Specific submit state for OTP send
+  const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
-  // State for profile picture
   const [profilePicture, setProfilePicture] = useState(null);
   const [isUploadingProfilePic, setIsUploadingProfilePic] = useState(false);
   const fileInputRef = useRef(null);
 
-  // State for full-screen modal
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Handlers for modal (Keep these as they are)
-  const openModal = () => { /* ... */ };
-  const closeModal = () => { /* ... */ };
-  const handleModalImageClick = (e) => { /* ... */ };
-  // --- useEffect and other handlers (keep them as in your last provided version) ---
-  // ... (fetchProfileData, handleEditName, handleSaveName, etc.) ...
-  // ... (ensure specific submitting states like isSubmittingName, isSubmittingEmail, isVerifyingOtp are used)
+  const openModal = () => { if (profilePicture) setIsModalOpen(true); };
+  const closeModal = () => setIsModalOpen(false);
+  const handleModalImageClick = (e) => e.stopPropagation();
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -46,20 +50,18 @@ function ProfilePage() {
       try {
         const token = localStorage.getItem('authToken');
         if (!token) {
-          throw new Error("Authentication token not found.");
+          toast.error("Authentication token not found. Please log in.");
+          setLoading(false);
+          return;
         }
+
         const profileResponse = await fetch('/api/users/me', {
           headers: { 'Authorization': `Bearer ${token}` },
         });
-
         if (!profileResponse.ok) {
-          let errorData;
-          try {
-            errorData = await profileResponse.json();
-          } catch (e) {
-            errorData = { message: profileResponse.statusText };
-          }
-          throw new Error(errorData.message || `Failed to fetch profile data: ${profileResponse.status}`);
+          let errorData = { message: `Error ${profileResponse.status}: ${profileResponse.statusText}`};
+          try { errorData = await profileResponse.json(); } catch (e) { /* ignore */ }
+          throw new Error(errorData.message || `Failed to fetch profile data`);
         }
         const profileData = await profileResponse.json();
         setUserProfile(profileData);
@@ -69,29 +71,25 @@ function ProfilePage() {
         const savingsResponse = await fetch('/api/transactions/savings/monthly', {
              headers: { 'Authorization': `Bearer ${token}` },
         });
-
         if (!savingsResponse.ok) {
-            let errorData;
-            try {
-                errorData = await savingsResponse.json();
-            } catch (e) {
-                errorData = { message: savingsResponse.statusText };
-            }
-             throw new Error(errorData.message || `Failed to fetch monthly savings data: ${savingsResponse.status}`);
+            let errorData = { message: `Error ${savingsResponse.status}: ${savingsResponse.statusText}`};
+            try { errorData = await savingsResponse.json(); } catch (e) { /* ignore */ }
+             throw new Error(errorData.message || `Failed to fetch monthly savings data`);
         }
-        const monthlySavingsData = await savingsResponse.json();
-        const calculatedTotalSavings = monthlySavingsData.reduce((sum, monthData) => sum + monthData.savings, 0);
+        const fetchedMonthlySavings = await savingsResponse.json();
+        setMonthlySavingsData(fetchedMonthlySavings || []);
+
+        const calculatedTotalSavings = (fetchedMonthlySavings || []).reduce((sum, monthData) => sum + (monthData.savings || 0), 0);
         setTotalSavings(calculatedTotalSavings);
 
       } catch (err) {
         console.error("Error fetching profile or savings data:", err);
-        toast.error(`Failed to load profile data: ${err.message}`);
-        setError(`Failed to load profile data: ${err.message}`);
+        toast.error(`Failed to load data: ${err.message}`);
+        setError(`Failed to load data: ${err.message}`);
       } finally {
         setLoading(false);
       }
     };
-
     fetchProfileData();
   }, []);
 
@@ -110,10 +108,7 @@ function ProfilePage() {
       const token = localStorage.getItem('authToken');
       const response = await fetch('/api/users/me/name', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
         body: JSON.stringify({ name: newName }),
       });
       if (!response.ok) {
@@ -133,8 +128,8 @@ function ProfilePage() {
     }
   };
 
-   const handleCancelEditName = () => {
-    setNewName(userProfile.name || '');
+  const handleCancelEditName = () => {
+    setNewName(userProfile?.name || '');
     setIsEditingName(false);
   };
 
@@ -150,7 +145,6 @@ function ProfilePage() {
         toast.error("Please enter the new email address first.");
         return;
     }
-    // Basic email format validation (optional, backend should validate too)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newEmail)) {
         toast.error("Please enter a valid email address.");
@@ -160,12 +154,10 @@ function ProfilePage() {
         toast.info("This is already your current email address.");
         return;
     }
-
     const confirmSend = window.confirm(`Send OTP to ${newEmail}?`);
     if (confirmSend) {
       setIsSubmittingEmail(true);
       try {
-        // const token = localStorage.getItem('authToken'); // Not needed if send-otp is public
         const response = await fetch('/api/users/send-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -176,7 +168,7 @@ function ProfilePage() {
           toast.error(errorData.message || 'Failed to send OTP');
           throw new Error(errorData.message || 'Failed to send OTP');
         }
-        toast.success("OTP sent successfully! Please check your inbox and spam folder.");
+        toast.success("OTP sent successfully! Please check your inbox (and spam folder).");
         setIsOtpSent(true);
       } catch (err) {
         console.error("Error sending OTP:", err);
@@ -188,8 +180,8 @@ function ProfilePage() {
   };
 
   const handleVerifyOtp = async () => {
-    if (!otp.trim()) {
-        toast.error("Please enter the OTP.");
+    if (!otp.trim() || otp.length !== 6) {
+        toast.error("Please enter a valid 6-digit OTP.");
         return;
     }
     setIsVerifyingOtp(true);
@@ -197,24 +189,15 @@ function ProfilePage() {
       const token = localStorage.getItem('authToken');
       const updateEmailResponse = await fetch('/api/users/me/update-email', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
         body: JSON.stringify({ newEmail: newEmail, otp: otp }),
       });
-
       if (!updateEmailResponse.ok) {
-        let errorData;
-        try {
-            errorData = await updateEmailResponse.json();
-        } catch (e) {
-            errorData = { message: updateEmailResponse.statusText || `HTTP error! status: ${updateEmailResponse.status}` };
-        }
+        let errorData = { message: `Error ${updateEmailResponse.status}: ${updateEmailResponse.statusText}`};
+        try { errorData = await updateEmailResponse.json(); } catch (e) { /* ignore */ }
         toast.error(errorData.message || 'Failed to update email');
         throw new Error(errorData.message || 'Failed to update email');
       }
-
       const updatedProfile = await updateEmailResponse.json();
       setUserProfile(updatedProfile);
       setIsEditingEmail(false);
@@ -242,20 +225,15 @@ function ProfilePage() {
   const handleProfilePicChange = async (event) => {
       const file = event.target.files[0];
       if (!file) return;
-      // Simple file type validation
       if (!file.type.startsWith('image/')) {
           toast.error("Please select an image file (e.g., JPG, PNG).");
           return;
       }
-      // Simple file size validation (e.g., 2MB)
       if (file.size > 2 * 1024 * 1024) {
           toast.error("Image size should be less than 2MB.");
           return;
       }
-
       setIsUploadingProfilePic(true);
-      // setError(null); // Error state is for general page load error
-
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onloadend = async () => {
@@ -264,13 +242,9 @@ function ProfilePage() {
               const token = localStorage.getItem('authToken');
               const response = await fetch('/api/users/me/profile-picture', {
                   method: 'PUT',
-                  headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${token}`,
-                  },
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
                   body: JSON.stringify({ profilePicture: base64String }),
               });
-
               if (!response.ok) {
                   const errorData = await response.json();
                   toast.error(errorData.message || 'Failed to upload profile picture');
@@ -302,17 +276,25 @@ function ProfilePage() {
   };
 
   if (loading) {
-    return <div className={styles.profileContainer}><p>Loading profile data...</p></div>;
+    return <div className={styles.profileContainer}><p className={styles.loadingText}>Loading profile data...</p></div>;
   }
 
   if (error && !userProfile) {
-    return <div className={styles.profileContainer}><p className={styles.error}>Error: {error}</p></div>;
+    return <div className={styles.profileContainer}><p className={styles.error}>{error}</p></div>;
   }
 
   if (!userProfile) {
       return <div className={styles.profileContainer}><p>User profile not found. Please try logging in again.</p></div>;
   }
 
+  const chartData = (monthlySavingsData || []).map(item => ({
+    name: new Date(item.month).toLocaleString('default', { month: 'short', year: 'numeric' }),
+    Savings: parseFloat((item.savings || 0).toFixed(2)),
+  })).sort((a, b) => {
+    const dateA = new Date(a.name.replace(/(\w{3})\s(\d{4})/, '$1 1, $2'));
+    const dateB = new Date(b.name.replace(/(\w{3})\s(\d{4})/, '$1 1, $2'));
+    return dateA - dateB;
+  });
 
   return (
     <div className={styles.profileContainer}>
@@ -321,119 +303,70 @@ function ProfilePage() {
       <section className={styles.profileSection}>
         <div className={styles.profilePicContainer}>
           {profilePicture ? (
-            <img
-                src={profilePicture}
-                alt="Profile"
-                className={styles.profilePic}
-                onClick={openModal}
-            />
+            <img src={profilePicture} alt="Profile" className={styles.profilePic} onClick={openModal}/>
           ) : (
             <div className={styles.profilePicPlaceholder}>No Picture</div>
           )}
-          <input
-              type="file"
-              accept="image/*"
-              onChange={handleProfilePicChange}
-              style={{ display: 'none' }}
-              id="profilePicInput"
-              ref={fileInputRef}
-              disabled={isUploadingProfilePic}
-          />
+          <input type="file" accept="image/*" onChange={handleProfilePicChange} style={{ display: 'none' }} id="profilePicInput" ref={fileInputRef} disabled={isUploadingProfilePic}/>
           {profilePicture && (
-              <button
-                  className={styles.editProfilePicButton}
-                  onClick={handleEditProfilePicClick}
-                  disabled={isUploadingProfilePic}
-                  title="Change profile picture"
-              >
-                  <FaEdit />
-              </button>
+            <button className={styles.editProfilePicButton} onClick={handleEditProfilePicClick} disabled={isUploadingProfilePic} title="Change profile picture">
+              <FaEdit />
+            </button>
           )}
-           {!profilePicture && (
-               <label htmlFor="profilePicInput" className={`${styles.button} ${styles.addProfilePicButton}`} disabled={isUploadingProfilePic}>
-                   {isUploadingProfilePic ? 'Uploading...' : 'Add Picture'}
-               </label>
-           )}
+          {!profilePicture && (
+            <label htmlFor="profilePicInput" className={`${styles.button} ${styles.addProfilePicButton}`} disabled={isUploadingProfilePic}>
+              {isUploadingProfilePic ? 'Uploading...' : 'Add Picture'}
+            </label>
+          )}
         </div>
 
         <div className={styles.profileDetails}>
-          {/* --- Name Field --- */}
           <div className={styles.detailItem}>
             <span className={styles.detailLabel}>Name:</span>
             {isEditingName ? (
               <div className={styles.editFieldContainer}>
-                <input
-                  type="text"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  className={styles.editInput}
-                  disabled={isSubmittingName}
-                  placeholder="Enter your name"
-                />
+                <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} className={styles.editInput} disabled={isSubmittingName} placeholder="Enter your name"/>
                 <div className={styles.actionButtonsContainer}>
                   <button onClick={handleSaveName} className={styles.saveButton} disabled={isSubmittingName}>
                     {isSubmittingName ? "Saving..." : "Save"}
                   </button>
-                  <button onClick={handleCancelEditName} className={styles.cancelButton} disabled={isSubmittingName}>
-                    Cancel
-                  </button>
+                  <button onClick={handleCancelEditName} className={styles.cancelButton} disabled={isSubmittingName}>Cancel</button>
                 </div>
               </div>
             ) : (
               <>
-                <span className={styles.detailValue}>{userProfile.name}</span>
+                <span className={styles.detailValue}>{userProfile.name || 'N/A'}</span>
                 <button onClick={handleEditName} className={styles.editButtonInline} title="Edit name"><FaPen /></button>
               </>
             )}
           </div>
 
-          {/* --- Email Field --- */}
           <div className={styles.detailItem}>
             <span className={styles.detailLabel}>Email:</span>
             {isEditingEmail ? (
               <div className={styles.editFieldContainer}>
                 {!isOtpSent ? (
-                  <div className={styles.editFieldInputAndActions}> {/* Group input and Send OTP button */}
-                    <input
-                      type="email"
-                      placeholder="Enter new email"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      className={styles.editInput}
-                      disabled={isSubmittingEmail}
-                    />
+                  <div className={styles.editFieldInputAndActions}>
+                    <input type="email" placeholder="Enter new email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className={styles.editInput} disabled={isSubmittingEmail}/>
                     <button onClick={handleSendOtp} className={styles.actionButton} disabled={isSubmittingEmail}>
                       {isSubmittingEmail ? "Sending..." : "Send OTP"}
                     </button>
                   </div>
                 ) : (
-                  <div className={styles.editFieldInputAndActions}> {/* Group input and Verify button */}
-                    <input
-                      type="text"
-                      placeholder="Enter OTP"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      className={styles.editInput}
-                      disabled={isVerifyingOtp}
-                      maxLength={6} // Assuming 6-digit OTP
-                    />
+                  <div className={styles.editFieldInputAndActions}>
+                    <input type="text" placeholder="Enter OTP" value={otp} onChange={(e) => setOtp(e.target.value)} className={styles.editInput} disabled={isVerifyingOtp} maxLength={6}/>
                     <button onClick={handleVerifyOtp} className={styles.actionButton} disabled={isVerifyingOtp}>
                       {isVerifyingOtp ? "Verifying..." : "Verify & Update"}
                     </button>
                   </div>
                 )}
-                {/* Cancel button is always present in edit mode for email, but outside the immediate input/action group */}
-                <div className={styles.actionButtonsContainer} style={{ justifyContent: 'flex-end', marginTop: !isOtpSent ? '0' : '10px' }}>
-                    {/* On larger screens, this cancel button might look better aligned with Save/Verify */}
-                    {/* Or it can be a standalone smaller button */}
-                    <button onClick={handleCancelEditEmail} className={styles.cancelButton} disabled={isSubmittingEmail || isVerifyingOtp}>
-                        Cancel
-                    </button>
+                <div className={styles.actionButtonsContainer} style={{ justifyContent: 'flex-end', marginTop: isOtpSent ? '10px' : '0' }}>
+                  <button onClick={handleCancelEditEmail} className={styles.cancelButton} disabled={isSubmittingEmail || isVerifyingOtp}>Cancel</button>
                 </div>
               </div>
             ) : (
               <>
-                <span className={styles.detailValue}>{userProfile.email}</span>
+                <span className={styles.detailValue}>{userProfile.email || 'N/A'}</span>
                 <button onClick={handleEditEmail} className={styles.editButtonInline} title="Edit email"><FaPen /></button>
               </>
             )}
@@ -453,15 +386,70 @@ function ProfilePage() {
         </div>
       </section>
 
-      {/* Full-screen modal for profile picture */}
+      <section className={`${styles.profileSection} ${styles.chartLayoutOverride}`}>
+        <h2 className={styles.sectionTitle}>Monthly Savings Trend</h2>
+        {monthlySavingsData && monthlySavingsData.length > 0 ? (
+          <div className={styles.chartContainer}>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart
+                data={chartData}
+                margin={{ top: 5, right: 30, left: 0, bottom: 30 }} // Increased bottom margin for labels
+                // barCategoryGap="20%" // Optional: Adjust gap between category bands
+              >
+                <defs>
+                  <linearGradient id="colorSavings" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--chart-bar-fill)" stopOpacity={0.9}/>
+                    <stop offset="95%" stopColor="var(--chart-bar-fill)" stopOpacity={0.5}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid-color, #ccc)" />
+                <XAxis
+                  dataKey="name"
+                  stroke="var(--chart-axis-color, #666)"
+                  interval={0} // Show all labels; use "preserveStartEnd" if they overlap
+                  // textAnchor="middle" // Default for horizontal, usually not needed
+                  // dy={5} // Optional: small vertical offset for labels if needed
+                  // tick={{ fontSize: 11 }} // Optional: reduce font size if labels are long
+                />
+                <YAxis
+                  stroke="var(--chart-axis-color, #666)"
+                  tickFormatter={(value) => `₹${value}`}
+                  // domain={['auto', 'auto']} // Or specify a domain like [0, 'dataMax + 100']
+                  // allowDataOverflow={true}
+                />
+                <Tooltip
+                    contentStyle={{
+                        backgroundColor: 'var(--tooltip-bg, #fff)',
+                        borderColor: 'var(--tooltip-border, #ccc)',
+                        color: 'var(--tooltip-text, #333)',
+                        borderRadius: '4px',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                    }}
+                    formatter={(value, name) => [`₹${value.toFixed(2)}`, name]}
+                    cursor={{ fill: 'rgba(204,204,204,0.2)' }}
+                />
+                <Legend wrapperStyle={{ color: 'var(--chart-legend-color, #333)', paddingTop: '10px'}}/>
+                <Bar
+                  dataKey="Savings"
+                  fill="url(#colorSavings)"
+                  barSize={40}
+                  // barSize={40} // Option 1: Fixed bar size (Recharts centers this in the band)
+                  // maxBarSize={50} // Option 2: Responsive with a cap
+                                    // Option 3: No barSize or maxBarSize (Recharts calculates width, usually best for centering)
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className={styles.noDataText}>No monthly savings data available to display chart.</p>
+        )}
+      </section>
+
       {isModalOpen && (
         <div className={styles.modalOverlay} onClick={closeModal}>
             <div className={styles.modalContent} onClick={handleModalImageClick}>
-                <img
-                    src={profilePicture}
-                    alt="Profile"
-                    className={styles.modalImage}
-                />
+                <img src={profilePicture} alt="Profile (Full screen)" className={styles.modalImage}/>
             </div>
         </div>
       )}

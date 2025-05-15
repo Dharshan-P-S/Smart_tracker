@@ -1,369 +1,439 @@
 /* ProfilePage.module.css */
 
+:root {
+  --chart-grid-color: #e0e0e0;
+  --chart-axis-color: #666666;
+  --chart-legend-color: #333333;
+  --chart-bar-fill: #82ca9d;
+  --tooltip-bg: #ffffff;
+  --tooltip-border: #cccccc;
+  --tooltip-text: #333333;
+
+  --text-primary-light: #2d3748;
+  --text-secondary-light: #718096;
+  --box-bg-light: #ffffff;
+  --border-light: #e2e8f0;
+  --input-bg-light: #ffffff;
+  --primary-accent-light: #5848af;
+  --primary-accent-hover-light: #392f70;
+  --button-text-light: #ffffff;
+  --bg-light: #f7fafc;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --chart-grid-color: #4a5568;
+    --chart-axis-color: #a0aec0;
+    --chart-legend-color: #e2e8f0;
+    --chart-bar-fill: #4fd1c5;
+    --tooltip-bg: #2d3748;
+    --tooltip-border: #4a5568;
+    --tooltip-text: #e2e8f0;
+
+    --text-primary-dark: #e2e8f0;
+    --text-secondary-dark: #a0aec0;
+    --box-bg-dark: #2d3748;
+    --border-dark: #4a5568;
+    --input-bg-dark: #1a202c;
+    --primary-accent-dark: #7f9cf5;
+    --primary-accent-hover-dark: #667eea;
+    --button-text-dark: #1a202c;
+    --bg-dark: #1a202c;
+  }
+}
+
 .profileContainer {
-  /* Similar to dashboardPageContent */
-  padding: 2rem 1rem; /* Add padding around the whole page content */
-  max-width: 1000px; /* Keep a reasonable max-width */
-  margin: 0 auto; /* Center the container */
+  padding: 2rem 1rem;
+  max-width: 1000px;
+  margin: 2rem auto;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem; /* Consistent gap */
+  gap: 2rem;
   width: 90%;
 }
 
+.loadingText, .noDataText {
+  text-align: center;
+  font-size: 1.1rem;
+  color: var(--text-secondary-light);
+  padding: 2rem;
+}
+
 .pageTitle {
-  /* Similar to dashboard pageTitle */
-  font-size: 1.8rem;
+  font-size: 2rem;
   font-weight: 600;
   color: var(--text-primary-light);
-  margin-bottom: 0.5rem;
-  text-align: center; /* Center the title */
+  margin-bottom: 1rem;
+  text-align: center;
 }
 
 .profileSection {
-  /* Similar to sectionBox */
   background-color: var(--box-bg-light);
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   border: 1px solid var(--border-light);
-  transition: background-color 0.3s ease, border-color 0.3s ease;
   display: flex;
-  flex-direction: column; /* Default to column on smaller screens */
-  align-items: center; /* Center items in column layout */
-  gap: 30px; /* Space between profile pic and details */
+  flex-direction: column; /* Default to column */
+  align-items: center;
+  gap: 2rem;
+}
+
+.chartLayoutOverride {
+  flex-direction: column !important;
+  align-items: center;
+  gap: 1.5rem;
 }
 
 .profilePicContainer {
-  position: relative; /* Needed for absolute positioning of the edit button */
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 1rem;
 }
 
 .profilePic {
-  width: 150px;
-  height: 150px;
+  width: 160px;
+  height: 160px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid var(--border-light); /* Use theme variable */
-  cursor: pointer; /* Add cursor pointer */
+  border: 4px solid var(--primary-accent-light);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .profilePicPlaceholder {
-  width: 150px;
-  height: 150px;
+  width: 160px;
+  height: 160px;
   border-radius: 50%;
-  background-color: var(--bg-light); /* Use theme variable */
+  background-color: var(--border-light);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary-light); /* Use theme variable */
-  font-size: 0.9em;
+  color: var(--text-secondary-light);
+  font-size: 1rem;
   text-align: center;
-  border: 3px solid var(--border-light); /* Use theme variable */
+  border: 3px dashed var(--primary-accent-light);
 }
 
 .editProfilePicButton {
     position: absolute;
-    bottom: 5px; /* Adjust as needed for positioning */
-    right: 5px; /* Adjust as needed for positioning */
-    padding: 8px; /* Make it a bit more touch-friendly */
-    background-color: rgba(88, 72, 175, 0.8); /* Semi-transparent theme color */
+    bottom: 10px;
+    right: 10px;
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.6);
     color: white;
     border: none;
-    border-radius: 50%; /* Circular button */
-    cursor: pointer; /* Ensure cursor pointer */
-    font-size: 0.9em; /* Adjust icon size */
-    line-height: 0; /* Helps center icon in circle */
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: background-color 0.2s ease;
-    z-index: 10; /* Ensure it's above the image */
+    z-index: 10;
 }
-
 .editProfilePicButton:hover {
-    background-color: rgba(88, 72, 175, 1);
+    background-color: rgba(0, 0, 0, 0.8);
 }
-
-.editProfilePicButton:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
-}
-
-.addProfilePicButton {
-  margin-top: 10px;
-  padding: 8px 15px;
-  background-color: var(--primary-accent-light, #3b82f6); /* Use theme variable */
-  color: var(--button-text-light, #ffffff); /* Use theme variable */
-  border: none;
-  border-radius: 5px;
-  cursor: pointer; /* Ensure cursor pointer */
-  font-size: 0.9em;
-  transition: background-color 0.2s ease;
-}
-
-.addProfilePicButton:hover {
-  background-color: var(--primary-accent-hover-light, #2563eb); /* Use theme variable */
-}
-
-.addProfilePicButton:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
-}
-
 
 .profileDetails {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 15px; /* Space between detail items */
+  gap: 1rem;
 }
 
 .detailItem {
   display: flex;
-  /* align-items: center; Remove default center alignment to allow flex-start for edit container */
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border-light); /* Use theme variable */
-  gap: 10px; /* Gap between label and value/edit container */
-  position: relative; /* For absolute positioning of edit button if needed */
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-light);
+  gap: 1rem;
+  align-items: flex-start;
+}
+.detailItem:last-child {
+  border-bottom: none;
 }
 
 .detailLabel {
-  font-weight: bold;
-  color: var(--text-secondary-light); /* Use theme variable */
-  min-width: 100px; /* Align labels */
-  flex-shrink: 0; /* Prevent label from shrinking */
-  padding-top: 6px; /* Align with input field baseline */
+  font-weight: 600;
+  color: var(--text-secondary-light);
+  min-width: 110px;
+  flex-shrink: 0;
+  padding-top: 0.5rem;
+  font-size: 0.95rem;
 }
 
 .detailValue {
   flex-grow: 1;
-  color: var(--text-primary-light); /* Use theme variable */
-  padding-top: 6px; /* Align with input field baseline */
-  word-break: break-all; /* Prevent long emails/names from breaking layout */
+  color: var(--text-primary-light);
+  padding-top: 0.5rem;
+  word-break: break-all;
+  font-size: 0.95rem;
 }
 
-/* Container for when a field is in edit mode */
 .editFieldContainer {
-  flex-grow: 1; /* Take remaining space */
+  flex-grow: 1;
   display: flex;
-  flex-direction: column; /* Stack input and buttons vertically on small screens */
-  gap: 10px;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .editFieldInputAndActions {
   display: flex;
-  align-items: center; /* Align input and first button (e.g., Send OTP) */
-  gap: 10px;
+  align-items: center;
+  gap: 0.75rem;
   width: 100%;
 }
 
 .editInput {
-  flex-grow: 1; /* Input takes available space */
-  padding: 8px;
+  flex-grow: 1;
+  padding: 0.6rem 0.75rem;
   border: 1px solid var(--border-light);
-  border-radius: 4px;
-  background-color: var(--input-bg-light, var(--bg-light));
+  border-radius: 6px;
+  background-color: var(--input-bg-light);
   color: var(--text-primary-light);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+}
+.editInput:focus {
+  outline: none;
+  border-color: var(--primary-accent-light);
+  /* For box-shadow with CSS variable, you'd need to define the RGB components of primary-accent-light separately */
+  /* box-shadow: 0 0 0 2px rgba(var(--primary-accent-light-rgb), 0.2); */
+  box-shadow: 0 0 0 2px rgba(88, 72, 175, 0.2); /* Fallback */
 }
 
 .actionButtonsContainer {
   display: flex;
-  gap: 10px;
-  /* justify-content: flex-end; Will be applied via specific edit mode logic */
-  width: 100%; /* For small screens when buttons stack */
+  gap: 0.75rem;
+  width: 100%;
 }
 
-/* Individual Buttons */
-.button { /* General button class for common properties */
-  padding: 8px 12px;
-  border: none;
-  border-radius: 4px;
+.button {
+  padding: 0.6rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 0.9em;
-  transition: background-color 0.2s ease, opacity 0.2s ease;
-  white-space: nowrap; /* Prevent text wrapping */
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
+  white-space: nowrap;
+  text-align: center;
 }
-
+.button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.button:active:not(:disabled) {
+  transform: translateY(0px);
+}
 .button:disabled {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
-.editButtonInline { /* The small pen icon button */
+.editButtonInline {
+   
   background-color: transparent;
-  color: var(--primary-accent-light, #3b82f6);
+  color: var(--primary-accent-light);
   border: none;
-  padding: 5px;
-  margin-left: auto; /* Pushes the button to the far right */
-  cursor: pointer;
-  font-size: 1em; /* Adjust icon size */
-  line-height: 1;
+  padding: 0.3rem;
+  margin-left: auto;
+  font-size: 1.1rem;
 }
-.editButtonInline:hover {
-  color: var(--primary-accent-hover-light, #2563eb);
+.editButtonInline:hover:not(:disabled) {
+  color: var(--primary-accent-hover-light);
+  /* background-color: rgba(var(--primary-accent-light-rgb), 0.1); */
+  background-color: rgba(88, 72, 175, 0.1); /* Fallback */
 }
 
 .saveButton {
-  background-color: #28a745; /* Green */
+   
+  background-color: #28a745;
   color: white;
+  border-color: #28a745;
 }
 .saveButton:hover:not(:disabled) {
   background-color: #218838;
+  border-color: #1e7e34;
 }
 
 .cancelButton {
-  background-color: #dc3545; /* Red */
+   
+  background-color: #dc3545;
   color: white;
+  border-color: #dc3545;
 }
 .cancelButton:hover:not(:disabled) {
   background-color: #c82333;
+  border-color: #bd2130;
 }
 
-.actionButton { /* For Send OTP or other primary actions in edit mode */
-  background-color: var(--primary-accent-light, #5848af); /* Theme accent */
-  color: var(--button-text-light, #ffffff);
+.actionButton {
+   
+  background-color: var(--primary-accent-light);
+  color: var(--button-text-light);
+  border-color: var(--primary-accent-light);
 }
 .actionButton:hover:not(:disabled) {
-  background-color: var(--primary-accent-hover-light, #392f70);
+  background-color: var(--primary-accent-hover-light);
+  border-color: var(--primary-accent-hover-light);
 }
 
+.addProfilePicButton {
+   
+  background-color: var(--primary-accent-light);
+  color: var(--button-text-light);
+  border-color: var(--primary-accent-light);
+  display: inline-block;
+  margin-top: 0;
+}
+.addProfilePicButton:hover:not(:disabled) {
+  background-color: var(--primary-accent-hover-light);
+}
 
 .error {
-    color: red;
+    color: #e53e3e;
     text-align: center;
-    margin-top: 20px;
+    margin: 1rem 0;
+    font-weight: 500;
 }
 
-/* Responsive adjustments */
-@media (min-width: 768px) { /* Adjust breakpoint as needed */
-  .profileSection {
-    flex-direction: row; /* Row layout on larger screens */
-    align-items: flex-start; /* Align items to the top in row layout */
-  }
+.sectionTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary-light);
+  text-align: center;
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
 
+.chartContainer {
+  width: 100%;
+  max-width: 800px;
+  height: 350px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .profileSection:not(.chartLayoutOverride) {
+    flex-direction: row;
+    align-items: flex-start;
+  }
   .profilePicContainer {
-    flex-shrink: 0; /* Prevent shrinking */
-    /* margin-right: 30px; Space between pic and details, replaced by gap on profileSection */
+    flex-shrink: 0;
   }
-
   .profileDetails {
     flex-grow: 1;
   }
-
   .editFieldContainer {
-    flex-direction: row; /* Input and buttons side-by-side */
-    align-items: center; /* Vertically align input and buttons */
+    flex-direction: row;
+    align-items: center;
   }
-
   .editFieldInputAndActions {
-    flex-grow: 1; /* Allow this to take space before actionButtonsContainer */
+    flex-grow: 1;
   }
-
   .actionButtonsContainer {
-    /* This container will now hold Save/Cancel or Verify/Cancel */
-    margin-left: auto; /* Pushes this group to the right */
-    width: auto; /* Reset width */
-    flex-shrink: 0; /* Prevent button group from shrinking */
+    margin-left: auto;
+    width: auto;
+    flex-shrink: 0;
+    justify-content: flex-end;
+  }
+  .detailItem .actionButtonsContainer {
+     margin-top: 0;
   }
 }
 
-/* Full-screen modal styles */
 .modalOverlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.8); /* Dark semi-transparent background */
+    background-color: rgba(0, 0, 0, 0.85);
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1000; /* Ensure it's on top of everything */
+    z-index: 1000;
+    padding: 1rem;
+    box-sizing: border-box;
 }
-
 .modalContent {
-    opacity: 1;
+    background-color: var(--box-bg-light);
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .modalImage {
-    max-width: 90%;
-    max-height: 90vh;
+    max-width: 100%;
+    max-height: calc(90vh - 2rem);
     object-fit: contain;
+    border-radius: 4px;
 }
 
-/* Dark Mode (Keep your existing dark mode styles, adjust if needed based on new classes) */
+/* Dark Mode specific overrides */
 @media (prefers-color-scheme: dark) {
-  .pageTitle {
-    color: var(--text-primary-dark);
-  }
-  .profileSection {
+  .loadingText, .noDataText { color: var(--text-secondary-dark); }
+  .pageTitle, .sectionTitle { color: var(--text-primary-dark); }
+  .profileSection, .chartLayoutOverride {
     background-color: var(--box-bg-dark);
     border-color: var(--border-dark);
   }
-  .profilePic {
-    border-color: var(--border-dark);
-  }
+  .profilePic { border-color: var(--primary-accent-dark); }
   .profilePicPlaceholder {
-    background-color: var(--bg-dark);
+    background-color: var(--border-dark);
     color: var(--text-secondary-dark);
-    border-color: var(--border-dark);
+    border-color: var(--primary-accent-dark);
   }
-  .editProfilePicButton {
-    background-color: rgba(96, 165, 250, 0.8); /* Example: Dark theme accent */
-  }
-  .editProfilePicButton:hover {
-    background-color: rgba(96, 165, 250, 1);
-  }
-  .addProfilePicButton {
-    background-color: var(--primary-accent-dark, #60a5fa);
-    color: var(--button-text-dark, #1a202c);
-  }
-  .addProfilePicButton:hover {
-    background-color: var(--primary-accent-hover-dark, #3b82f6);
-  }
-  .detailItem {
-    border-bottom-color: var(--border-dark);
-  }
-  .detailLabel {
-    color: var(--text-secondary-dark);
-  }
-  .detailValue {
-    color: var(--text-primary-dark);
-  }
+  .editProfilePicButton { background-color: rgba(255, 255, 255, 0.2); }
+  .editProfilePicButton:hover { background-color: rgba(255, 255, 255, 0.4); }
+  .detailItem { border-bottom-color: var(--border-dark); }
+  .detailLabel { color: var(--text-secondary-dark); }
+  .detailValue { color: var(--text-primary-dark); }
   .editInput {
     border-color: var(--border-dark);
-    background-color: var(--input-bg-dark, #2d3748);
+    background-color: var(--input-bg-dark);
     color: var(--text-primary-dark);
   }
-  .editButtonInline {
-    color: var(--primary-accent-dark, #60a5fa);
+  .editInput:focus {
+    border-color: var(--primary-accent-dark);
+    /* box-shadow: 0 0 0 2px rgba(var(--primary-accent-dark-rgb), 0.2); */
+    box-shadow: 0 0 0 2px rgba(127, 156, 245, 0.2); /* Fallback */
   }
-  .editButtonInline:hover {
-    color: var(--primary-accent-hover-dark, #3b82f6);
+  .editButtonInline { color: var(--primary-accent-dark); }
+  .editButtonInline:hover:not(:disabled) {
+    color: var(--primary-accent-hover-dark);
+    /* background-color: rgba(var(--primary-accent-dark-rgb), 0.1); */
+    background-color: rgba(127, 156, 245, 0.1); /* Fallback */
   }
   .saveButton {
-    background-color: #34D399; /* Keep or adjust for dark mode */
-    /* color: var(--text-primary-dark); */
+    background-color: #2f855a;
+    border-color: #2f855a;
+    color: #e2e8f0;
   }
-  .saveButton:hover:not(:disabled) {
-    background-color: #10B981;
-  }
+  .saveButton:hover:not(:disabled) { background-color: #276749; border-color: #276749; }
   .cancelButton {
-    background-color: #F87171; /* Lighter red for dark mode */
-    /* color: var(--text-primary-dark); */
+    background-color: #c53030;
+    border-color: #c53030;
+    color: #e2e8f0;
   }
-  .cancelButton:hover:not(:disabled) {
-    background-color: #EF4444;
+  .cancelButton:hover:not(:disabled) { background-color: #9b2c2c; border-color: #9b2c2c; }
+  .actionButton, .addProfilePicButton {
+    background-color: var(--primary-accent-dark);
+    color: var(--button-text-dark);
+    border-color: var(--primary-accent-dark);
   }
-  .actionButton {
-    background-color: var(--primary-accent-dark, #60a5fa);
-    color: var(--button-text-dark, #1a202c);
+  .actionButton:hover:not(:disabled), .addProfilePicButton:hover:not(:disabled) {
+    background-color: var(--primary-accent-hover-dark);
+    border-color: var(--primary-accent-hover-dark);
   }
-  .actionButton:hover:not(:disabled) {
-    background-color: var(--primary-accent-hover-dark, #3b82f6);
-  }
+  .error { color: #fc8181; }
+  .modalContent { background-color: var(--box-bg-dark); }
 }
