@@ -805,9 +805,14 @@ function Dashboard() {
                                     </div>
                                 </div>
                                 {/* Message for exceeded limits */}
-                                {isOverspent && (
+                                {remainingAmount === 0 && (
                                     <div className={styles.limitExceededMessage}>
                                         Limit Reached!
+                                    </div>
+                                )}
+                                {remainingAmount < 0 && (
+                                    <div className={styles.limitExceededMessage}>
+                                        Limit Crossed!
                                     </div>
                                 )}
                                 <div className={styles.limitTotal}>Limit: {formatCurrency(limitAmount)}</div>

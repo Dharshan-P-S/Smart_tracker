@@ -48,38 +48,7 @@ const addTransaction = async (req, res) => { // <-- Make async
         return res.status(400).json({ message: 'Invalid recurrence value' });
     }
 
-    // Check for expense limit before saving
-    if (type === 'expense') {
-        const limit = await Limit.findOne({ user: userId, category });
-
-        if (limit) {
-            // Calculate current spending for the category in the current month
-            const now = new Date();
-            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-            startOfMonth.setHours(0, 0, 0, 0);
-
-            const spendingResult = await Transaction.aggregate([
-                {
-                    $match: {
-                        user: userId,
-                        type: 'expense',
-                        category: { $regex: new RegExp(`^${category}$`, 'i') }, // Case-insensitive match
-                        date: { $gte: startOfMonth } // Transactions from the start of the current month
-                    }
-                },
-                { $group: { _id: null, totalSpending: { $sum: '$amount' } } }
-            ]);
-
-            const currentSpending = spendingResult.length > 0 ? spendingResult[0].totalSpending : 0;
-            const potentialSpending = currentSpending + parseFloat(amount);
-
-            if (potentialSpending > limit.amount) {
-                return res.status(400).json({
-                    message: `Adding this transaction would exceed your monthly limit for '${category}'. Current spending: ₹${currentSpending.toFixed(2)}, Limit: ₹${limit.amount.toFixed(2)}`
-                });
-            }
-        }
-    }
+    // Remove limit check
 
     const newTransaction = new Transaction({
       user: userId, // <-- Use fetched placeholder ID
