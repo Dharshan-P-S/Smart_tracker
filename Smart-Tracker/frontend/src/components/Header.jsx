@@ -131,7 +131,7 @@ function Header() {
         {/* Logo Container - Now after toggle */}
         <div className={styles.logoContainer}>
           <Link to="/dashboard" className={styles.logoLink} onClick={closeMenu}>
-              <h1 className={styles.logo}>Dashboard</h1>
+              <h1 className={styles.logo}>Smart Finance Tracker</h1>
           </Link>
         </div>
       </header>
