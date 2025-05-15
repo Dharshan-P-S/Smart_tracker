@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { Link } from 'react-router-dom'; // Link is unused, consider removing if not needed elsewhere
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Picker from 'emoji-picker-react'; // Import Picker
@@ -146,7 +148,7 @@ function ExpensePage() {
         const token = localStorage.getItem('authToken');
         if (!token) { setError("Authentication token not found."); return; }
         if (!editFormData.description.trim() || !editFormData.category.trim()) {
-            alert("Description and Category cannot be empty."); return;
+            toast.error("Description and Category cannot be empty."); return;
         }
 
         const originalTx = allExpenseTransactions.find(tx => tx._id === txId);

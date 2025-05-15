@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { Link } from 'react-router-dom'; // Link is unused, consider removing if not needed elsewhere
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Picker from 'emoji-picker-react'; // Import Picker
@@ -143,7 +145,7 @@ function IncomePage() {
         const token = localStorage.getItem('authToken');
         if (!token) { setError("Authentication token not found."); return; }
         if (!editFormData.description.trim() || !editFormData.category.trim()) {
-            alert("Description and Category cannot be empty."); return;
+            toast.error("Description and Category cannot be empty."); return;
         }
 
         const originalTx = allIncomeTransactions.find(tx => tx._id === txId);
@@ -203,7 +205,7 @@ function IncomePage() {
 
         // Balance Check
         if (fetchedBalance - transactionAmount < 0) {
-            alert(`Cannot delete this income transaction. Deleting ${formatCurrency(transactionAmount)} would result in a negative balance (${formatCurrency(fetchedBalance - transactionAmount)}).`);
+            toast.error(`Cannot delete this income transaction. Deleting ${formatCurrency(transactionAmount)} would result in a negative balance (${formatCurrency(fetchedBalance - transactionAmount)}).`);
             return;
         }
 

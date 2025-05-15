@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'; // <-- Import useCallback
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { FaExclamationTriangle, FaEdit, FaTrash, FaPlus } from 'react-icons/fa'; // Icons
 import styles from './LimitsPage.module.css'; // We'll create this CSS module next
 
@@ -236,7 +238,7 @@ function LimitsPage() {
 
             // Remove limit from state directly
             setLimits(prevLimits => prevLimits.filter(l => l._id !== limitId));
-            alert(responseData.message || "Limit deleted successfully."); // Show success
+            toast.success(responseData.message || "Limit deleted successfully.");
 
         } catch (err) {
             console.error("Error deleting limit:", err);

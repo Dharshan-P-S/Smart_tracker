@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { Link } from 'react-router-dom';
 import styles from './Dashboard.module.css'; // Make sure this path is correct
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
@@ -265,7 +267,7 @@ function Dashboard() {
 
     // ... (keep existing validation logic: date, future date, amount, description, category)
      if (!date) {
-        alert("Please select a date.");
+        toast.error("Please select a date.");
         return;
     }
     const [year, month, day] = date.split('-').map(Number);
@@ -276,19 +278,19 @@ function Dashboard() {
     const currentDay = today.getDate();
     const todayDateObj = new Date(currentYear, currentMonth, currentDay); // Today at midnight local
     if (selectedDateObj > todayDateObj) {
-        alert("Cannot add a transaction with a future date.");
+        toast.error("Cannot add a transaction with a future date.");
         return;
     }
     if (!amount || parseFloat(amount) <= 0) {
-        alert("Please enter a valid positive amount.");
+        toast.error("Please enter a valid positive amount.");
         return;
     }
     if (!description.trim()) {
-        alert("Please enter a description.");
+        toast.error("Please enter a description.");
         return;
     }
      if (!category.trim()) {
-        alert("Please enter a category.");
+        toast.error("Please enter a category.");
         return;
     }
 
@@ -328,7 +330,7 @@ function Dashboard() {
             break;
         case 'weekly':
             if (selectedDayOfWeek === '') {
-                 alert("Please select a day of the week for weekly frequency.");
+                 toast.error("Please select a day of the week for weekly frequency.");
                  setIsSubmitting(false);
                  return;
             }
@@ -348,7 +350,7 @@ function Dashboard() {
     // ... (keep existing balance check logic)
     const currentBalance = totalIncome - totalExpense;
     if (type === 'expense' && finalAmount > currentBalance) {
-        alert(`Insufficient balance. Adding this expense (${formatCurrency(finalAmount)}) would exceed your current balance (${formatCurrency(currentBalance)}).`);
+        toast.error(`Insufficient balance. Adding this expense (${formatCurrency(finalAmount)}) would exceed your current balance (${formatCurrency(currentBalance)}).`);
         setIsSubmitting(false); // Reset submitting state
         return; // Stop the function here
     }
@@ -464,7 +466,7 @@ function Dashboard() {
           window.dispatchEvent(new CustomEvent('transactions-updated'));
           // --- >>> End Dispatch <<< ---
 
-          alert("Transaction deleted successfully.");
+          toast.success("Transaction deleted successfully.");
 
       } catch (err) {
           console.error("Error deleting transaction:", err);
