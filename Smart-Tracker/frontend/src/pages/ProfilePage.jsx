@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import styles from './ProfilePage.module.css';
+import styles from './ProfilePage.module.css'; // Ensure this path is correct
 import { FaEdit, FaPen } from 'react-icons/fa';
 
 function ProfilePage() {
@@ -13,13 +13,14 @@ function ProfilePage() {
   // State for editing name
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingName, setIsSubmittingName] = useState(false); // Specific submit state
 
   // State for email editing
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [otp, setOtp] = useState('');
-  const [newEmail, setNewEmail] = useState(''); // This will hold the new email address the user types
+  const [newEmail, setNewEmail] = useState('');
+  const [isSubmittingEmail, setIsSubmittingEmail] = useState(false); // Specific submit state for OTP send
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
   // State for profile picture
@@ -30,21 +31,13 @@ function ProfilePage() {
   // State for full-screen modal
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Handlers for modal
-  const openModal = () => {
-      if (profilePicture) { // Only open modal if a profile picture exists
-          setIsModalOpen(true);
-      }
-  };
-
-  const closeModal = () => {
-      setIsModalOpen(false);
-  };
-
-  const handleModalImageClick = (e) => {
-      e.stopPropagation(); // Prevent modal from closing when clicking the image
-  };
-
+  // Handlers for modal (Keep these as they are)
+  const openModal = () => { /* ... */ };
+  const closeModal = () => { /* ... */ };
+  const handleModalImageClick = (e) => { /* ... */ };
+  // --- useEffect and other handlers (keep them as in your last provided version) ---
+  // ... (fetchProfileData, handleEditName, handleSaveName, etc.) ...
+  // ... (ensure specific submitting states like isSubmittingName, isSubmittingEmail, isVerifyingOtp are used)
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -71,7 +64,6 @@ function ProfilePage() {
         const profileData = await profileResponse.json();
         setUserProfile(profileData);
         setNewName(profileData.name || '');
-        // setNewEmail(profileData.email || ''); // Initialize newEmail with current email when editing starts
         setProfilePicture(profileData.profilePicture || null);
 
         const savingsResponse = await fetch('/api/transactions/savings/monthly', {
@@ -91,7 +83,6 @@ function ProfilePage() {
         const calculatedTotalSavings = monthlySavingsData.reduce((sum, monthData) => sum + monthData.savings, 0);
         setTotalSavings(calculatedTotalSavings);
 
-
       } catch (err) {
         console.error("Error fetching profile or savings data:", err);
         toast.error(`Failed to load profile data: ${err.message}`);
@@ -105,12 +96,16 @@ function ProfilePage() {
   }, []);
 
   const handleEditName = () => {
-    setNewName(userProfile?.name || ''); // Ensure newName is set when editing starts
+    setNewName(userProfile?.name || '');
     setIsEditingName(true);
   };
 
   const handleSaveName = async () => {
-    setIsSubmitting(true);
+    if (!newName.trim()) {
+        toast.error("Name cannot be empty.");
+        return;
+    }
+    setIsSubmittingName(true);
     try {
       const token = localStorage.getItem('authToken');
       const response = await fetch('/api/users/me/name', {
@@ -134,7 +129,7 @@ function ProfilePage() {
       console.error("Error updating name:", err);
       toast.error(`Failed to update name: ${err.message}`);
     } finally {
-      setIsSubmitting(false);
+      setIsSubmittingName(false);
     }
   };
 
@@ -144,9 +139,9 @@ function ProfilePage() {
   };
 
   const handleEditEmail = () => {
-    setNewEmail(userProfile?.email || ''); // Initialize newEmail with current email
+    setNewEmail(userProfile?.email || '');
     setIsEditingEmail(true);
-    setIsOtpSent(false); // Reset OTP state
+    setIsOtpSent(false);
     setOtp('');
   };
 
@@ -155,19 +150,26 @@ function ProfilePage() {
         toast.error("Please enter the new email address first.");
         return;
     }
+    // Basic email format validation (optional, backend should validate too)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+        toast.error("Please enter a valid email address.");
+        return;
+    }
+    if (newEmail === userProfile?.email) {
+        toast.info("This is already your current email address.");
+        return;
+    }
+
     const confirmSend = window.confirm(`Send OTP to ${newEmail}?`);
     if (confirmSend) {
-      setIsSubmitting(true); // Use general submitting state or a specific one for OTP
+      setIsSubmittingEmail(true);
       try {
-        const token = localStorage.getItem('authToken');
-        // The backend sendOTP expects 'email' in the body for where to send the OTP
+        // const token = localStorage.getItem('authToken'); // Not needed if send-otp is public
         const response = await fetch('/api/users/send-otp', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            // 'Authorization': `Bearer ${token}`, // send-otp is public, token might not be needed by backend
-          },
-          body: JSON.stringify({ email: newEmail }), // Send the newEmail to receive OTP
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: newEmail }),
         });
         if (!response.ok) {
           const errorData = await response.json();
@@ -180,58 +182,25 @@ function ProfilePage() {
         console.error("Error sending OTP:", err);
         toast.error(`Failed to send OTP: ${err.message}`);
       } finally {
-        setIsSubmitting(false);
+        setIsSubmittingEmail(false);
       }
     }
   };
 
   const handleVerifyOtp = async () => {
-    if (!otp) {
+    if (!otp.trim()) {
         toast.error("Please enter the OTP.");
         return;
     }
     setIsVerifyingOtp(true);
     try {
       const token = localStorage.getItem('authToken');
-
-      // Step 1: Verify OTP (Optional, as updateEmail endpoint also verifies OTP)
-      // If your /api/users/me/update-email endpoint handles OTP verification internally,
-      // you might not need a separate /api/users/verify-otp call here.
-      // For this example, let's assume /api/users/me/update-email takes newEmail and otp.
-      // If you have a separate verify-otp route that should be called first, uncomment and adjust.
-
-      /*
-      const verifyOtpResponse = await fetch('/api/users/verify-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // 'Authorization': `Bearer ${token}`, // If verify-otp is protected
-        },
-        body: JSON.stringify({ email: newEmail, otp: otp }), // OTP was sent to newEmail
-      });
-
-      if (!verifyOtpResponse.ok) {
-        let errorData;
-        try {
-            errorData = await verifyOtpResponse.json();
-        } catch (e) {
-            errorData = { message: verifyOtpResponse.statusText }
-        }
-        toast.error(errorData.message || 'Failed to verify OTP');
-        throw new Error(errorData.message || 'Failed to verify OTP');
-      }
-      // If verify-otp is successful, proceed to update email
-      */
-
-      // Update the email address - this endpoint should verify the OTP
-      // The backend's updateEmail expects 'newEmail' and 'otp' in the body
-      const updateEmailResponse = await fetch('/api/users/me/update-email', { //  CORRECTED URL
+      const updateEmailResponse = await fetch('/api/users/me/update-email', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`, // This route is protected
+          'Authorization': `Bearer ${token}`,
         },
-        // Send 'newEmail' (the target email) and 'otp'
         body: JSON.stringify({ newEmail: newEmail, otp: otp }),
       });
 
@@ -247,16 +216,15 @@ function ProfilePage() {
       }
 
       const updatedProfile = await updateEmailResponse.json();
-      setUserProfile(updatedProfile); // Update user profile with new email
+      setUserProfile(updatedProfile);
       setIsEditingEmail(false);
       setIsOtpSent(false);
       setOtp('');
-      setNewEmail(''); // Clear new email field
+      setNewEmail('');
       toast.success("Email updated successfully!");
     } catch (err) {
       console.error("Error during email update process:", err);
-      // The toast error might have already been shown by individual fetch failures
-      if (!toast.isActive('error-toast')) { // Prevent duplicate toasts if already shown
+      if (!toast.isActive('error-toast')) {
         toast.error(`Error: ${err.message}`, { toastId: 'error-toast'});
       }
     } finally {
@@ -268,22 +236,30 @@ function ProfilePage() {
     setIsEditingEmail(false);
     setIsOtpSent(false);
     setOtp('');
-    setNewEmail(userProfile?.email || ''); // Reset to original email
+    setNewEmail(userProfile?.email || '');
   };
-
 
   const handleProfilePicChange = async (event) => {
       const file = event.target.files[0];
       if (!file) return;
+      // Simple file type validation
+      if (!file.type.startsWith('image/')) {
+          toast.error("Please select an image file (e.g., JPG, PNG).");
+          return;
+      }
+      // Simple file size validation (e.g., 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+          toast.error("Image size should be less than 2MB.");
+          return;
+      }
 
       setIsUploadingProfilePic(true);
-      setError(null);
+      // setError(null); // Error state is for general page load error
 
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onloadend = async () => {
           const base64String = reader.result;
-
           try {
               const token = localStorage.getItem('authToken');
               const response = await fetch('/api/users/me/profile-picture', {
@@ -300,7 +276,6 @@ function ProfilePage() {
                   toast.error(errorData.message || 'Failed to upload profile picture');
                   throw new Error(errorData.message || 'Failed to upload profile picture');
               }
-
               const updatedProfile = await response.json();
               setProfilePicture(updatedProfile.profilePicture);
               setUserProfile(prevProfile => ({...prevProfile, profilePicture: updatedProfile.profilePicture}));
@@ -326,13 +301,11 @@ function ProfilePage() {
       }
   };
 
-
   if (loading) {
     return <div className={styles.profileContainer}><p>Loading profile data...</p></div>;
   }
 
-  // Display general error if exists after loading
-  if (error && !userProfile) { // Only show general error if profile couldn't be loaded at all
+  if (error && !userProfile) {
     return <div className={styles.profileContainer}><p className={styles.error}>Error: {error}</p></div>;
   }
 
@@ -355,7 +328,7 @@ function ProfilePage() {
                 onClick={openModal}
             />
           ) : (
-            <div className={styles.profilePicPlaceholder}>No Profile Picture</div>
+            <div className={styles.profilePicPlaceholder}>No Picture</div>
           )}
           <input
               type="file"
@@ -377,13 +350,14 @@ function ProfilePage() {
               </button>
           )}
            {!profilePicture && (
-               <label htmlFor="profilePicInput" className={styles.addProfilePicButton} disabled={isUploadingProfilePic}>
+               <label htmlFor="profilePicInput" className={`${styles.button} ${styles.addProfilePicButton}`} disabled={isUploadingProfilePic}>
                    {isUploadingProfilePic ? 'Uploading...' : 'Add Picture'}
                </label>
            )}
         </div>
 
         <div className={styles.profileDetails}>
+          {/* --- Name Field --- */}
           <div className={styles.detailItem}>
             <span className={styles.detailLabel}>Name:</span>
             {isEditingName ? (
@@ -393,10 +367,17 @@ function ProfilePage() {
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   className={styles.editInput}
-                  disabled={isSubmitting}
+                  disabled={isSubmittingName}
+                  placeholder="Enter your name"
                 />
-                <button onClick={handleSaveName} className={styles.saveButton} disabled={isSubmitting}>Save</button>
-                <button onClick={handleCancelEditName} className={styles.cancelButton} disabled={isSubmitting}>Cancel</button>
+                <div className={styles.actionButtonsContainer}>
+                  <button onClick={handleSaveName} className={styles.saveButton} disabled={isSubmittingName}>
+                    {isSubmittingName ? "Saving..." : "Save"}
+                  </button>
+                  <button onClick={handleCancelEditName} className={styles.cancelButton} disabled={isSubmittingName}>
+                    Cancel
+                  </button>
+                </div>
               </div>
             ) : (
               <>
@@ -406,26 +387,27 @@ function ProfilePage() {
             )}
           </div>
 
+          {/* --- Email Field --- */}
           <div className={styles.detailItem}>
             <span className={styles.detailLabel}>Email:</span>
             {isEditingEmail ? (
               <div className={styles.editFieldContainer}>
                 {!isOtpSent ? (
-                  <>
+                  <div className={styles.editFieldInputAndActions}> {/* Group input and Send OTP button */}
                     <input
                       type="email"
                       placeholder="Enter new email"
                       value={newEmail}
                       onChange={(e) => setNewEmail(e.target.value)}
                       className={styles.editInput}
-                      disabled={isSubmitting}
+                      disabled={isSubmittingEmail}
                     />
-                    <button onClick={handleSendOtp} className={styles.actionButton} disabled={isSubmitting}>
-                      Send OTP
+                    <button onClick={handleSendOtp} className={styles.actionButton} disabled={isSubmittingEmail}>
+                      {isSubmittingEmail ? "Sending..." : "Send OTP"}
                     </button>
-                  </>
+                  </div>
                 ) : (
-                  <>
+                  <div className={styles.editFieldInputAndActions}> {/* Group input and Verify button */}
                     <input
                       type="text"
                       placeholder="Enter OTP"
@@ -433,13 +415,21 @@ function ProfilePage() {
                       onChange={(e) => setOtp(e.target.value)}
                       className={styles.editInput}
                       disabled={isVerifyingOtp}
+                      maxLength={6} // Assuming 6-digit OTP
                     />
-                    <button onClick={handleVerifyOtp} className={styles.saveButton} disabled={isVerifyingOtp}>
+                    <button onClick={handleVerifyOtp} className={styles.actionButton} disabled={isVerifyingOtp}>
                       {isVerifyingOtp ? "Verifying..." : "Verify & Update"}
                     </button>
-                  </>
+                  </div>
                 )}
-                 <button onClick={handleCancelEditEmail} className={styles.cancelButton} disabled={isSubmitting || isVerifyingOtp}>Cancel</button>
+                {/* Cancel button is always present in edit mode for email, but outside the immediate input/action group */}
+                <div className={styles.actionButtonsContainer} style={{ justifyContent: 'flex-end', marginTop: !isOtpSent ? '0' : '10px' }}>
+                    {/* On larger screens, this cancel button might look better aligned with Save/Verify */}
+                    {/* Or it can be a standalone smaller button */}
+                    <button onClick={handleCancelEditEmail} className={styles.cancelButton} disabled={isSubmittingEmail || isVerifyingOtp}>
+                        Cancel
+                    </button>
+                </div>
               </div>
             ) : (
               <>
@@ -452,7 +442,7 @@ function ProfilePage() {
           <div className={styles.detailItem}>
             <span className={styles.detailLabel}>Registered:</span>
             <span className={styles.detailValue}>
-                {new Date(userProfile.createdAt).toLocaleDateString()}
+                {userProfile.createdAt ? new Date(userProfile.createdAt).toLocaleDateString() : 'N/A'}
             </span>
           </div>
 
@@ -463,7 +453,8 @@ function ProfilePage() {
         </div>
       </section>
 
-    {isModalOpen && (
+      {/* Full-screen modal for profile picture */}
+      {isModalOpen && (
         <div className={styles.modalOverlay} onClick={closeModal}>
             <div className={styles.modalContent} onClick={handleModalImageClick}>
                 <img
@@ -473,8 +464,8 @@ function ProfilePage() {
                 />
             </div>
         </div>
-    )}
-  </div>
+      )}
+    </div>
   );
 }
 

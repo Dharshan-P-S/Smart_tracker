@@ -3,11 +3,12 @@
 .profileContainer {
   /* Similar to dashboardPageContent */
   padding: 2rem 1rem; /* Add padding around the whole page content */
-  max-width: 800px; /* Keep a reasonable max-width */
+  max-width: 1000px; /* Keep a reasonable max-width */
   margin: 0 auto; /* Center the container */
   display: flex;
   flex-direction: column;
   gap: 1.5rem; /* Consistent gap */
+  width: 90%;
 }
 
 .pageTitle {
@@ -67,19 +68,23 @@
     position: absolute;
     bottom: 5px; /* Adjust as needed for positioning */
     right: 5px; /* Adjust as needed for positioning */
-    padding: 5px 10px;
-    background-color: rgb(88, 72, 175); /* Semi-transparent dark background */
+    padding: 8px; /* Make it a bit more touch-friendly */
+    background-color: rgba(88, 72, 175, 0.8); /* Semi-transparent theme color */
     color: white;
     border: none;
-    border-radius: 15px; /* Pill shape */
+    border-radius: 50%; /* Circular button */
     cursor: pointer; /* Ensure cursor pointer */
-    font-size: 0.7em;
+    font-size: 0.9em; /* Adjust icon size */
+    line-height: 0; /* Helps center icon in circle */
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: background-color 0.2s ease;
     z-index: 10; /* Ensure it's above the image */
 }
 
 .editProfilePicButton:hover {
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: rgba(88, 72, 175, 1);
 }
 
 .editProfilePicButton:disabled {
@@ -118,70 +123,114 @@
 
 .detailItem {
   display: flex;
-  align-items: center;
+  /* align-items: center; Remove default center alignment to allow flex-start for edit container */
   padding: 10px 0;
   border-bottom: 1px solid var(--border-light); /* Use theme variable */
+  gap: 10px; /* Gap between label and value/edit container */
+  position: relative; /* For absolute positioning of edit button if needed */
 }
 
 .detailLabel {
   font-weight: bold;
-  margin-right: 10px;
   color: var(--text-secondary-light); /* Use theme variable */
   min-width: 100px; /* Align labels */
+  flex-shrink: 0; /* Prevent label from shrinking */
+  padding-top: 6px; /* Align with input field baseline */
 }
 
 .detailValue {
   flex-grow: 1;
   color: var(--text-primary-light); /* Use theme variable */
+  padding-top: 6px; /* Align with input field baseline */
+  word-break: break-all; /* Prevent long emails/names from breaking layout */
 }
 
-/* Reusing button styles from Dashboard.module.css */
-.editButton, .saveButton, .cancelButton {
-  margin-left: 10px;
-  padding: 5px 10px;
+/* Container for when a field is in edit mode */
+.editFieldContainer {
+  flex-grow: 1; /* Take remaining space */
+  display: flex;
+  flex-direction: column; /* Stack input and buttons vertically on small screens */
+  gap: 10px;
+}
+
+.editFieldInputAndActions {
+  display: flex;
+  align-items: center; /* Align input and first button (e.g., Send OTP) */
+  gap: 10px;
+  width: 100%;
+}
+
+.editInput {
+  flex-grow: 1; /* Input takes available space */
+  padding: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  background-color: var(--input-bg-light, var(--bg-light));
+  color: var(--text-primary-light);
+  font-size: 0.9rem;
+}
+
+.actionButtonsContainer {
+  display: flex;
+  gap: 10px;
+  /* justify-content: flex-end; Will be applied via specific edit mode logic */
+  width: 100%; /* For small screens when buttons stack */
+}
+
+/* Individual Buttons */
+.button { /* General button class for common properties */
+  padding: 8px 12px;
   border: none;
   border-radius: 4px;
-  cursor: pointer; /* Ensure cursor pointer */
-  font-size: 0.8em;
-  transition: background-color 0.2s ease;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+  white-space: nowrap; /* Prevent text wrapping */
 }
 
-.editButton {
-  background-color: #a993ff; /* Yellow */
-
+.button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
-.editButton:hover {
-  background-color: #6e44fb; /* Darker Yellow */
+.editButtonInline { /* The small pen icon button */
+  background-color: transparent;
+  color: var(--primary-accent-light, #3b82f6);
+  border: none;
+  padding: 5px;
+  margin-left: auto; /* Pushes the button to the far right */
+  cursor: pointer;
+  font-size: 1em; /* Adjust icon size */
+  line-height: 1;
+}
+.editButtonInline:hover {
+  color: var(--primary-accent-hover-light, #2563eb);
 }
 
 .saveButton {
   background-color: #28a745; /* Green */
   color: white;
 }
-
-.saveButton:hover {
-  background-color: #218838; /* Darker Green */
+.saveButton:hover:not(:disabled) {
+  background-color: #218838;
 }
 
 .cancelButton {
   background-color: #dc3545; /* Red */
   color: white;
 }
-
-.cancelButton:hover {
-  background-color: #c82333; /* Darker Red */
+.cancelButton:hover:not(:disabled) {
+  background-color: #c82333;
 }
 
-.editInput {
-  flex-grow: 1;
-  padding: 5px;
-  border: 1px solid var(--border-light); /* Use theme variable */
-  border-radius: 4px;
-  margin-right: 10px;
-  background-color: var(--input-bg-light, var(--bg-light)); /* Use theme variable */
-  color: var(--text-primary-light); /* Use theme variable */
+.actionButton { /* For Send OTP or other primary actions in edit mode */
+  background-color: var(--primary-accent-light, #5848af); /* Theme accent */
+  color: var(--button-text-light, #ffffff);
 }
+.actionButton:hover:not(:disabled) {
+  background-color: var(--primary-accent-hover-light, #392f70);
+}
+
 
 .error {
     color: red;
@@ -190,7 +239,7 @@
 }
 
 /* Responsive adjustments */
-@media (min-width: 600px) {
+@media (min-width: 768px) { /* Adjust breakpoint as needed */
   .profileSection {
     flex-direction: row; /* Row layout on larger screens */
     align-items: flex-start; /* Align items to the top in row layout */
@@ -198,11 +247,27 @@
 
   .profilePicContainer {
     flex-shrink: 0; /* Prevent shrinking */
-    margin-right: 30px; /* Space between pic and details */
+    /* margin-right: 30px; Space between pic and details, replaced by gap on profileSection */
   }
 
   .profileDetails {
     flex-grow: 1;
+  }
+
+  .editFieldContainer {
+    flex-direction: row; /* Input and buttons side-by-side */
+    align-items: center; /* Vertically align input and buttons */
+  }
+
+  .editFieldInputAndActions {
+    flex-grow: 1; /* Allow this to take space before actionButtonsContainer */
+  }
+
+  .actionButtonsContainer {
+    /* This container will now hold Save/Cancel or Verify/Cancel */
+    margin-left: auto; /* Pushes this group to the right */
+    width: auto; /* Reset width */
+    flex-shrink: 0; /* Prevent button group from shrinking */
   }
 }
 
@@ -221,17 +286,16 @@
 }
 
 .modalContent {
-    /* Optional: Add padding or max-width to the content container */
     opacity: 1;
 }
 
 .modalImage {
-    max-width: 90%; /* Limit image size to fit within the modal */
-    max-height: 90vh; /* Limit image height to fit within the modal */
-    object-fit: contain; /* Ensure the entire image is visible */
+    max-width: 90%;
+    max-height: 90vh;
+    object-fit: contain;
 }
 
-/* Dark Mode */
+/* Dark Mode (Keep your existing dark mode styles, adjust if needed based on new classes) */
 @media (prefers-color-scheme: dark) {
   .pageTitle {
     color: var(--text-primary-dark);
@@ -248,11 +312,17 @@
     color: var(--text-secondary-dark);
     border-color: var(--border-dark);
   }
-  .changeProfilePicButton {
+  .editProfilePicButton {
+    background-color: rgba(96, 165, 250, 0.8); /* Example: Dark theme accent */
+  }
+  .editProfilePicButton:hover {
+    background-color: rgba(96, 165, 250, 1);
+  }
+  .addProfilePicButton {
     background-color: var(--primary-accent-dark, #60a5fa);
     color: var(--button-text-dark, #1a202c);
   }
-  .changeProfilePicButton:hover {
+  .addProfilePicButton:hover {
     background-color: var(--primary-accent-hover-dark, #3b82f6);
   }
   .detailItem {
@@ -264,26 +334,36 @@
   .detailValue {
     color: var(--text-primary-dark);
   }
-  .editButton, .cancelButton {
-    background-color: var(--bg-dark);
-    color: var(--text-secondary-dark);
-    border-color: var(--border-dark);
-  }
-  .editButton:hover, .cancelButton:hover {
-    background-color: #374151;
-    border-color: #4b5563;
-  }
-  .saveButton {
-    background-color: #34D399;
-    border-color: #34D399;
-  }
-  .saveButton:hover {
-    background-color: #10B981;
-    border-color: #10B981;
-  }
   .editInput {
     border-color: var(--border-dark);
     background-color: var(--input-bg-dark, #2d3748);
     color: var(--text-primary-dark);
+  }
+  .editButtonInline {
+    color: var(--primary-accent-dark, #60a5fa);
+  }
+  .editButtonInline:hover {
+    color: var(--primary-accent-hover-dark, #3b82f6);
+  }
+  .saveButton {
+    background-color: #34D399; /* Keep or adjust for dark mode */
+    /* color: var(--text-primary-dark); */
+  }
+  .saveButton:hover:not(:disabled) {
+    background-color: #10B981;
+  }
+  .cancelButton {
+    background-color: #F87171; /* Lighter red for dark mode */
+    /* color: var(--text-primary-dark); */
+  }
+  .cancelButton:hover:not(:disabled) {
+    background-color: #EF4444;
+  }
+  .actionButton {
+    background-color: var(--primary-accent-dark, #60a5fa);
+    color: var(--button-text-dark, #1a202c);
+  }
+  .actionButton:hover:not(:disabled) {
+    background-color: var(--primary-accent-hover-dark, #3b82f6);
   }
 }
