@@ -327,7 +327,7 @@
 
 .transactionDate {
   font-size: 0.85rem;
-  color: var(--text-secondary-light);
+  color: 	#2d75f2;
   white-space: nowrap;
 }
 
@@ -338,7 +338,7 @@
 
 .transactionDesc {
   font-size: 0.95rem;
-  color: var(--text-primary-light);
+  color: rgb(253, 158, 41);
   /* Prevent text from overflowing */
   overflow: hidden;
   text-overflow: ellipsis;
