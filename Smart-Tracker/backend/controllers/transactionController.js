@@ -1,38 +1,29 @@
+// transactionController.jsx
+
 const Transaction = require('../models/Transaction');
-const Limit = require('../models/Limit'); // Import Limit model
-const User = require('../models/User'); // <-- Import User model
+const Limit = require('../models/Limit'); // Assuming you might use this elsewhere
+const User = require('../models/User');
 const mongoose = require('mongoose');
 
-// --- INSECURE PLACEHOLDER ---
-// Fetches the first user's ID to use in place of authenticated user.
-// DO NOT USE IN PRODUCTION. Authentication should be properly handled.
-// (Copied from limitController for consistency)
 const getPlaceholderUserId = async () => {
-    // Add error handling in case User model is missing or no users exist
     if (!User) {
         throw new Error("User model not available.");
     }
-    const firstUser = await User.findOne().select('_id').lean(); // Use lean for performance
+    const firstUser = await User.findOne().select('_id').lean();
     if (!firstUser) {
-        // It's better to throw an error here so the operation fails clearly
         throw new Error("No users found in the database to use as a placeholder.");
     }
-    // console.log("Using Placeholder User ID:", firstUser._id); // Optional debug log
     return firstUser._id;
 };
-// --- END INSECURE PLACEHOLDER ---
-
 
 // @desc    Add a new transaction
 // @route   POST /api/transactions
 // @access  Public (Temporarily)
-const addTransaction = async (req, res) => { // <-- Make async
+const addTransaction = async (req, res) => {
   try {
-    // Destructure all expected fields, including recurrence and emoji
     const { type, amount, description, category, emoji, date, recurrence } = req.body;
-    const userId = await getPlaceholderUserId(); // <-- Use placeholder function
+    const userId = await getPlaceholderUserId();
 
-    // Validation
     if (!type || !amount || !description || !category) {
       return res.status(400).json({ message: 'Please provide type, amount, description, and category' });
     }
@@ -42,23 +33,20 @@ const addTransaction = async (req, res) => { // <-- Make async
      if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
         return res.status(400).json({ message: 'Amount must be a positive number' });
     }
-    // Optional: Validate recurrence if needed (should be handled by enum in model mostly)
     const validRecurrences = ['once', 'daily', 'weekly', 'monthly'];
     if (recurrence && !validRecurrences.includes(recurrence)) {
         return res.status(400).json({ message: 'Invalid recurrence value' });
     }
 
-    // Remove limit check
-
     const newTransaction = new Transaction({
-      user: userId, // <-- Use fetched placeholder ID
+      user: userId,
       type,
       amount: parseFloat(amount),
       description,
       category,
-      emoji: emoji || '', // Add emoji, default to empty string if not provided
+      emoji: emoji || '',
       date: date ? new Date(date) : new Date(),
-      recurrence: recurrence || 'once', // Add recurrence, default to 'once' if not provided
+      recurrence: recurrence || 'once',
     });
 
     const savedTransaction = await newTransaction.save();
@@ -69,7 +57,7 @@ const addTransaction = async (req, res) => { // <-- Make async
      if (error instanceof mongoose.Error.ValidationError) {
          return res.status(400).json({ message: error.message });
      }
-     if (error.message.includes("No users found")) { // Catch error from getPlaceholderUserId
+     if (error.message.includes("No users found")) {
          return res.status(500).json({ message: error.message });
      }
     res.status(500).json({ message: 'Server error while adding transaction' });
@@ -79,54 +67,43 @@ const addTransaction = async (req, res) => { // <-- Make async
 // @desc    Get dashboard data (totals, recent transactions)
 // @route   GET /api/dashboard
 // @access  Public (Temporarily)
-const getDashboardData = async (req, res) => { // <-- Make async
-  console.log("Attempting to fetch dashboard data...");
-
+const getDashboardData = async (req, res) => {
+  // console.log("Attempting to fetch dashboard data..."); // Kept for debugging if needed
   try {
-    const userId = await getPlaceholderUserId(); // <-- Use placeholder function
-    console.log("Using placeholder User ID for dashboard:", userId);
+    const userId = await getPlaceholderUserId();
+    // console.log("Using placeholder User ID for dashboard:", userId);
 
-    // We already check if userId is valid within getPlaceholderUserId now
-    // if (!userId || !mongoose.Types.ObjectId.isValid(userId)) { ... } - Redundant
-
-    console.log(`Fetching transactions for user ID: ${userId}`);
-
-    // Calculate the start of the current month
     const now = new Date();
     const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    startOfCurrentMonth.setHours(0, 0, 0, 0); // Set to midnight
+    startOfCurrentMonth.setHours(0, 0, 0, 0);
 
-    console.log(`Filtering dashboard data from date: ${startOfCurrentMonth.toISOString()}`);
+    // console.log(`Filtering dashboard data from date: ${startOfCurrentMonth.toISOString()}`);
 
-    // Fetch recent transactions *from the current month*
     const recentTransactions = await Transaction.find({
-        user: userId, // Use fetched ID
-        date: { $gte: startOfCurrentMonth } // Date is greater than or equal to start of current month
+        user: userId,
+        date: { $gte: startOfCurrentMonth }
       })
       .sort({ date: -1 })
       .limit(5)
       .lean();
+    //  console.log("Recent transactions fetched:", recentTransactions.length);
 
-     console.log("Recent transactions fetched:", recentTransactions.length);
-
-    console.log("Calculating totals via aggregation for the current month...");
+    // console.log("Calculating totals via aggregation for the current month...");
     const totals = await Transaction.aggregate([
-      // Match transactions for the user *within the current month*
       {
         $match: {
-          user: userId, // Mongoose handles ObjectId conversion here
+          user: userId,
           date: { $gte: startOfCurrentMonth }
         }
       },
       {
         $group: {
-          _id: '$type', // Group by income/expense
+          _id: '$type',
           totalAmount: { $sum: '$amount' },
         },
       },
     ]);
-
-    console.log("Aggregation result:", totals);
+    // console.log("Aggregation result:", totals);
 
     let totalIncome = 0;
     let totalExpense = 0;
@@ -136,21 +113,13 @@ const getDashboardData = async (req, res) => { // <-- Make async
     });
     const balance = totalIncome - totalExpense;
 
-    console.log("Dashboard data calculated successfully.");
+    // console.log("Dashboard data calculated successfully.");
     res.status(200).json({ totalIncome, totalExpense, balance, recentTransactions });
-
   } catch (error) {
-    console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-    console.error('!!! Error fetching dashboard data in Controller:');
-    console.error('!!! Error Name:', error.name);
-    console.error('!!! Error Message:', error.message);
-    if (error.message.includes("No users found")) { // Specific message for placeholder issue
-        console.error('!!! Placeholder User ID issue.');
+    console.error('Error fetching dashboard data in Controller:', error);
+    if (error.message.includes("No users found")) {
         return res.status(500).json({ message: error.message });
     }
-    console.error('!!! Error Stack:');
-    console.error(error.stack);
-    console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
     res.status(500).json({ message: 'Server error while fetching dashboard data. Check backend logs.' });
   }
 };
@@ -158,142 +127,142 @@ const getDashboardData = async (req, res) => { // <-- Make async
 // @desc    Get ALL transactions for the temp user
 // @route   GET /api/transactions/all
 // @access  Public (Temporarily)
-const getAllTransactions = async (req, res) => { // <-- Make async
-    console.log("Attempting to fetch ALL transactions...");
+const getAllTransactions = async (req, res) => {
+    // console.log("Attempting to fetch ALL transactions...");
     try {
-        const userId = await getPlaceholderUserId(); // <-- Use placeholder function
-        console.log("Using placeholder User ID for all transactions:", userId);
-
-        // Fetch all transactions for the user, sorted by date descending
-        const allTransactions = await Transaction.find({ user: userId }) // <-- Use fetched ID
+        const userId = await getPlaceholderUserId();
+        // console.log("Using placeholder User ID for all transactions:", userId);
+        const allTransactions = await Transaction.find({ user: userId })
             .sort({ date: -1 })
-            .lean(); // Use lean for performance
-
-        console.log(`Fetched ${allTransactions.length} total transactions.`);
-
+            .lean();
+        // console.log(`Fetched ${allTransactions.length} total transactions.`);
         res.status(200).json(allTransactions);
-
     } catch (error) {
-        console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-        console.error('!!! Error fetching ALL transactions in Controller:');
-        console.error('!!! Error:', error);
-         if (error.message.includes("No users found")) { // Catch error from getPlaceholderUserId
-            console.error('!!! Placeholder User ID issue.');
+        console.error('Error fetching ALL transactions in Controller:', error);
+         if (error.message.includes("No users found")) {
             return res.status(500).json({ message: error.message });
          }
-        console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
         res.status(500).json({ message: 'Server error while fetching all transactions.' });
     }
 };
 
-// @desc    Update a transaction (description & category only)
+// =======================================================================
+// MODIFIED updateTransaction function
+// =======================================================================
+// @desc    Update a transaction
 // @route   PUT /api/transactions/:id
 // @access  Public (Temporarily)
-const updateTransaction = async (req, res) => { // <-- Make async
+const updateTransaction = async (req, res) => {
   try {
-    const userId = await getPlaceholderUserId(); // <-- Use placeholder function
+    const userId = await getPlaceholderUserId();
     const transactionId = req.params.id;
-    // Include emoji in the destructuring
-    const { description, category, emoji } = req.body;
+    // Destructure all fields that can be updated from the frontend
+    const { description, category, emoji, amount /*, type */ } = req.body; // `type` is sent but we won't allow changing it here for simplicity
 
-    // Basic validation - Allow emoji to be optional (empty string is valid)
-    if (!description || !category) {
-      return res.status(400).json({ message: 'Description and category are required' });
-    }
-     if (!mongoose.Types.ObjectId.isValid(transactionId)) {
-      return res.status(400).json({ message: 'Invalid transaction ID format' });
-    }
-
-    // Find the transaction by ID and ensure it belongs to the user
-    const transaction = await Transaction.findOne({
-      _id: transactionId,
-      user: userId // <-- Use fetched ID
-    });
-
-    if (!transaction) {
-      return res.status(404).json({ message: 'Transaction not found or not authorized' });
-    }
-
-    // Update the fields, including emoji
-    transaction.description = description;
-    transaction.category = category;
-    // Set emoji, defaulting to empty string if null/undefined is passed
-    transaction.emoji = emoji !== undefined && emoji !== null ? emoji : '';
-    // Optionally add validation for max length etc. here if needed
-
-    const updatedTransaction = await transaction.save();
-
-    console.log(`Transaction ${transactionId} updated successfully.`);
-    res.status(200).json(updatedTransaction);
-
-  } catch (error) {
-    console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-    console.error('!!! Error updating transaction in Controller:');
-    console.error('!!! Transaction ID:', req.params.id);
-    console.error('!!! Error:', error);
-    if (error.message.includes("No users found")) { // Catch error from getPlaceholderUserId
-        console.error('!!! Placeholder User ID issue.');
-        return res.status(500).json({ message: error.message });
-    }
-    console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-    if (error instanceof mongoose.Error.ValidationError) {
-         return res.status(400).json({ message: error.message });
-     }
-    res.status(500).json({ message: 'Server error while updating transaction.' });
-  }
-};
-
-// @desc    Delete a transaction
-// @route   DELETE /api/transactions/:id
-// @access  Public (Temporarily)
-const deleteTransaction = async (req, res) => { // <-- Make async
-  try {
-    const userId = await getPlaceholderUserId(); // <-- Use placeholder function
-    const transactionId = req.params.id;
-
-    // Validate Transaction ID format
+    // Validate transaction ID format
     if (!mongoose.Types.ObjectId.isValid(transactionId)) {
       return res.status(400).json({ message: 'Invalid transaction ID format' });
     }
 
-    // Find the transaction by ID and ensure it belongs to the user before deleting
-    // This findOne check is slightly redundant if deleteOne works, but good for clarity
-    // and potentially catching auth issues before attempting delete.
+    // At least one field must be provided for an update
+    if (description === undefined && category === undefined && emoji === undefined && amount === undefined) {
+      return res.status(400).json({ message: 'No fields provided for update. At least one of description, category, emoji, or amount is required.' });
+    }
+    
+    // Validate individual fields if they are present in the request
+    if (description !== undefined && (typeof description !== 'string' || !description.trim())) {
+        return res.status(400).json({ message: 'Description, if provided, cannot be empty.' });
+    }
+    if (category !== undefined && (typeof category !== 'string' || !category.trim())) {
+        return res.status(400).json({ message: 'Category, if provided, cannot be empty.' });
+    }
+    if (amount !== undefined) {
+        const numericAmount = parseFloat(amount);
+        if (isNaN(numericAmount) || numericAmount <= 0) {
+            return res.status(400).json({ message: 'Amount, if provided, must be a positive number.' });
+        }
+    }
+    // Emoji can be an empty string to clear it
+
+    // Find the transaction
     const transaction = await Transaction.findOne({
       _id: transactionId,
-      user: userId // <-- Use fetched ID
+      user: userId
     });
 
-    // If transaction doesn't exist or doesn't belong to the user
     if (!transaction) {
-      // Return 404 even if it exists but belongs to another user for security
-      return res.status(404).json({ message: 'Transaction not found' });
+      return res.status(404).json({ message: 'Transaction not found or not authorized for this user.' });
     }
 
-    // Use deleteOne for Mongoose v6+
-    const deleteResult = await Transaction.deleteOne({ _id: transactionId, user: userId }); // <-- Use fetched ID
-
-    // Although we found it earlier, double-check the result of deleteOne
-    if (deleteResult.deletedCount === 0) {
-        // This case might happen due to race conditions or other issues
-        console.error(`Failed to delete transaction ${transactionId} even after finding it.`);
-        return res.status(404).json({ message: 'Transaction not found or could not be deleted' });
+    // Update fields that were actually sent in the request body
+    if (description !== undefined) {
+        transaction.description = description.trim();
     }
+    if (category !== undefined) {
+        transaction.category = category.trim();
+    }
+    if (emoji !== undefined) {
+        // Allows setting emoji to an empty string to remove it
+        transaction.emoji = emoji === null ? '' : emoji;
+    }
+    if (amount !== undefined) {
+        transaction.amount = parseFloat(amount);
+    }
+    // Note: We are intentionally NOT updating transaction.type here.
+    // Changing a transaction's type (e.g., income to expense) has significant
+    // implications for financial summaries and should be handled carefully,
+    // possibly as a separate, more complex operation or disallowed.
 
-    console.log(`Transaction ${transactionId} deleted successfully.`);
-    // Send back a success status, often with the ID of the deleted item
-    res.status(200).json({ success: true, message: 'Transaction deleted successfully', id: transactionId });
+    const updatedTransaction = await transaction.save();
+
+    console.log(`Transaction ${transactionId} updated successfully. New amount: ${updatedTransaction.amount}`);
+    res.status(200).json(updatedTransaction);
 
   } catch (error) {
-    console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-    console.error('!!! Error deleting transaction in Controller:');
-    console.error('!!! Transaction ID:', req.params.id);
-    console.error('!!! Error:', error);
-    if (error.message.includes("No users found")) { // Catch error from getPlaceholderUserId
-        console.error('!!! Placeholder User ID issue.');
+    console.error('Error updating transaction in Controller:', error);
+    if (error.message.includes("No users found")) {
         return res.status(500).json({ message: error.message });
     }
-    console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+    if (error instanceof mongoose.Error.ValidationError) {
+         return res.status(400).json({ message: error.message, errors: error.errors }); // Send detailed validation errors
+     }
+    res.status(500).json({ message: 'Server error while updating transaction.' });
+  }
+};
+// =======================================================================
+// END MODIFIED updateTransaction function
+// =======================================================================
+
+// @desc    Delete a transaction
+// @route   DELETE /api/transactions/:id
+// @access  Public (Temporarily)
+const deleteTransaction = async (req, res) => {
+  try {
+    const userId = await getPlaceholderUserId();
+    const transactionId = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+      return res.status(400).json({ message: 'Invalid transaction ID format' });
+    }
+    const transaction = await Transaction.findOne({
+      _id: transactionId,
+      user: userId
+    });
+    if (!transaction) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+    const deleteResult = await Transaction.deleteOne({ _id: transactionId, user: userId });
+    if (deleteResult.deletedCount === 0) {
+        console.error(`Failed to delete transaction ${transactionId}.`);
+        return res.status(404).json({ message: 'Transaction not found or could not be deleted' });
+    }
+    console.log(`Transaction ${transactionId} deleted successfully.`);
+    res.status(200).json({ success: true, message: 'Transaction deleted successfully', id: transactionId });
+  } catch (error) {
+    console.error('Error deleting transaction in Controller:', error);
+    if (error.message.includes("No users found")) {
+        return res.status(500).json({ message: error.message });
+    }
     res.status(500).json({ message: 'Server error while deleting transaction.' });
   }
 };
@@ -302,39 +271,27 @@ const deleteTransaction = async (req, res) => { // <-- Make async
 // @route   GET /api/transactions/old
 // @access  Public (Temporarily)
 const getOldTransactions = async (req, res) => {
-    console.log("Attempting to fetch old transactions...");
+    // console.log("Attempting to fetch old transactions...");
     try {
-        const userId = await getPlaceholderUserId(); // Use placeholder function
-        console.log("Using placeholder User ID for old transactions:", userId);
-
-        // Calculate the start of the current month
+        const userId = await getPlaceholderUserId();
+        // console.log("Using placeholder User ID for old transactions:", userId);
         const now = new Date();
         const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        startOfCurrentMonth.setHours(0, 0, 0, 0); // Set to midnight
-
-        console.log(`Fetching transactions for user ${userId} before ${startOfCurrentMonth.toISOString()}`);
-
-        // Fetch transactions for the user dated *before* the start of the current month
+        startOfCurrentMonth.setHours(0, 0, 0, 0);
+        // console.log(`Fetching transactions for user ${userId} before ${startOfCurrentMonth.toISOString()}`);
         const oldTransactions = await Transaction.find({
-            user: userId, // Use fetched ID
-            date: { $lt: startOfCurrentMonth } // Date is less than the start of the current month
+            user: userId,
+            date: { $lt: startOfCurrentMonth }
         })
-        .sort({ date: -1 }) // Sort by date descending (most recent of the old ones first)
-        .lean(); // Use lean for performance
-
-        console.log(`Fetched ${oldTransactions.length} old transactions.`);
-
+        .sort({ date: -1 })
+        .lean();
+        // console.log(`Fetched ${oldTransactions.length} old transactions.`);
         res.status(200).json(oldTransactions);
-
     } catch (error) {
-        console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-        console.error('!!! Error fetching OLD transactions in Controller:');
-        console.error('!!! Error:', error);
-         if (error.message.includes("No users found")) { // Catch error from getPlaceholderUserId
-            console.error('!!! Placeholder User ID issue.');
+        console.error('Error fetching OLD transactions in Controller:', error);
+         if (error.message.includes("No users found")) {
             return res.status(500).json({ message: error.message });
          }
-        console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
         res.status(500).json({ message: 'Server error while fetching old transactions.' });
     }
 };
@@ -343,30 +300,25 @@ const getOldTransactions = async (req, res) => {
 // @route   GET /api/transactions/current-month/income
 // @access  Public (Temporarily)
 const getCurrentMonthIncome = async (req, res) => {
-    console.log("Attempting to fetch current month income...");
+    // console.log("Attempting to fetch current month income...");
     try {
         const userId = await getPlaceholderUserId();
-        console.log("Using placeholder User ID for current month income:", userId);
-
+        // console.log("Using placeholder User ID for current month income:", userId);
         const now = new Date();
         const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         startOfCurrentMonth.setHours(0, 0, 0, 0);
-
-        console.log(`Fetching income for user ${userId} from ${startOfCurrentMonth.toISOString()}`);
-
+        // console.log(`Fetching income for user ${userId} from ${startOfCurrentMonth.toISOString()}`);
         const incomeTransactions = await Transaction.find({
             user: userId,
-            type: 'income', // Filter by type
+            type: 'income',
             date: { $gte: startOfCurrentMonth }
         })
         .sort({ date: -1 })
         .lean();
-
-        console.log(`Fetched ${incomeTransactions.length} current month income transactions.`);
+        // console.log(`Fetched ${incomeTransactions.length} current month income transactions.`);
         res.status(200).json(incomeTransactions);
-
     } catch (error) {
-        console.error('!!! Error fetching current month income:', error);
+        console.error('Error fetching current month income:', error);
         if (error.message.includes("No users found")) {
             return res.status(500).json({ message: error.message });
         }
@@ -378,30 +330,25 @@ const getCurrentMonthIncome = async (req, res) => {
 // @route   GET /api/transactions/current-month/expense
 // @access  Public (Temporarily)
 const getCurrentMonthExpense = async (req, res) => {
-    console.log("Attempting to fetch current month expense...");
+    // console.log("Attempting to fetch current month expense...");
     try {
         const userId = await getPlaceholderUserId();
-        console.log("Using placeholder User ID for current month expense:", userId);
-
+        // console.log("Using placeholder User ID for current month expense:", userId);
         const now = new Date();
         const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         startOfCurrentMonth.setHours(0, 0, 0, 0);
-
-        console.log(`Fetching expense for user ${userId} from ${startOfCurrentMonth.toISOString()}`);
-
+        // console.log(`Fetching expense for user ${userId} from ${startOfCurrentMonth.toISOString()}`);
         const expenseTransactions = await Transaction.find({
             user: userId,
-            type: 'expense', // Filter by type
+            type: 'expense',
             date: { $gte: startOfCurrentMonth }
         })
         .sort({ date: -1 })
         .lean();
-
-        console.log(`Fetched ${expenseTransactions.length} current month expense transactions.`);
+        // console.log(`Fetched ${expenseTransactions.length} current month expense transactions.`);
         res.status(200).json(expenseTransactions);
-
     } catch (error) {
-        console.error('!!! Error fetching current month expense:', error);
+        console.error('Error fetching current month expense:', error);
         if (error.message.includes("No users found")) {
             return res.status(500).json({ message: error.message });
         }
@@ -413,39 +360,25 @@ const getCurrentMonthExpense = async (req, res) => {
 // @route   GET /api/transactions/savings/monthly
 // @access  Public (Temporarily)
 const getMonthlySavings = async (req, res) => {
-    console.log("Attempting to fetch monthly savings data...");
+    // console.log("Attempting to fetch monthly savings data...");
     try {
         const userId = await getPlaceholderUserId();
-        console.log("Using placeholder User ID for monthly savings:", userId);
-
-        // Use aggregation pipeline to calculate monthly savings
+        // console.log("Using placeholder User ID for monthly savings:", userId);
         const monthlySavings = await Transaction.aggregate([
-            {
-                $match: { user: userId } // Match transactions for the user
-            },
+            { $match: { user: userId } },
             {
                 $group: {
-                    _id: {
-                        year: { $year: "$date" },
-                        month: { $month: "$date" }
-                    },
-                    totalIncome: {
-                        $sum: { $cond: [{ $eq: ["$type", "income"] }, "$amount", 0] }
-                    },
-                    totalExpense: {
-                        $sum: { $cond: [{ $eq: ["$type", "expense"] }, "$amount", 0] }
-                    }
+                    _id: { year: { $year: "$date" }, month: { $month: "$date" } },
+                    totalIncome: { $sum: { $cond: [{ $eq: ["$type", "income"] }, "$amount", 0] } },
+                    totalExpense: { $sum: { $cond: [{ $eq: ["$type", "expense"] }, "$amount", 0] } }
                 }
             },
             {
                 $project: {
-                    _id: 0, // Exclude the default _id
+                    _id: 0,
                     month: {
-                        // Format month as YYYY-MM string
                         $concat: [
-                            { $toString: "$_id.year" },
-                            "-",
-                            // Pad month with leading zero if needed
+                            { $toString: "$_id.year" }, "-",
                             { $cond: {
                                 if: { $lt: ["$_id.month", 10] },
                                 then: { $concat: ["0", { $toString: "$_id.month" }] },
@@ -453,26 +386,21 @@ const getMonthlySavings = async (req, res) => {
                             }}
                         ]
                     },
-                    savings: { $subtract: ["$totalIncome", "$totalExpense"] } // Calculate savings
+                    savings: { $subtract: ["$totalIncome", "$totalExpense"] }
                 }
             },
-            {
-                $sort: { month: 1 } // Sort by month ascending
-            }
+            { $sort: { month: 1 } }
         ]);
-
-        console.log(`Calculated monthly savings for ${monthlySavings.length} months.`);
+        // console.log(`Calculated monthly savings for ${monthlySavings.length} months.`);
         res.status(200).json(monthlySavings);
-
     } catch (error) {
-        console.error('!!! Error fetching monthly savings:', error);
+        console.error('Error fetching monthly savings:', error);
         if (error.message.includes("No users found")) {
             return res.status(500).json({ message: error.message });
         }
         res.status(500).json({ message: 'Server error while fetching monthly savings.' });
     }
 };
-
 
 module.exports = {
   addTransaction,
@@ -481,7 +409,7 @@ module.exports = {
   updateTransaction,
   deleteTransaction,
   getOldTransactions,
-  getCurrentMonthIncome,  // Export new function
-  getCurrentMonthExpense, // Export new function
-  getMonthlySavings, // Export the new savings function
+  getCurrentMonthIncome,
+  getCurrentMonthExpense,
+  getMonthlySavings,
 };

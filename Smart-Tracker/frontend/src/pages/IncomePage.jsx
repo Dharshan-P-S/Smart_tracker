@@ -1,27 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react'; // Added useMemo
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-// import { Link } from 'react-router-dom'; // Link is unused, can be removed if not used
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Picker from 'emoji-picker-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { FaEdit, FaTrash } from 'react-icons/fa';
-import axios from 'axios'; // Using axios as per previous versions
+import axios from 'axios';
 
-import styles from './Dashboard.module.css'; // Assuming this CSS module is shared and styled appropriately
+import styles from './Dashboard.module.css';
 
-// Reusable formatCurrency function
 const formatCurrency = (value) => {
     const numValue = parseFloat(value);
     if (isNaN(numValue)) {
-        // Assuming USD as per your ProfilePage.js example context
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(0);
     }
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(numValue);
 };
 
-// Helper function to format date string
 const formatDate = (dateString) => {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) {
@@ -33,22 +29,25 @@ const formatDate = (dateString) => {
 };
 
 function IncomePage() {
-    const [allIncomeTransactions, setAllIncomeTransactions] = useState([]); // For current month's income display
-    const [loading, setLoading] = useState(true); // For loading income transactions list
+    const [allIncomeTransactions, setAllIncomeTransactions] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [username, setUsername] = useState(() => localStorage.getItem('username') || 'User');
     
-    // State for financial summary (all-time figures for validation)
-    // currentCumulativeSavings will be (All Time Income - All Time Expenses)
-    const [currentCumulativeSavings, setCurrentCumulativeSavings] = useState(0);
+    // Overall financial summary
+    const [currentCumulativeSavings, setCurrentCumulativeSavings] = useState(0); // All-time net savings
     const [loadingFinancialSummary, setLoadingFinancialSummary] = useState(true);
 
-    // State for Editing
+    // Current month's specific financial summary (for projection display)
+    const [currentMonthIncomeTotalForDisplay, setCurrentMonthIncomeTotalForDisplay] = useState(0);
+    const [currentMonthExpenseTotalForDisplay, setCurrentMonthExpenseTotalForDisplay] = useState(0);
+
+    // Editing state
     const [editingTxId, setEditingTxId] = useState(null);
-    const [editFormData, setEditFormData] = useState({ description: '', category: '', emoji: '' });
+    const [editFormData, setEditFormData] = useState({ description: '', category: '', emoji: '', amount: '' });
     const [showEditEmojiPicker, setShowEditEmojiPicker] = useState(false);
 
-    // Fetches ONLY current month's income transactions for display
+    // Fetches ONLY current month's income transactions for display in the list
     const fetchAllTransactions = async () => {
         setLoading(true);
         try {
@@ -62,7 +61,7 @@ function IncomePage() {
                 throw new Error(`Fetching income list: ${response.status} ${errorText.substring(0,100)}`);
             }
             const incomeData = await response.json();
-            incomeData.sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort descending for display
+            incomeData.sort((a, b) => new Date(b.date) - new Date(a.date));
             setAllIncomeTransactions(incomeData);
         } catch (err) {
             console.error("Error fetching transactions for Income page:", err);
@@ -73,7 +72,7 @@ function IncomePage() {
         }
     };
 
-    // Fetches data to calculate ALL-TIME cumulative savings
+    // Fetches data for ALL-TIME cumulative savings AND CURRENT MONTH's income/expense totals
     const fetchFinancialSummary = async () => {
         setLoadingFinancialSummary(true);
         const token = localStorage.getItem('authToken');
@@ -82,51 +81,57 @@ function IncomePage() {
             setLoadingFinancialSummary(false);
             return;
         }
-
         try {
-            // Fetch monthly savings (each item is net saving for that month)
+            // 1. Fetch ALL-TIME cumulative savings (from monthly net savings)
             const savingsResponse = await axios.get('/api/transactions/savings/monthly', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            
             const fetchedMonthlyNetSavings = savingsResponse.data || [];
-
-            // Calculate total cumulative savings by summing up net savings of each month
             const calculatedTotalCumulativeSavings = fetchedMonthlyNetSavings.reduce(
-                (sum, monthData) => sum + (monthData.savings || 0), 
-                0
+                (sum, monthData) => sum + (monthData.savings || 0), 0
             );
             setCurrentCumulativeSavings(calculatedTotalCumulativeSavings);
+
+            // 2. Fetch CURRENT MONTH's income and expense totals (from dashboard endpoint)
+            const dashboardResponse = await fetch('/api/transactions/dashboard', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!dashboardResponse.ok) {
+                const errorText = await dashboardResponse.text();
+                throw new Error(`Dashboard API for month summary: ${errorText.substring(0,100)}`);
+            }
+            const dashboardData = await dashboardResponse.json();
+            setCurrentMonthIncomeTotalForDisplay(dashboardData.totalIncome || 0);
+            setCurrentMonthExpenseTotalForDisplay(dashboardData.totalExpense || 0);
 
         } catch (err) {
              console.error("Error fetching financial summary for Income page:", err);
              const errMsg = err.response?.data?.message || err.message || "Failed to fetch financial summary.";
              setError(prev => prev ? `${prev}\nSummary: ${errMsg}` : `Summary: ${errMsg}`);
-             setCurrentCumulativeSavings(0); // Default to 0 on error
+             setCurrentCumulativeSavings(0);
+             setCurrentMonthIncomeTotalForDisplay(0);
+             setCurrentMonthExpenseTotalForDisplay(0);
         } finally {
             setLoadingFinancialSummary(false);
         }
     };
 
-    // Initial data fetch
     useEffect(() => {
-        setError(null); // Clear errors on mount
+        setError(null);
         fetchAllTransactions();
         fetchFinancialSummary();
     }, []);
 
-    // Event listener for updates from other components
     useEffect(() => {
         const handleUpdate = () => {
             console.log("IncomePage received update event, re-fetching...");
-            setError(null); // Clear previous errors before refetch
+            setError(null);
             fetchAllTransactions();
             fetchFinancialSummary();
         };
         window.addEventListener('income-updated', handleUpdate);
         window.addEventListener('transaction-deleted', handleUpdate);
-        window.addEventListener('transactions-updated', handleUpdate); // General update
-
+        window.addEventListener('transactions-updated', handleUpdate);
         return () => {
             window.removeEventListener('income-updated', handleUpdate);
             window.removeEventListener('transaction-deleted', handleUpdate);
@@ -134,11 +139,15 @@ function IncomePage() {
         };
     }, []);
 
-    // --- Edit Handlers ---
     const handleEditClick = (tx) => {
         setEditingTxId(tx._id);
-        setEditFormData({ description: tx.description, category: tx.category, emoji: tx.emoji || '' });
-        setShowEditEmojiPicker(false); // Close picker when starting edit
+        setEditFormData({
+            description: tx.description,
+            category: tx.category,
+            emoji: tx.emoji || '',
+            amount: tx.amount !== undefined ? tx.amount.toString() : ''
+        });
+        setShowEditEmojiPicker(false);
     };
 
     const handleCancelEdit = () => {
@@ -151,22 +160,77 @@ function IncomePage() {
         setEditFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    // --- Calculate projections for display using useMemo ---
+    const projections = useMemo(() => {
+        if (!editingTxId || loadingFinancialSummary) {
+            return { currentMonthSavings: null, totalCumulativeSavings: null };
+        }
+
+        const originalTx = allIncomeTransactions.find(tx => tx._id === editingTxId);
+        if (!originalTx) {
+            return { currentMonthSavings: null, totalCumulativeSavings: null };
+        }
+
+        const originalAmount = parseFloat(originalTx.amount) || 0;
+        const newAmount = parseFloat(editFormData.amount) || 0; // Use 0 if amount is empty or invalid for projection
+        const amountDifference = newAmount - originalAmount;
+
+        // Projected Current Month's Savings:
+        // (Current Month Income + Change due to edit) - Current Month Expense
+        const projectedCurrentMonthSavings = (currentMonthIncomeTotalForDisplay + amountDifference) - currentMonthExpenseTotalForDisplay;
+
+        // Projected Total Cumulative Savings:
+        // Current Total Savings + Change due to edit
+        const projectedTotalCumulativeSavings = currentCumulativeSavings + amountDifference;
+        
+        return {
+            currentMonthSavings: projectedCurrentMonthSavings,
+            totalCumulativeSavings: projectedTotalCumulativeSavings,
+            isValidAmount: newAmount > 0 // Check if the entered new amount is valid for display
+        };
+    }, [editingTxId, editFormData.amount, allIncomeTransactions, currentCumulativeSavings, currentMonthIncomeTotalForDisplay, currentMonthExpenseTotalForDisplay, loadingFinancialSummary]);
+
+
     const handleSaveEdit = async (txId) => {
-        setError(null); // Clear specific update errors
+        setError(null);
         const token = localStorage.getItem('authToken');
         if (!token) { setError("Authentication token not found for update."); toast.error("Authentication token not found."); return; }
+
         if (!editFormData.description.trim() || !editFormData.category.trim()) {
-            toast.error("Description and Category cannot be empty."); return;
+            toast.error("Description and Category cannot be empty.");
+            return;
+        }
+        const newAmount = parseFloat(editFormData.amount);
+        if (isNaN(newAmount) || newAmount <= 0) {
+            toast.error("Please enter a valid positive amount.");
+            return;
+        }
+
+        if (loadingFinancialSummary) { // Redundant check if projections are used, but good for safety
+            toast.info("Financial summary is still loading. Please try again shortly to save.");
+            return;
+        }
+        
+        // Use the calculated projection for validation (already available from useMemo)
+        if (projections.totalCumulativeSavings < 0) {
+            toast.error(
+                `Cannot save this amount (${formatCurrency(newAmount)}). Doing so ` +
+                `would result in an overall negative net savings of ${formatCurrency(projections.totalCumulativeSavings)}. ` +
+                `Your current total savings are ${formatCurrency(currentCumulativeSavings)}.`
+            );
+            return;
         }
 
         try {
             const response = await fetch(`/api/transactions/${txId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ // Only send fields that can be edited
+                body: JSON.stringify({
                     description: editFormData.description.trim(),
                     category: editFormData.category.trim(),
                     emoji: editFormData.emoji,
+                    amount: newAmount, 
+                    type: 'income' 
                 }),
             });
             if (!response.ok) {
@@ -174,22 +238,20 @@ function IncomePage() {
                 throw new Error(errorData.message || `Failed to update transaction: ${response.statusText}`);
             }
             
-            // Let useEffect handle data refetch for consistency after event dispatch
-            window.dispatchEvent(new CustomEvent('income-updated')); // Or 'transactions-updated'
+            window.dispatchEvent(new CustomEvent('income-updated'));
             toast.success("Income updated successfully!");
-            handleCancelEdit(); // Exit editing mode
+            handleCancelEdit();
 
         } catch (err) {
             console.error("Error updating transaction:", err);
-            setError(`Update Error: ${err.message}`); // Display error near the list
+            setError(`Update Error: ${err.message}`);
             toast.error(`Update Error: ${err.message}`);
         }
     };
 
-    // --- Delete Handler ---
     const handleDelete = async (txId) => {
-        setError(null); // Clear specific delete errors
-
+        // ... (handleDelete logic remains the same as your last verified version)
+        setError(null);
         const transactionToDelete = allIncomeTransactions.find(tx => tx._id === txId);
         if (!transactionToDelete) {
             toast.error("Could not find the transaction to delete.");
@@ -197,18 +259,11 @@ function IncomePage() {
             return;
         }
         const incomeAmountToDecrease = transactionToDelete.amount;
-
         if (loadingFinancialSummary) {
             toast.info("Financial summary is still loading. Please try again shortly to delete.");
             return;
         }
-
-        // currentCumulativeSavings represents: (All Historical Income - All Historical Expenses)
-        // If we remove an income, this net value decreases.
         const projectedNewOverallNetSavings = currentCumulativeSavings - incomeAmountToDecrease;
-
-        // Primary Validation:
-        // If deleting this income makes your overall net financial position (all-time savings) negative, block it.
         if (projectedNewOverallNetSavings < 0) {
             toast.error(
                 `Cannot delete this income of ${formatCurrency(incomeAmountToDecrease)}. Doing so ` +
@@ -217,17 +272,13 @@ function IncomePage() {
             );
             return;
         }
-        
         const token = localStorage.getItem('authToken');
         if (!token) { setError("Authentication token not found for delete."); toast.error("Authentication token not found."); return; }
-        
         let confirmMessage = `Are you sure you want to delete this income transaction of ${formatCurrency(incomeAmountToDecrease)}?`;
-        if (projectedNewOverallNetSavings < currentCumulativeSavings) { // Check if it actually reduces savings
+        if (projectedNewOverallNetSavings < currentCumulativeSavings) {
             confirmMessage += ` Your overall net savings will be reduced to ${formatCurrency(projectedNewOverallNetSavings)}.`;
         }
         if (!window.confirm(confirmMessage)) { return; }
-
-
         try {
             const response = await fetch(`/api/transactions/${txId}`, {
                 method: 'DELETE',
@@ -237,38 +288,31 @@ function IncomePage() {
                 const errorData = await response.json().catch(() => ({ message: 'Deletion failed with non-JSON response' }));
                 throw new Error(errorData.message || `Failed to delete transaction: ${response.statusText}`);
             }
-
-            // Let useEffect handle data refetch for consistency
             window.dispatchEvent(new CustomEvent('transaction-deleted', { detail: { type: 'income', amount: incomeAmountToDecrease, id: txId } }));
-            window.dispatchEvent(new CustomEvent('transactions-updated')); // General update to refresh Dashboard etc.
-
+            window.dispatchEvent(new CustomEvent('transactions-updated'));
             toast.success('Income Deleted Successfully!');
-
         } catch (err) {
             console.error("Error deleting transaction:", err);
-            setError(`Delete Error: ${err.message}`); // Display error near list
+            setError(`Delete Error: ${err.message}`);
             toast.error(`Delete Error: ${err.message}`);
         }
     };
 
-    // --- Chart Data Prep (uses allIncomeTransactions which is current month's income) ---
     const chartData = allIncomeTransactions.map((tx) => ({
-        dateValue: tx.date ? new Date(tx.date) : new Date(0), // Handle potentially missing date for robustness
-        dateLabel: tx.date ? new Date(tx.date).toLocaleDateString('en-CA') : `tx_${tx._id}`, // Use ID if date missing
-        amount: tx.amount || 0, // Default to 0 if amount missing
+        dateValue: tx.date ? new Date(tx.date) : new Date(0),
+        dateLabel: tx.date ? new Date(tx.date).toLocaleDateString('en-CA') : `tx_${tx._id}`,
+        amount: tx.amount || 0,
         description: tx.description || "N/A"
     }))
-    .sort((a, b) => a.dateValue - b.dateValue); // Sort ascending for chart
+    .sort((a, b) => a.dateValue - b.dateValue);
 
-    // --- PDF Download Handler ---
     const handleDownloadPDF = () => {
         const doc = new jsPDF();
         const tableColumn = ["Date", "Description", "Category", "Amount"];
         const tableRows = [];
         doc.setFontSize(18);
         doc.text(`Income Transactions (Current Month) for ${username}`, 14, 22);
-        // Use displayed (and sorted) transactions for PDF
-        allIncomeTransactions.forEach(tx => { // allIncomeTransactions is already sorted descending by date
+        allIncomeTransactions.forEach(tx => {
             tableRows.push([
                 formatDate(tx.date), tx.description, tx.category, formatCurrency(tx.amount)
             ]);
@@ -284,19 +328,17 @@ function IncomePage() {
         doc.save(`income-transactions-${username}-${new Date().toISOString().slice(0,10)}.pdf`);
     };
 
-    // Combined loading state for the page
     const pageIsLoading = loading || loadingFinancialSummary;
 
     if (pageIsLoading) {
         return <div className={styles.dashboardPageContent}><p>Loading income data and financial summary...</p></div>;
     }
     
-    // Consolidate general page load errors (not action-specific ones like Update/Delete)
     const pageLoadError = error && (error.includes("Transactions:") || error.includes("Summary:") || error.includes("Auth:"));
 
     return (
-        <div className={styles.transactionsPageContainer}> {/* Main container for the whole page */}
-             <div className={styles.dashboardPageContent}> {/* Inner container matching Dashboard's structure */}
+        <div className={styles.transactionsPageContainer}>
+             <div className={styles.dashboardPageContent}>
                 <div className={styles.sectionHeader}>
                    <h1 className={styles.pageTitle}>Income Overview</h1>
                     <button onClick={handleDownloadPDF} className={styles.pdfButton} style={{fontSize: '1rem'}}>
@@ -304,7 +346,6 @@ function IncomePage() {
                     </button>
                 </div>
                 
-                {/* Display general page load errors */}
                 {pageLoadError &&
                     <div className={styles.pageErrorBanner}>
                         Error loading page data:
@@ -312,7 +353,6 @@ function IncomePage() {
                     </div>
                 }
 
-                 {/* Bar Chart Section - Displays current month's income */}
                  <section className={`${styles.sectionBox} ${styles.chartSection}`}>
                      <h2 className={styles.sectionTitle}>Income Trend by Date (Current Month)</h2>
                      <div className={styles.chartContainer}>
@@ -333,87 +373,86 @@ function IncomePage() {
                      </div>
                  </section>
 
-                 {/* All Income Transactions Section - Displays current month's income */}
-                 <div className={styles.mainArea}> {/* This div might be for layout, ensure it's used consistently */}
+                 <div className={styles.mainArea}>
                      <section className={`${styles.sectionBox} ${styles.transactionsSection}`} style={{gridColumn: '1 / -1'}}>
                          <div className={styles.sectionHeader}>
                              <h2 className={styles.sectionTitle}>Income Transactions (Current Month)</h2>
                          </div>
-                          {/* Display action-specific errors (Update/Delete) */}
                           {(error && (error.startsWith('Update Error:') || error.startsWith('Delete Error:'))) && (
                            <p className={styles.formErrorBanner} style={{marginBottom: '1rem'}}>{error}</p>
                          )}
-                         {/* Show "no transactions" only if not loading and no page load error */}
                          {!loading && !pageLoadError && allIncomeTransactions.length === 0 && (
                             <div className={styles.placeholderContent}>
                                 No income transactions found for the current month.
                             </div>
                          )}
-                         {/* Show transaction list only if not loading, no page load error, and transactions exist */}
                          {!loading && !pageLoadError && allIncomeTransactions.length > 0 && (
                              <div className={styles.transactionList}>
                                  {allIncomeTransactions.map((tx) => (
+                                     <React.Fragment key={tx._id}> {/* Use Fragment for key */}
                                      <div
-                                         key={tx._id}
-                                         className={`${styles.transactionItem} ${styles.incomeBorder}`} // Assuming you have specific grid styling here
+                                         className={`${styles.transactionItem} ${styles.incomeBorder}`}
                                      >
-                                         {/* Date */}
                                          <span style={{ gridColumn: '1 / 2' }} className={styles.transactionDate}>
                                              {formatDate(tx.date)}
                                          </span>
-
                                          {editingTxId === tx._id ? (
-                                             <> {/* Edit Mode Inputs */}
-                                                 <input
-                                                     type="text" name="description" value={editFormData.description}
-                                                     onChange={handleEditFormChange} className={styles.formInput}
-                                                     style={{ gridColumn: '2 / 3', fontSize: '0.9rem', padding: '0.4rem' }} // Example inline style, prefer class
-                                                     required
-                                                 />
-                                                 <input
-                                                     type="text" name="category" value={editFormData.category}
-                                                     onChange={handleEditFormChange} className={styles.formInput}
-                                                     style={{ gridColumn: '3 / 4', fontSize: '0.9rem', padding: '0.4rem' }} // Example inline style
-                                                     required
-                                                 />
-                                                  {/* Edit Emoji Picker */}
-                                                  <div style={{ gridColumn: '1 / 2', gridRow: '2 / 3', marginTop: '0.5rem', position: 'relative', justifySelf:'start' }}>
-                                                    <button
-                                                      type="button"
-                                                      onClick={() => setShowEditEmojiPicker(prev => !prev)}
-                                                      className={styles.emojiButton} // Use existing class
-                                                      style={{fontSize: '1.2rem', padding: '0.4rem'}} // Inline style from original
-                                                      aria-label="Select icon"
-                                                    >
-                                                      {editFormData.emoji || '+'}
-                                                    </button>
-                                                    {showEditEmojiPicker && editingTxId === tx._id && (
-                                                      <div className={styles.emojiPickerContainer} style={{top: '100%', left: 0, right: 'auto', zIndex: 10}}> {/* Positional styles */}
-                                                        <Picker
-                                                          onEmojiClick={(emojiData) => {
-                                                            setEditFormData(prev => ({ ...prev, emoji: emojiData.emoji }));
-                                                            setShowEditEmojiPicker(false);
-                                                          }}
-                                                          pickerStyle={{ width: '100%' }} // From original
-                                                        />
+                                             <>
+                                                 <div style={{ gridColumn: '2 / 5', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr auto', gap: '0.5rem', alignItems: 'center' }}>
+                                                     <input
+                                                         type="text" name="description" value={editFormData.description}
+                                                         onChange={handleEditFormChange} className={styles.formInput}
+                                                         style={{ fontSize: '0.9rem', padding: '0.4rem' }}
+                                                         required
+                                                     />
+                                                     <input
+                                                         type="text" name="category" value={editFormData.category}
+                                                         onChange={handleEditFormChange} className={styles.formInput}
+                                                         style={{ fontSize: '0.9rem', padding: '0.4rem' }}
+                                                         required
+                                                     />
+                                                     <input
+                                                         type="number" name="amount" value={editFormData.amount}
+                                                         onChange={handleEditFormChange} className={styles.formInput}
+                                                         style={{ fontSize: '0.9rem', padding: '0.4rem', textAlign: 'right' }}
+                                                         step="0.01" min="0.01"
+                                                         required
+                                                     />
+                                                      <div style={{ position: 'relative', justifySelf:'start' }}>
+                                                        <button
+                                                          type="button"
+                                                          onClick={() => setShowEditEmojiPicker(prev => !prev)}
+                                                          className={styles.emojiButton}
+                                                          style={{fontSize: '1.2rem', padding: '0.4rem'}}
+                                                          aria-label="Select icon"
+                                                        >
+                                                          {editFormData.emoji || '+'}
+                                                        </button>
+                                                        {showEditEmojiPicker && editingTxId === tx._id && (
+                                                          <div className={styles.emojiPickerContainer} style={{top: '100%', left: 0, zIndex: 10}}>
+                                                            <Picker
+                                                              onEmojiClick={(emojiData) => {
+                                                                setEditFormData(prev => ({ ...prev, emoji: emojiData.emoji }));
+                                                                setShowEditEmojiPicker(false);
+                                                              }}
+                                                              pickerStyle={{ width: '250px' }}
+                                                            />
+                                                          </div>
+                                                        )}
                                                       </div>
-                                                    )}
-                                                  </div>
+                                                 </div>
                                              </>
                                          ) : (
-                                             // Display Mode Text
-                                             <span style={{ gridColumn: '2 / 4' }} className={styles.transactionDesc}>
-                                                 {tx.emoji && <span className={styles.transactionEmoji}>{tx.emoji}</span>}
-                                                 {tx.description} ({tx.category})
-                                             </span>
+                                             <>
+                                                <span style={{ gridColumn: '2 / 4' }} className={styles.transactionDesc}>
+                                                    {tx.emoji && <span className={styles.transactionEmoji}>{tx.emoji}</span>}
+                                                    {tx.description} ({tx.category})
+                                                </span>
+                                                <span style={{ gridColumn: '4 / 5' }} className={`${styles.transactionAmount} ${styles.income}`}>
+                                                    {'+'} {formatCurrency(tx.amount)}
+                                                </span>
+                                             </>
                                          )}
-
-                                         {/* Amount */}
-                                         <span style={{ gridColumn: '4 / 5' }} className={`${styles.transactionAmount} ${styles.income}`}>
-                                             {'+'} {formatCurrency(tx.amount)}
-                                         </span>
-
-                                         {/* Action Buttons */}
                                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', gridColumn: '5 / 6', alignItems: 'center' }}>
                                              {editingTxId === tx._id ? (
                                                  <>
@@ -432,13 +471,30 @@ function IncomePage() {
                                              )}
                                          </div>
                                      </div>
+                                     {/* Display Projections when editing this transaction */}
+                                     {editingTxId === tx._id && projections.isValidAmount && (
+                                        <div className={styles.editProjections}>
+                                            <p>
+                                                If saved, this month's savings will become: <strong>{formatCurrency(projections.currentMonthSavings)}</strong>
+                                            </p>
+                                            <p>
+                                                Your total cumulative savings will become: <strong>{formatCurrency(projections.totalCumulativeSavings)}</strong>
+                                            </p>
+                                             {projections.totalCumulativeSavings < 0 && (
+                                                <p style={{color: 'red', fontWeight: 'bold'}}>
+                                                    Warning: This change will result in overall negative savings!
+                                                </p>
+                                            )}
+                                        </div>
+                                     )}
+                                     </React.Fragment>
                                  ))}
                              </div>
                          )}
                      </section>
-                 </div> {/* End of mainArea */}
-            </div> {/* End of dashboardPageContent */}
-        </div> /* End of transactionsPageContainer */
+                 </div>
+            </div>
+        </div>
     );
 }
 
