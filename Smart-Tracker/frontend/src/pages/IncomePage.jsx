@@ -231,6 +231,8 @@ function IncomePage() {
             // Dispatch general update too
              window.dispatchEvent(new CustomEvent('transactions-updated'));
 
+             toast.success('Income Deleted Successfully!');
+
         } catch (err) {
             console.error("Error deleting transaction:", err);
             setError(`Delete Error: ${err.message}`);

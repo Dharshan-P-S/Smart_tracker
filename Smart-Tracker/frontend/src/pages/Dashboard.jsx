@@ -414,6 +414,8 @@ function Dashboard() {
         window.dispatchEvent(new CustomEvent('transactions-updated'));
         // --- >>> End Dispatch <<< ---
 
+        toast.success("Transaction added successfully.");
+
         // ... (keep existing category update logic)
         if (!allCategories.includes(newTransaction.category)) {
             const updatedCategories = [...allCategories, newTransaction.category];
