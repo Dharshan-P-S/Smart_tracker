@@ -1,3 +1,5 @@
+/* OldTransactionsPage.module.css */
+
 /* Using global variables defined in index.css or App.css */
 
 /* Default Light Mode Styles */
@@ -5,7 +7,6 @@
     padding: 20px;
     max-width: 900px;
     margin: 20px auto;
-    /* Mimic .sectionBox from Dashboard */
     background-color: var(--box-bg-light, #f9f9f9);
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -14,12 +15,11 @@
     transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
-.container h2 {
+.container h2 { /* Page Title */
     text-align: center;
     margin-bottom: 20px;
-    /* Mimic .sectionTitle from Dashboard */
     color: var(--text-primary-light, #333);
-    font-size: 1.2rem; /* Match dashboard section title */
+    font-size: 1.5rem;
     font-weight: 600;
     transition: color 0.3s;
 }
@@ -28,27 +28,25 @@
     list-style: none;
     padding: 0;
     margin: 0;
-    margin-top: 1rem; /* Add some space like dashboard lists */
+    margin-top: 1rem; /* Space above the list within its section */
 }
 
+/* Updated .transactionItem for edit/delete actions */
 .transactionItem {
     display: grid;
-    grid-template-columns: 1fr 1fr 2fr 1fr; /* Date, Category, Description, Amount */
-    gap: 1rem; /* Match dashboard item gap */
-    padding: 1rem; /* Match dashboard item padding */
-    margin-bottom: 0.75rem; /* Match dashboard item margin */
-    border-radius: 6px; /* Match dashboard item radius */
-    /* Mimic .transactionItem background/border from Dashboard */
+    /* Date | Details/Inputs | Amount (static in edit) | Actions */
+    grid-template-columns: auto 1fr auto minmax(auto, 100px);
+    gap: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    border-radius: 6px;
     background-color: var(--bg-light, #fff);
-    border: 1px solid var(--border-light, #ddd); /* Use 1px border for consistency here */
+    border: 1px solid var(--border-light, #ddd);
     align-items: center;
-    position: relative; /* For pseudo-element border */
+    position: relative;
     transition: background-color 0.3s, border-color 0.3s, border-left-color 0.3s;
-    /* Adjust grid template if needed to accommodate combined details */
-    grid-template-columns: auto 1fr auto; /* Date | Details | Amount */
 }
 
-/* Use pseudo-element for side border like Dashboard */
 .transactionItem::before {
   content: '';
   position: absolute;
@@ -56,51 +54,58 @@
   top: 0;
   bottom: 0;
   width: 4px;
-  background-color: transparent; /* Default */
-  border-top-left-radius: 6px; /* Match item radius */
-  border-bottom-left-radius: 6px; /* Match item radius */
+  background-color: transparent;
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
   transition: background-color 0.3s;
 }
 
 .transactionItem.income::before {
-  background-color: var(--income-color-light, #28a745); /* Or direct color like #10B981 */
+  background-color: var(--income-color-light, #28a745);
 }
 
 .transactionItem.expense::before {
-  background-color: var(--expense-color-light, #dc3545); /* Or direct color like #EF4444 */
+  background-color: var(--expense-color-light, #dc3545);
 }
 
-
+/* General span inside transaction item, if not overridden */
 .transactionItem span {
     font-size: 0.9rem;
     color: var(--text-secondary-light, #555);
 }
 
-/* Style for the combined details span */
-.transactionDetails {
-    grid-column: 2 / 3; /* Span the second column */
-    /* Inherit general span styles or add specific ones */
+/* Specifically for the date part in display mode */
+.transactionDateDisplay {
+    grid-column: 1 / 2;
+    font-size: 0.9rem;
+    color: var(--text-secondary-light, #555);
+    white-space: nowrap;
+}
+
+.transactionDetails { /* Display mode for description/category/emoji */
+    grid-column: 2 / 3;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--text-primary-light, #333);
+    display: flex; /* To align emoji and text */
+    align-items: center;
 }
 
-/* Style for the emoji within details */
 .transactionEmoji {
     margin-right: 0.5em;
-    font-size: 1em; /* Or adjust as needed */
+    font-size: 1em; /* Or adjust size relative to text */
 }
 
-/* Amount styling */
-.transactionAmount {
-    grid-column: 3 / 4; /* Amount in the third column */
+.transactionAmount { /* Display mode for amount */
+    grid-column: 3 / 4;
     color: var(--text-primary-light, #333);
-    font-weight: 600; /* Match dashboard amount */
-    font-size: 0.95rem; /* Match dashboard amount */
+    font-weight: 600;
+    font-size: 0.95rem;
     white-space: nowrap;
-    text-align: right; /* Align amount right */
+    text-align: right;
 }
-/* Specific income/expense colors for amount text */
+
 .transactionItem.income .transactionAmount {
     color: var(--income-color-light, #10B981);
 }
@@ -108,102 +113,386 @@
      color: var(--expense-color-light, #EF4444);
 }
 
-
-.error {
+.pageError {
     color: var(--error-color-light, #dc3545);
+    background-color: #ffebee;
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid var(--error-color-light, #dc3545);
     text-align: center;
-    margin-top: 20px;
     font-weight: bold;
-    transition: color 0.3s;
+    transition: color 0.3s, background-color 0.3s, border-color 0.3s;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
 }
 
-.container p { /* Style for loading/no transactions text */
+.container p { /* For loading/no transactions text */
      color: var(--text-secondary-light, #555);
      transition: color 0.3s;
-     text-align: center; /* Center placeholder text */
-     padding: 2rem; /* Add padding */
+     text-align: center;
+     padding: 2rem;
      font-style: italic;
+     width: 100%;
 }
 
-/* Styles for Month Grouping */
 .monthGroup {
-    margin-top: 2rem; /* Add space between month groups */
-    padding-top: 1rem; /* Add padding above the heading */
-    border-top: 1px solid var(--border-light, #ddd); /* Separator line */
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-light, #ddd);
 }
 .monthGroup:first-of-type {
-    margin-top: 0; /* No top margin for the very first group */
+    margin-top: 0;
     padding-top: 0;
-    border-top: none; /* No separator line for the first group */
+    border-top: none;
 }
 
 .monthHeading {
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--text-primary-light, #333);
-    margin-bottom: 1rem; /* Space below heading */
+    margin-bottom: 1rem;
     padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-light, #ddd); /* Underline heading */
+    border-bottom: 1px solid var(--border-light, #ddd);
+}
+
+/* --- Styles for Sections (Form and Transaction Display) --- */
+.sectionBox {
+    background-color: var(--box-bg-light, #f9f9f9);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border-light, #ddd);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.addOldTransactionSection {
+    margin-bottom: 2rem; /* Space below the form section */
 }
 
 
-/* Dark Mode Styles using prefers-color-scheme */
+
+.sectionTitle { /* For titles like "Add a Past Transaction" or "Transaction History" */
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-primary-light, #333);
+    transition: color 0.3s;
+}
+
+/* --- Styles for the "Add Old Transaction" Form --- */
+.transactionForm {
+    display: flex;
+    flex-direction: column; /* Each child (.formGroup, .formError, button) on its own line */
+    gap: 1rem;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.formGroup label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary-light, #555);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: color 0.3s;
+}
+
+.formInput,
+.transactionForm select {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-light, #ccc);
+    border-radius: 6px;
+    font-size: 1rem;
+    background-color: var(--input-bg-light, var(--bg-light, #fff));
+    color: var(--text-primary-light, #333);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.3s, color 0.3s;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.formInput:focus,
+.transactionForm select:focus {
+    outline: none;
+    border-color: var(--primary-accent-light, #60a5fa);
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
+}
+
+.formInput::placeholder {
+    color: var(--text-secondary-light, #888);
+    opacity: 0.6;
+}
+
+.emojiSelectorContainer { /* For the main form's emoji button */
+    position: relative;
+}
+
+.emojiButton { /* Main form emoji button */
+    background-color: var(--input-bg-light, var(--bg-light, #fff));
+    border: 1px solid var(--border-light, #ccc);
+    border-radius: 6px;
+    padding: 0.5rem;
+    font-size: 1.8rem;
+    color: var(--text-primary-light, #333);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    min-width: 48px;
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    box-sizing: border-box;
+}
+.emojiButton:hover { border-color: var(--primary-accent-light, #60a5fa); background-color: #f0f0f0; }
+.emojiButton:focus { outline: none; border-color: var(--primary-accent-light, #60a5fa); box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3); }
+
+.emojiPickerContainer { /* Main form emoji picker */
+    position: absolute;
+    z-index: 1000;
+    top: calc(100% + 5px);
+    left: 0;
+    background-color: var(--box-bg-light, #fff);
+    border: 1px solid var(--border-light, #ccc);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.submitButton {
+    padding: 0.85rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--button-text-light, #ffffff);
+    background-color: var(--primary-accent-light, #3b82f6);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    width: 100%;
+    box-sizing: border-box;
+}
+.submitButton:hover { background-color: var(--primary-accent-hover-light, #2563eb); }
+.submitButton:active { transform: scale(0.98); }
+.submitButton:disabled { background-color: #ccc; cursor: not-allowed; opacity: 0.7; }
+
+.formError { /* For errors within the form submission */
+    color: var(--error-color-light, #dc3545);
+    background-color: #ffebee;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid var(--error-color-light, #dc3545);
+    text-align: left;
+    font-size: 0.9rem;
+    transition: color 0.3s, background-color 0.3s, border-color 0.3s;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* --- Styles for Transaction List Item Actions (Edit/Delete) --- */
+.editInputsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    grid-column: 2 / 3; /* Takes the place of .transactionDetails */
+}
+
+.editInput {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-light, #ccc);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    background-color: var(--input-bg-light, var(--bg-light, #fff));
+    color: var(--text-primary-light, #333);
+    width: 100%;
+    box-sizing: border-box;
+}
+.editInput:focus {
+    outline: none;
+    border-color: var(--primary-accent-light, #60a5fa);
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
+}
+
+.editEmojiContainer { /* Container for the small emoji button within edit mode */
+    position: relative;
+    align-self: flex-start; /* Button doesn't stretch */
+    margin-top: 0.25rem; /* Optional space */
+}
+
+.emojiButtonSmall { /* For the emoji button in edit mode */
+    background-color: var(--input-bg-light, var(--bg-light, #fff));
+    border: 1px solid var(--border-light, #ccc);
+    border-radius: 4px;
+    padding: 0.3rem 0.5rem;
+    font-size: 1rem; /* Can be smaller than main form emoji button */
+    color: var(--text-primary-light, #333);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+.emojiButtonSmall:hover {
+    border-color: var(--primary-accent-light, #60a5fa);
+}
+
+.editEmojiPicker { /* Picker for in-line editing */
+    position: absolute;
+    z-index: 1010; /* Above other elements if needed */
+    top: 100%; /* Position below the small emoji button */
+    left: 0;
+    margin-top: 2px;
+    background-color: var(--box-bg-light, #fff);
+    border: 1px solid var(--border-light, #ccc);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.transactionAmountStatic { /* For displaying amount when item is in edit mode */
+    grid-column: 3 / 4;
+    color: var(--text-secondary-light, #555); /* Duller color */
+    font-weight: normal; /* Less emphasis */
+    font-size: 0.9rem;
+    white-space: nowrap;
+    text-align: right;
+}
+
+.actionButtons {
+    grid-column: 4 / 5; /* Last column */
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.actionButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.4rem;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem; /* Icon size */
+    transition: background-color 0.2s, color 0.2s;
+}
+.actionButton svg {
+    vertical-align: middle;
+}
+
+.editButton { color: var(--primary-accent-light, #3b82f6); }
+.editButton:hover { background-color: rgba(59, 130, 246, 0.1); }
+.deleteButton { color: var(--error-color-light, #dc3545); }
+.deleteButton:hover { background-color: rgba(220, 53, 69, 0.1); }
+.saveButton { color: var(--income-color-light, #28a745); }
+.saveButton:hover { background-color: rgba(40, 167, 69, 0.1); }
+.cancelButton { color: var(--text-secondary-light, #6c757d); }
+.cancelButton:hover { background-color: rgba(108, 117, 125, 0.1); }
+
+
+/* Dark Mode Styles */
 @media (prefers-color-scheme: dark) {
-    .monthGroup {
-        border-top-color: var(--border-dark, #444);
-    }
-    .monthHeading {
-        color: var(--text-primary-dark, #e0e0e0);
-        border-bottom-color: var(--border-dark, #444);
-    }
+    .container { background-color: var(--box-bg-dark, #1a1a1a); color: var(--text-primary-dark, #e0e0e0); border-color: var(--border-dark, #444); box-shadow: 0 2px 4px rgba(255, 255, 255, 0.05); }
+    .container h2 { color: var(--text-primary-dark, #e0e0e0); }
+    .transactionItem { background-color: var(--bg-dark, #2a2a2a); border-color: var(--border-dark, #444); }
+    .transactionItem.income::before { background-color: var(--income-color-dark, lightgreen); }
+    .transactionItem.expense::before { background-color: var(--expense-color-dark, red); }
+    .transactionItem span { color: var(--text-secondary-dark, #aaa); }
+    .transactionDetails { color: var(--text-primary-dark, #e0e0e0); }
+    .transactionAmount { color: var(--text-primary-dark, #e0e0e0); }
+    .transactionItem.income .transactionAmount { color: var(--income-color-dark, lightgreen); }
+    .transactionItem.expense .transactionAmount { color: var(--expense-color-dark, red); }
+    .pageError { color: var(--error-color-dark, #ff6b6b); background-color: #522222; border-color: var(--error-color-dark, #ff6b6b); }
+    .container p { color: var(--text-secondary-dark, #aaa); }
+    .monthGroup { border-top-color: var(--border-dark, #444); }
+    .monthHeading { color: var(--text-primary-dark, #e0e0e0); border-bottom-color: var(--border-dark, #444); }
+    .sectionBox { background-color: var(--box-bg-dark, #1a1a1a); border-color: var(--border-dark, #444); }
+    .sectionTitle { color: var(--text-primary-dark, #e0e0e0); }
+    .formGroup label { color: var(--text-secondary-dark, #aaa); }
+    .formInput, .transactionForm select { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark, #444); color: var(--text-primary-dark, #e0e0e0); }
+    .formInput::placeholder { color: var(--text-secondary-dark, #777); opacity: 0.6; }
+    .formInput:focus, .transactionForm select:focus { border-color: var(--primary-accent-dark, #60a5fa); box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.4); }
+    .emojiButton { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark, #444); color: var(--text-primary-dark, #e0e0e0); }
+    .emojiButton:hover { border-color: var(--primary-accent-dark, #60a5fa); background-color: #374151; }
+    .emojiPickerContainer { background-color: var(--box-bg-dark, #2a2a2a); border-color: var(--border-dark, #555); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); }
+    .submitButton { background-color: var(--primary-accent-dark, #4299e1); color: var(--button-text-dark, #ffffff); }
+    .submitButton:hover { background-color: var(--primary-accent-hover-dark, #2b6cb0); }
+    .submitButton:disabled { background-color: #4a5568; opacity: 0.6; }
+    .formError { color: var(--error-color-dark, #ff6b6b); background-color: #522222; border-color: var(--error-color-dark, #ff6b6b); }
 
-    .container {
-        background-color: var(--box-bg-dark, #1a1a1a);
-        color: var(--text-primary-dark, #e0e0e0);
-        border-color: var(--border-dark, #444);
-        box-shadow: 0 2px 4px rgba(255, 255, 255, 0.05);
-    }
+    /* Dark Mode for Edit/Delete Actions */
+    .editInput { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark, #444); color: var(--text-primary-dark, #e0e0e0); }
+    .editInput:focus { border-color: var(--primary-accent-dark, #60a5fa); box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3); }
+    .emojiButtonSmall { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark, #444); color: var(--text-primary-dark, #e0e0e0); }
+    .emojiButtonSmall:hover { border-color: var(--primary-accent-dark, #60a5fa); }
+    .editEmojiPicker { background-color: var(--box-bg-dark, #2a2a2a); border-color: var(--border-dark, #555); }
+    .transactionAmountStatic { color: var(--text-secondary-dark, #aaa); }
+    .editButton { color: var(--primary-accent-dark, #60a5fa); }
+    .editButton:hover { background-color: rgba(96, 165, 250, 0.15); }
+    .deleteButton { color: var(--error-color-dark, #ff6b6b); }
+    .deleteButton:hover { background-color: rgba(255, 107, 107, 0.15); }
+    .saveButton { color: var(--income-color-dark, lightgreen); }
+    .saveButton:hover { background-color: rgba(144, 238, 144, 0.15); }
+    .cancelButton { color: var(--text-secondary-dark, #9ca3af); }
+    .cancelButton:hover { background-color: rgba(156, 163, 175, 0.15); }
+}
 
-    .container h2 {
-        color: var(--text-primary-dark, #e0e0e0);
-    }
-
+/* Responsive adjustments */
+@media (max-width: 768px) {
     .transactionItem {
-        background-color: var(--bg-dark, #2a2a2a);
-        border-color: var(--border-dark, #444);
+        grid-template-columns: auto 1fr minmax(auto, 80px); /* Date | Details/Inputs & Amount | Actions */
+        gap: 0.5rem;
     }
+    .editInputsContainer { grid-column: 2 / 3; }
+    .transactionDetails { grid-column: 2 / 3; }
+    .transactionAmount, .transactionAmountStatic {
+        grid-column: 2 / 3;
+        text-align: left;
+        margin-top: 0.25rem;
+        font-size: 0.9rem;
+    }
+    .transactionAmountStatic {
+        font-weight: bold; /* Make it more visible in edit mode stack */
+        color: var(--text-primary-light);
+    }
+    @media (prefers-color-scheme: dark) {
+        .transactionAmountStatic { color: var(--text-primary-dark); }
+    }
+    .actionButtons {
+        grid-column: 3 / 4;
+        flex-direction: column;
+        gap: 0.3rem;
+        align-items: flex-end;
+    }
+    .actionButton { padding: 0.3rem; font-size: 0.9rem; }
+}
 
-    .transactionItem.income::before {
-        background-color: var(--income-color-dark, lightgreen); /* Match dashboard dark */
+@media (max-width: 480px) {
+    .transactionItem {
+        grid-template-columns: 1fr; /* Fully stack for very small screens */
+        padding-left: calc(1rem + 4px); /* Keep space for colored border */
     }
-
-    .transactionItem.expense::before {
-        background-color: var(--expense-color-dark, red); /* Match dashboard dark */
+    .transactionDateDisplay,
+    .editInputsContainer,
+    .transactionDetails,
+    .transactionAmount,
+    .transactionAmountStatic,
+    .actionButtons {
+        grid-column: 1 / -1; /* Each element takes the full single column */
     }
-
-     .transactionItem span { /* General span color */
-        color: var(--text-secondary-dark, #aaa);
+    .actionButtons {
+        flex-direction: row; /* Buttons back to horizontal */
+        justify-content: flex-start; /* Align left */
+        margin-top: 0.5rem;
     }
-     .transactionDetails { /* Details span color */
-        color: var(--text-primary-dark, #e0e0e0); /* Make details primary text color */
-     }
-    .transactionAmount { /* Amount span color */
-        color: var(--text-primary-dark, #e0e0e0);
-    }
-    /* Specific income/expense colors for amount text in dark mode */
-    .transactionItem.income .transactionAmount {
-        color: var(--income-color-dark, lightgreen);
-    }
-    .transactionItem.expense .transactionAmount {
-         color: var(--expense-color-dark, red);
-    }
-
-
-    .error {
-        color: var(--error-color-dark, #ff6b6b);
-    }
-
-    .container p {
-        color: var(--text-secondary-dark, #aaa);
+    .transactionAmount, .transactionAmountStatic {
+        text-align: left;
     }
 }
