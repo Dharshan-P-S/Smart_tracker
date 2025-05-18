@@ -9,6 +9,7 @@
   width: auto !important;      /* Allow the toast to be narrower if content is less */
                                /* 'auto' ensures it shrinks to fit content up to max-width */
   box-sizing: border-box;      /* Recommended for easier width/padding management */
+  padding: 10px !important;
   /* You might need to adjust margins if they look off after changing width */
   /* For example, if your container is 'top-right', toasts stack.
      If you wanted them centered within that 500px, you'd need more complex styling,
