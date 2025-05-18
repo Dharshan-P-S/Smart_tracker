@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { Link } from 'react-router-dom'; // Link is unused, consider removing if not needed elsewhere
+// import { Link } from 'react-router-dom'; // Link is unused, can be removed if not used
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import Picker from 'emoji-picker-react'; // Import Picker
+import Picker from 'emoji-picker-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { FaEdit, FaTrash } from 'react-icons/fa'; // Import icons
+import { FaEdit, FaTrash } from 'react-icons/fa';
+import axios from 'axios'; // Using axios as per previous versions
 
-// Import the SAME CSS module used by Dashboard
-import styles from './Dashboard.module.css';
+import styles from './Dashboard.module.css'; // Assuming this CSS module is shared and styled appropriately
 
 // Reusable formatCurrency function
 const formatCurrency = (value) => {
     const numValue = parseFloat(value);
     if (isNaN(numValue)) {
+        // Assuming USD as per your ProfilePage.js example context
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(0);
     }
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(numValue);
@@ -22,7 +23,6 @@ const formatCurrency = (value) => {
 
 // Helper function to format date string
 const formatDate = (dateString) => {
-    // Add check for invalid date
     const date = new Date(dateString);
     if (isNaN(date.getTime())) {
         return 'Invalid Date';
@@ -33,105 +33,116 @@ const formatDate = (dateString) => {
 };
 
 function IncomePage() {
-    const [allIncomeTransactions, setAllIncomeTransactions] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [allIncomeTransactions, setAllIncomeTransactions] = useState([]); // For current month's income display
+    const [loading, setLoading] = useState(true); // For loading income transactions list
     const [error, setError] = useState(null);
     const [username, setUsername] = useState(() => localStorage.getItem('username') || 'User');
-    const [currentBalance, setCurrentBalance] = useState(null); // Keep track of balance for validation
+    
+    // State for financial summary (all-time figures for validation)
+    // currentCumulativeSavings will be (All Time Income - All Time Expenses)
+    const [currentCumulativeSavings, setCurrentCumulativeSavings] = useState(0);
+    const [loadingFinancialSummary, setLoadingFinancialSummary] = useState(true);
 
-    // --- State for Editing ---
+    // State for Editing
     const [editingTxId, setEditingTxId] = useState(null);
     const [editFormData, setEditFormData] = useState({ description: '', category: '', emoji: '' });
-    const [showEditEmojiPicker, setShowEditEmojiPicker] = useState(false); // State for edit picker visibility
+    const [showEditEmojiPicker, setShowEditEmojiPicker] = useState(false);
 
-    // --- Fetch Transactions ---
+    // Fetches ONLY current month's income transactions for display
     const fetchAllTransactions = async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('authToken');
-            if (!token) throw new Error("Authentication token not found.");
+            if (!token) throw new Error("Authentication token not found for transactions.");
             const response = await fetch('/api/transactions/current-month/income', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`HTTP error! status: ${response.status}. ${errorText}`);
+                throw new Error(`Fetching income list: ${response.status} ${errorText.substring(0,100)}`);
             }
             const incomeData = await response.json();
-            incomeData.sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort descending
+            incomeData.sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort descending for display
             setAllIncomeTransactions(incomeData);
-            setError(null);
         } catch (err) {
             console.error("Error fetching transactions for Income page:", err);
-            setError(err.message || 'Failed to fetch transactions.');
+            setError(prev => prev ? `${prev}\nTransactions: ${err.message}` : `Transactions: ${err.message}`);
             setAllIncomeTransactions([]);
         } finally {
             setLoading(false);
         }
     };
 
-    // --- Fetch Balance ---
-    const fetchBalance = async () => {
-        setError(null);
+    // Fetches data to calculate ALL-TIME cumulative savings
+    const fetchFinancialSummary = async () => {
+        setLoadingFinancialSummary(true);
         const token = localStorage.getItem('authToken');
         if (!token) {
-            setError("Authentication token not found for balance check.");
-            return null;
+            setError(prev => prev ? `${prev}\nAuth: Authentication token not found for summary.` : `Auth: Authentication token not found for summary.`);
+            setLoadingFinancialSummary(false);
+            return;
         }
+
         try {
-            const response = await fetch('/api/transactions/dashboard', {
-                 headers: { 'Authorization': `Bearer ${token}` }
+            // Fetch monthly savings (each item is net saving for that month)
+            const savingsResponse = await axios.get('/api/transactions/savings/monthly', {
+                headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (!response.ok) {
-                 const errorText = await response.text();
-                 throw new Error(`HTTP error fetching balance! status: ${response.status}. ${errorText}`);
-            }
-            const data = await response.json();
-            const balance = (data.totalIncome || 0) - (data.totalExpense || 0);
-            setCurrentBalance(balance);
-            return balance;
+            
+            const fetchedMonthlyNetSavings = savingsResponse.data || [];
+
+            // Calculate total cumulative savings by summing up net savings of each month
+            const calculatedTotalCumulativeSavings = fetchedMonthlyNetSavings.reduce(
+                (sum, monthData) => sum + (monthData.savings || 0), 
+                0
+            );
+            setCurrentCumulativeSavings(calculatedTotalCumulativeSavings);
+
         } catch (err) {
-             console.error("Error fetching balance for Income page:", err);
-             setError(err.message || 'Failed to fetch current balance.');
-             setCurrentBalance(null);
-             return null;
+             console.error("Error fetching financial summary for Income page:", err);
+             const errMsg = err.response?.data?.message || err.message || "Failed to fetch financial summary.";
+             setError(prev => prev ? `${prev}\nSummary: ${errMsg}` : `Summary: ${errMsg}`);
+             setCurrentCumulativeSavings(0); // Default to 0 on error
+        } finally {
+            setLoadingFinancialSummary(false);
         }
     };
 
-    // --- Effects ---
+    // Initial data fetch
     useEffect(() => {
+        setError(null); // Clear errors on mount
         fetchAllTransactions();
-        fetchBalance(); // Fetch initial balance
-    }, []); // Initial fetch
+        fetchFinancialSummary();
+    }, []);
 
+    // Event listener for updates from other components
     useEffect(() => {
         const handleUpdate = () => {
             console.log("IncomePage received update event, re-fetching...");
+            setError(null); // Clear previous errors before refetch
             fetchAllTransactions();
-            fetchBalance(); // Re-fetch balance on any transaction update
+            fetchFinancialSummary();
         };
-        // Listen to multiple events if needed
         window.addEventListener('income-updated', handleUpdate);
-        window.addEventListener('transaction-deleted', handleUpdate); // Listen for deletes too
-        window.addEventListener('transactions-updated', handleUpdate); // General update from dashboard
+        window.addEventListener('transaction-deleted', handleUpdate);
+        window.addEventListener('transactions-updated', handleUpdate); // General update
 
         return () => {
             window.removeEventListener('income-updated', handleUpdate);
             window.removeEventListener('transaction-deleted', handleUpdate);
             window.removeEventListener('transactions-updated', handleUpdate);
         };
-    }, []); // Listener setup runs once
+    }, []);
 
     // --- Edit Handlers ---
     const handleEditClick = (tx) => {
         setEditingTxId(tx._id);
         setEditFormData({ description: tx.description, category: tx.category, emoji: tx.emoji || '' });
-        setShowEditEmojiPicker(false);
+        setShowEditEmojiPicker(false); // Close picker when starting edit
     };
 
     const handleCancelEdit = () => {
         setEditingTxId(null);
-        // No need to reset editFormData here, it will be overwritten on next edit click
         setShowEditEmojiPicker(false);
     };
 
@@ -141,77 +152,81 @@ function IncomePage() {
     };
 
     const handleSaveEdit = async (txId) => {
-        setError(null);
+        setError(null); // Clear specific update errors
         const token = localStorage.getItem('authToken');
-        if (!token) { setError("Authentication token not found."); return; }
+        if (!token) { setError("Authentication token not found for update."); toast.error("Authentication token not found."); return; }
         if (!editFormData.description.trim() || !editFormData.category.trim()) {
             toast.error("Description and Category cannot be empty."); return;
         }
-
-        const originalTx = allIncomeTransactions.find(tx => tx._id === txId);
-        if (!originalTx) { setError("Original transaction not found for update."); return;}
 
         try {
             const response = await fetch(`/api/transactions/${txId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({
+                body: JSON.stringify({ // Only send fields that can be edited
                     description: editFormData.description.trim(),
                     category: editFormData.category.trim(),
                     emoji: editFormData.emoji,
-                    // IMPORTANT: Send original amount and type if backend needs them for validation/updates
-                    // amount: originalTx.amount,
-                    // type: originalTx.type
                 }),
             });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ message: 'Update failed with non-JSON response' }));
                 throw new Error(errorData.message || `Failed to update transaction: ${response.statusText}`);
             }
-
-            // Update local state for immediate UI feedback
-            setAllIncomeTransactions(prevTxs =>
-                prevTxs.map(tx =>
-                    tx._id === txId ? { ...tx, // Keep original amount, date, type etc.
-                        description: editFormData.description.trim(),
-                        category: editFormData.category.trim(),
-                        emoji: editFormData.emoji
-                       } : tx
-                )
-            );
-
-            // Optionally re-fetch balance if description/category changes affect summaries
-            fetchBalance();
-
+            
+            // Let useEffect handle data refetch for consistency after event dispatch
+            window.dispatchEvent(new CustomEvent('income-updated')); // Or 'transactions-updated'
+            toast.success("Income updated successfully!");
             handleCancelEdit(); // Exit editing mode
 
         } catch (err) {
             console.error("Error updating transaction:", err);
-            setError(`Update Error: ${err.message}`);
+            setError(`Update Error: ${err.message}`); // Display error near the list
+            toast.error(`Update Error: ${err.message}`);
         }
     };
 
     // --- Delete Handler ---
     const handleDelete = async (txId) => {
-        setError(null);
+        setError(null); // Clear specific delete errors
 
         const transactionToDelete = allIncomeTransactions.find(tx => tx._id === txId);
-        if (!transactionToDelete) { setError("Could not find the transaction to delete."); return; }
-        const transactionAmount = transactionToDelete.amount;
+        if (!transactionToDelete) {
+            toast.error("Could not find the transaction to delete.");
+            setError("Delete Error: Could not find the transaction to delete.");
+            return;
+        }
+        const incomeAmountToDecrease = transactionToDelete.amount;
 
-        // Fetch current balance *before* confirming deletion
-        const fetchedBalance = await fetchBalance();
-        if (fetchedBalance === null) { return; } // Error handled by fetchBalance
-
-        // Balance Check
-        if (fetchedBalance - transactionAmount < 0) {
-            toast.error(`Cannot delete this income transaction. Deleting ${formatCurrency(transactionAmount)} would result in a negative balance (${formatCurrency(fetchedBalance - transactionAmount)}).`);
+        if (loadingFinancialSummary) {
+            toast.info("Financial summary is still loading. Please try again shortly to delete.");
             return;
         }
 
+        // currentCumulativeSavings represents: (All Historical Income - All Historical Expenses)
+        // If we remove an income, this net value decreases.
+        const projectedNewOverallNetSavings = currentCumulativeSavings - incomeAmountToDecrease;
+
+        // Primary Validation:
+        // If deleting this income makes your overall net financial position (all-time savings) negative, block it.
+        if (projectedNewOverallNetSavings < 0) {
+            toast.error(
+                `Cannot delete this income of ${formatCurrency(incomeAmountToDecrease)}. Doing so ` +
+                `would result in an overall negative net savings of ${formatCurrency(projectedNewOverallNetSavings)}. ` +
+                `This implies your total lifetime expenses would exceed your total lifetime income.`
+            );
+            return;
+        }
+        
         const token = localStorage.getItem('authToken');
-        if (!token) { setError("Authentication token not found."); return; }
-        if (!window.confirm("Are you sure you want to delete this income transaction?")) { return; }
+        if (!token) { setError("Authentication token not found for delete."); toast.error("Authentication token not found."); return; }
+        
+        let confirmMessage = `Are you sure you want to delete this income transaction of ${formatCurrency(incomeAmountToDecrease)}?`;
+        if (projectedNewOverallNetSavings < currentCumulativeSavings) { // Check if it actually reduces savings
+            confirmMessage += ` Your overall net savings will be reduced to ${formatCurrency(projectedNewOverallNetSavings)}.`;
+        }
+        if (!window.confirm(confirmMessage)) { return; }
+
 
         try {
             const response = await fetch(`/api/transactions/${txId}`, {
@@ -223,28 +238,25 @@ function IncomePage() {
                 throw new Error(errorData.message || `Failed to delete transaction: ${response.statusText}`);
             }
 
-            setAllIncomeTransactions(prevTxs => prevTxs.filter(tx => tx._id !== txId));
-            // Update balance state locally
-            setCurrentBalance(prevBalance => prevBalance !== null ? prevBalance - transactionAmount : null);
-            // Notify other components
-            window.dispatchEvent(new CustomEvent('transaction-deleted', { detail: { type: 'income', amount: transactionAmount, id: txId } }));
-            // Dispatch general update too
-             window.dispatchEvent(new CustomEvent('transactions-updated'));
+            // Let useEffect handle data refetch for consistency
+            window.dispatchEvent(new CustomEvent('transaction-deleted', { detail: { type: 'income', amount: incomeAmountToDecrease, id: txId } }));
+            window.dispatchEvent(new CustomEvent('transactions-updated')); // General update to refresh Dashboard etc.
 
-             toast.success('Income Deleted Successfully!');
+            toast.success('Income Deleted Successfully!');
 
         } catch (err) {
             console.error("Error deleting transaction:", err);
-            setError(`Delete Error: ${err.message}`);
+            setError(`Delete Error: ${err.message}`); // Display error near list
+            toast.error(`Delete Error: ${err.message}`);
         }
     };
 
-    // --- Chart Data Prep ---
+    // --- Chart Data Prep (uses allIncomeTransactions which is current month's income) ---
     const chartData = allIncomeTransactions.map((tx) => ({
-        dateValue: tx.date ? new Date(tx.date) : new Date(0),
-        dateLabel: tx.date ? new Date(tx.date).toLocaleDateString('en-CA') : `tx_${tx._id}`, // Use ID for unique key
-        amount: tx.amount,
-        description: tx.description
+        dateValue: tx.date ? new Date(tx.date) : new Date(0), // Handle potentially missing date for robustness
+        dateLabel: tx.date ? new Date(tx.date).toLocaleDateString('en-CA') : `tx_${tx._id}`, // Use ID if date missing
+        amount: tx.amount || 0, // Default to 0 if amount missing
+        description: tx.description || "N/A"
     }))
     .sort((a, b) => a.dateValue - b.dateValue); // Sort ascending for chart
 
@@ -254,9 +266,9 @@ function IncomePage() {
         const tableColumn = ["Date", "Description", "Category", "Amount"];
         const tableRows = [];
         doc.setFontSize(18);
-        doc.text(`Income Transactions for ${username}`, 14, 22);
-        // Use sorted transactions if needed for PDF consistency
-        [...allIncomeTransactions].sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(tx => {
+        doc.text(`Income Transactions (Current Month) for ${username}`, 14, 22);
+        // Use displayed (and sorted) transactions for PDF
+        allIncomeTransactions.forEach(tx => { // allIncomeTransactions is already sorted descending by date
             tableRows.push([
                 formatDate(tx.date), tx.description, tx.category, formatCurrency(tx.amount)
             ]);
@@ -272,29 +284,37 @@ function IncomePage() {
         doc.save(`income-transactions-${username}-${new Date().toISOString().slice(0,10)}.pdf`);
     };
 
-    // --- Loading/Error States ---
-    if (loading) {
-        return <div className={styles.dashboardPageContent}><p>Loading income data...</p></div>;
-    }
-    // Show general errors, but not update errors at the top level
-    if (error && !error.startsWith('Update Error:') && !error.startsWith('Delete Error:')) {
-        return <div className={styles.dashboardPageContent}><p style={{ color: 'red' }}>Error: {error}</p></div>;
-    }
+    // Combined loading state for the page
+    const pageIsLoading = loading || loadingFinancialSummary;
 
-    // --- Component Render ---
+    if (pageIsLoading) {
+        return <div className={styles.dashboardPageContent}><p>Loading income data and financial summary...</p></div>;
+    }
+    
+    // Consolidate general page load errors (not action-specific ones like Update/Delete)
+    const pageLoadError = error && (error.includes("Transactions:") || error.includes("Summary:") || error.includes("Auth:"));
+
     return (
-        <div className={styles.transactionsPageContainer}>
-             <div className={styles.dashboardPageContent}>
+        <div className={styles.transactionsPageContainer}> {/* Main container for the whole page */}
+             <div className={styles.dashboardPageContent}> {/* Inner container matching Dashboard's structure */}
                 <div className={styles.sectionHeader}>
                    <h1 className={styles.pageTitle}>Income Overview</h1>
                     <button onClick={handleDownloadPDF} className={styles.pdfButton} style={{fontSize: '1rem'}}>
                        Download PDF
                     </button>
                 </div>
+                
+                {/* Display general page load errors */}
+                {pageLoadError &&
+                    <div className={styles.pageErrorBanner}>
+                        Error loading page data:
+                        {error.split('\n').map((e, i) => <div key={i}>{e.replace(/(Transactions: |Summary: |Auth: )/g, '')}</div>)}
+                    </div>
+                }
 
-                {/* Bar Chart Section */}
+                 {/* Bar Chart Section - Displays current month's income */}
                  <section className={`${styles.sectionBox} ${styles.chartSection}`}>
-                     <h2 className={styles.sectionTitle}>Income Trend by Date</h2>
+                     <h2 className={styles.sectionTitle}>Income Trend by Date (Current Month)</h2>
                      <div className={styles.chartContainer}>
                          {chartData.length > 0 ? (
                              <ResponsiveContainer width="100%" height={300}>
@@ -308,26 +328,34 @@ function IncomePage() {
                                  </BarChart>
                              </ResponsiveContainer>
                          ) : (
-                             <div className={styles.placeholderContent}>No income data available to display chart.</div>
+                             <div className={styles.placeholderContent}>No income data for the current month to display chart.</div>
                          )}
                      </div>
                  </section>
 
-                 <div className={styles.mainArea}>
-                     {/* All Income Transactions Section */}
+                 {/* All Income Transactions Section - Displays current month's income */}
+                 <div className={styles.mainArea}> {/* This div might be for layout, ensure it's used consistently */}
                      <section className={`${styles.sectionBox} ${styles.transactionsSection}`} style={{gridColumn: '1 / -1'}}>
                          <div className={styles.sectionHeader}>
                              <h2 className={styles.sectionTitle}>Income Transactions (Current Month)</h2>
                          </div>
+                          {/* Display action-specific errors (Update/Delete) */}
                           {(error && (error.startsWith('Update Error:') || error.startsWith('Delete Error:'))) && (
-                           <p style={{ color: 'red', marginBottom: '1rem' }}>{error}</p>
+                           <p className={styles.formErrorBanner} style={{marginBottom: '1rem'}}>{error}</p>
                          )}
-                         {allIncomeTransactions.length > 0 ? (
+                         {/* Show "no transactions" only if not loading and no page load error */}
+                         {!loading && !pageLoadError && allIncomeTransactions.length === 0 && (
+                            <div className={styles.placeholderContent}>
+                                No income transactions found for the current month.
+                            </div>
+                         )}
+                         {/* Show transaction list only if not loading, no page load error, and transactions exist */}
+                         {!loading && !pageLoadError && allIncomeTransactions.length > 0 && (
                              <div className={styles.transactionList}>
                                  {allIncomeTransactions.map((tx) => (
                                      <div
                                          key={tx._id}
-                                         className={`${styles.transactionItem} ${styles.incomeBorder}`}
+                                         className={`${styles.transactionItem} ${styles.incomeBorder}`} // Assuming you have specific grid styling here
                                      >
                                          {/* Date */}
                                          <span style={{ gridColumn: '1 / 2' }} className={styles.transactionDate}>
@@ -335,48 +363,45 @@ function IncomePage() {
                                          </span>
 
                                          {editingTxId === tx._id ? (
-                                             <>
-                                                 {/* Edit Inputs */}
+                                             <> {/* Edit Mode Inputs */}
                                                  <input
                                                      type="text" name="description" value={editFormData.description}
                                                      onChange={handleEditFormChange} className={styles.formInput}
-                                                     style={{ gridColumn: '2 / 3', fontSize: '0.9rem', padding: '0.4rem' }}
+                                                     style={{ gridColumn: '2 / 3', fontSize: '0.9rem', padding: '0.4rem' }} // Example inline style, prefer class
                                                      required
                                                  />
                                                  <input
                                                      type="text" name="category" value={editFormData.category}
                                                      onChange={handleEditFormChange} className={styles.formInput}
-                                                     style={{ gridColumn: '3 / 4', fontSize: '0.9rem', padding: '0.4rem' }}
+                                                     style={{ gridColumn: '3 / 4', fontSize: '0.9rem', padding: '0.4rem' }} // Example inline style
                                                      required
                                                  />
-                                                  {/* Edit Emoji Picker Button and Container */}
+                                                  {/* Edit Emoji Picker */}
                                                   <div style={{ gridColumn: '1 / 2', gridRow: '2 / 3', marginTop: '0.5rem', position: 'relative', justifySelf:'start' }}>
                                                     <button
                                                       type="button"
-                                                      onClick={() => setShowEditEmojiPicker(prev => !prev)} // Toggle only this picker
-                                                      // ****** APPLY THE CSS CLASS HERE ******
-                                                      className={styles.emojiButton}
-                                                      // ************************************
-                                                      style={{fontSize: '1.2rem', padding: '0.4rem'}} // Keep inline style overrides if needed
+                                                      onClick={() => setShowEditEmojiPicker(prev => !prev)}
+                                                      className={styles.emojiButton} // Use existing class
+                                                      style={{fontSize: '1.2rem', padding: '0.4rem'}} // Inline style from original
                                                       aria-label="Select icon"
                                                     >
-                                                      {editFormData.emoji || '+'} {/* Default emoji */}
+                                                      {editFormData.emoji || '+'}
                                                     </button>
-                                                    {showEditEmojiPicker && editingTxId === tx._id && ( // Show only if this row is editing AND picker toggled
-                                                      <div className={styles.emojiPickerContainer} style={{top: '100%', left: 0, right: 'auto'}}>
+                                                    {showEditEmojiPicker && editingTxId === tx._id && (
+                                                      <div className={styles.emojiPickerContainer} style={{top: '100%', left: 0, right: 'auto', zIndex: 10}}> {/* Positional styles */}
                                                         <Picker
-                                                          onEmojiClick={(emojiData) => { // Renamed param
+                                                          onEmojiClick={(emojiData) => {
                                                             setEditFormData(prev => ({ ...prev, emoji: emojiData.emoji }));
-                                                            setShowEditEmojiPicker(false); // Close picker on selection
+                                                            setShowEditEmojiPicker(false);
                                                           }}
-                                                          pickerStyle={{ width: '100%' }}
+                                                          pickerStyle={{ width: '100%' }} // From original
                                                         />
                                                       </div>
                                                     )}
                                                   </div>
                                              </>
                                          ) : (
-                                             // Display Text
+                                             // Display Mode Text
                                              <span style={{ gridColumn: '2 / 4' }} className={styles.transactionDesc}>
                                                  {tx.emoji && <span className={styles.transactionEmoji}>{tx.emoji}</span>}
                                                  {tx.description} ({tx.category})
@@ -409,15 +434,11 @@ function IncomePage() {
                                      </div>
                                  ))}
                              </div>
-                         ) : (
-                             <div className={styles.placeholderContent}>
-                                 No income transactions found for the current month.
-                             </div>
                          )}
                      </section>
-                 </div>
-            </div>
-        </div>
+                 </div> {/* End of mainArea */}
+            </div> {/* End of dashboardPageContent */}
+        </div> /* End of transactionsPageContainer */
     );
 }
 
