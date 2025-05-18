@@ -1,1 +1,27 @@
 /* App.css - Add global application styles here if needed */
+/* src/App.css */
+
+/* ... your other existing styles ... */
+
+/* Custom styles for react-toastify toast messages */
+.Toastify__toast {
+  max-width: 500px !important; /* Set the maximum width */
+  width: auto !important;      /* Allow the toast to be narrower if content is less */
+                               /* 'auto' ensures it shrinks to fit content up to max-width */
+  box-sizing: border-box;      /* Recommended for easier width/padding management */
+  /* You might need to adjust margins if they look off after changing width */
+  /* For example, if your container is 'top-right', toasts stack.
+     If you wanted them centered within that 500px, you'd need more complex styling,
+     but this just limits their overall width. */
+}
+
+/* Optional: If you want the toast container itself to also respect this max-width.
+   This is usually not necessary if you're styling the individual toasts,
+   as the container typically just holds them. But if toasts are still too wide,
+   it might be because the container is forcing a width.
+*/
+/*
+.Toastify__toast-container {
+  max-width: 500px;
+}
+*/
