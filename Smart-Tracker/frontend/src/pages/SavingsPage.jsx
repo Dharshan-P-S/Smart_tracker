@@ -1,27 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import styles from './SavingsPage.module.css';
-// Assuming you have a charting library like Chart.js or Recharts installed
-// import { Line } from 'react-chartjs-2'; // Example for Chart.js
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'; // Import AreaChart and Area
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const SavingsPage = () => {
-  const [savingsData, setSavingsData] = useState([]);
+  const [savingsData, setSavingsData] = useState([]); // Will store { month, savings, cumulativeSavings }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchSavingsData = async () => {
-      setLoading(true); // Set loading true at the start
-      setError(null); // Reset error state
+      setLoading(true);
+      setError(null);
       try {
-        // Fetch data from the backend endpoint
         const { data } = await axios.get('/api/transactions/savings/monthly');
 
-        // Data is already sorted by the backend, no need to sort here
-        // data.sort((a, b) => new Date(a.month) - new Date(b.month)); // Remove sorting
+        // Assuming data is sorted by month from backend
+        // Calculate cumulative savings
+        let cumulativeTotal = 0;
+        const processedData = data.map(item => {
+          cumulativeTotal += item.savings;
+          return {
+            ...item,
+            cumulativeSavings: cumulativeTotal,
+          };
+        });
 
-        setSavingsData(data);
+        setSavingsData(processedData);
         setLoading(false);
       } catch (err) {
         setError('Failed to fetch savings data. Please ensure the backend is running and the endpoint is correct.');
@@ -33,31 +38,50 @@ const SavingsPage = () => {
     fetchSavingsData();
   }, []);
 
-  // Prepare data for the chart (example using Recharts)
+  // Prepare data for the chart
   const chartData = savingsData.map(item => ({
-    name: new Date(item.month).toLocaleString('default', { month: 'short', year: 'numeric' }), // Format month name
-    Savings: item.savings,
+    name: new Date(item.month).toLocaleString('default', { month: 'short', year: 'numeric' }),
+    Savings: parseFloat(item.savings.toFixed(2)), // Ensure it's a number for the chart
+    'Cumulative Savings': parseFloat(item.cumulativeSavings.toFixed(2)), // Add cumulative savings
   }));
 
   const renderGraph = () => {
+    if (savingsData.length === 0 && !loading) {
+      return <p className={styles.noDataText}>No savings data available to display chart.</p>;
+    }
     return (
-      <div className={styles.chartContainer}> {/* Use the new container class */}
-        <ResponsiveContainer width="100%" height="100%"> {/* Use 100% height */}
+      <div className={styles.chartContainer}>
+        <ResponsiveContainer width="100%" height={300}> {/* Specify a height */}
           <AreaChart
             data={chartData}
             margin={{
-              top: 5,
+              top: 10, // Adjusted top margin
               right: 30,
-              left: 20,
+              left: 20, // Increased left margin for Y-axis labels
               bottom: 5,
             }}
           >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Area type="monotone" dataKey="Savings" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} /> {/* Use Area component with fill */}
+            <defs>
+              <linearGradient id="colorSavings" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#8884d8" stopOpacity={0.1}/>
+              </linearGradient>
+              <linearGradient id="colorCumulative" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#82ca9d" stopOpacity={0.1}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+            <XAxis dataKey="name" stroke="#666" />
+            <YAxis stroke="#666" tickFormatter={(value) => `₹${value}`} />
+            <Tooltip
+              formatter={(value, name) => [`₹${Number(value).toFixed(2)}`, name]}
+              contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', border: '1px solid #ccc', borderRadius: '5px' }}
+              cursor={{ fill: 'rgba(204,204,204,0.2)' }}
+            />
+            <Legend wrapperStyle={{ paddingTop: '20px' }}/>
+            <Area type="monotone" dataKey="Savings" stroke="#8884d8" fillOpacity={1} fill="url(#colorSavings)" />
+            <Area type="monotone" dataKey="Cumulative Savings" stroke="#82ca9d" fillOpacity={1} fill="url(#colorCumulative)" />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -71,27 +95,39 @@ const SavingsPage = () => {
         {savingsData.length > 0 ? (
           <ul>
             {savingsData.map((item, index) => (
-              <li key={index}>
-                {new Date(item.month).toLocaleString('default', { month: 'long', year: 'numeric' })}:
-                <span className={item.savings >= 0 ? styles.positive : styles.negative}>
-                   ₹{item.savings.toFixed(2)}
-                </span>
+              <li key={index} className={styles.savingsListItem}>
+                <div className={styles.monthYear}>
+                  {new Date(item.month).toLocaleString('default', { month: 'long', year: 'numeric' })}:
+                </div>
+                <div className={styles.savingsAmounts}>
+                  <span className={styles.label}>Monthly: </span>
+                  <span className={item.savings >= 0 ? styles.positive : styles.negative}>
+                     ₹{item.savings.toFixed(2)}
+                  </span>
+                  <span className={styles.separator}> | </span>
+                  <span className={styles.label}>Total Saving till this month: </span>
+                  <span className={item.cumulativeSavings >= 0 ? styles.positive : styles.negative}>
+                     ₹{item.cumulativeSavings.toFixed(2)}
+                  </span>
+                </div>
               </li>
             ))}
           </ul>
         ) : (
-          <p>No savings data available.</p>
+          <p className={styles.noDataText}>No savings data available for the list.</p>
         )}
       </div>
     );
   };
 
-  if (loading) return <p>Loading savings data...</p>;
-  if (error) return <p className={styles.error}>{error}</p>;
+  if (loading) return <div className={styles.savingsContainer}><p className={styles.loadingText}>Loading savings data...</p></div>;
+  if (error && savingsData.length === 0) return <div className={styles.savingsContainer}><p className={styles.error}>{error}</p></div>;
+
 
   return (
     <div className={styles.savingsContainer}>
       <h2>Monthly Savings Analysis</h2>
+      {error && <p className={styles.error}>{error}</p>} {/* Show error even if some data is loaded */}
       {renderGraph()}
       {renderSavingsList()}
     </div>
