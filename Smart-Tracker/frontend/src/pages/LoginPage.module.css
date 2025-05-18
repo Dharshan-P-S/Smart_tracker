@@ -203,9 +203,6 @@
 
 /* Dark Mode Styles */
 @media (prefers-color-scheme: dark) {
-  .loginContainer {
-    /* background-color: var(--bg-dark); REMOVED */
-  }
 
   .loginBox {
     background-color: var(--box-bg-dark);
