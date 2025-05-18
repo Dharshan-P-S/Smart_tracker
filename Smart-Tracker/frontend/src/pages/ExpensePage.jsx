@@ -1,17 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react'; // Added useMemo
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { Link } from 'react-router-dom'; // Link is unused, consider removing if not needed elsewhere
+// import { Link } from 'react-router-dom'; // Link is unused
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import Picker from 'emoji-picker-react'; // Import Picker
+import Picker from 'emoji-picker-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { FaEdit, FaTrash } from 'react-icons/fa'; // Import icons
+import { FaEdit, FaTrash } from 'react-icons/fa';
+import axios from 'axios';
 
-// Import the SAME CSS module used by Dashboard
-import styles from './Dashboard.module.css';
+import styles from './Dashboard.module.css'; // Assuming this CSS module is shared
 
-// Reusable formatCurrency function
 const formatCurrency = (value) => {
     const numValue = parseFloat(value);
     if (isNaN(numValue)) {
@@ -20,9 +19,7 @@ const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(numValue);
 };
 
-// Helper function to format date string
 const formatDate = (dateString) => {
-     // Add check for invalid date
     const date = new Date(dateString);
     if (isNaN(date.getTime())) {
         return 'Invalid Date';
@@ -37,99 +34,121 @@ function ExpensePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [username, setUsername] = useState(() => localStorage.getItem('username') || 'User');
-    const [currentBalance, setCurrentBalance] = useState(null); // Keep track of balance for validation (though not needed for expense delete)
+    
+    // Overall financial summary
+    const [currentCumulativeSavings, setCurrentCumulativeSavings] = useState(0); // All-time net savings
+    const [loadingFinancialSummary, setLoadingFinancialSummary] = useState(true);
 
-    // --- State for Editing ---
+    // Current month's specific financial summary (for projection display & immediate balance check)
+    const [currentMonthIncomeTotalForDisplay, setCurrentMonthIncomeTotalForDisplay] = useState(0);
+    const [currentMonthExpenseTotalForDisplay, setCurrentMonthExpenseTotalForDisplay] = useState(0);
+
+
     const [editingTxId, setEditingTxId] = useState(null);
-    const [editFormData, setEditFormData] = useState({ description: '', category: '', emoji: '' });
-    const [showEditEmojiPicker, setShowEditEmojiPicker] = useState(false); // State for edit picker visibility
+    // MODIFIED: Add amount to editFormData
+    const [editFormData, setEditFormData] = useState({ description: '', category: '', emoji: '', amount: '' });
+    const [showEditEmojiPicker, setShowEditEmojiPicker] = useState(false);
 
-    // --- Fetch Transactions ---
+    // Fetches ONLY current month's expense transactions for display in the list
     const fetchAllTransactions = async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('authToken');
-            if (!token) throw new Error("Authentication token not found.");
+            if (!token) throw new Error("Authentication token not found for transactions.");
             const response = await fetch('/api/transactions/current-month/expense', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`HTTP error! status: ${response.status}. ${errorText}`);
+                throw new Error(`Fetching expense list: ${response.status} ${errorText.substring(0,100)}`);
             }
             const expenseData = await response.json();
-            expenseData.sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort descending
+            expenseData.sort((a, b) => new Date(b.date) - new Date(a.date));
             setAllExpenseTransactions(expenseData);
-            setError(null);
         } catch (err) {
             console.error("Error fetching transactions for Expense page:", err);
-            setError(err.message || 'Failed to fetch transactions.');
+            setError(prev => prev ? `${prev}\nTransactions: ${err.message}` : `Transactions: ${err.message}`);
             setAllExpenseTransactions([]);
         } finally {
             setLoading(false);
         }
     };
 
-     // --- Fetch Balance (Optional - can be removed if not needed for expense page logic) ---
-    const fetchBalance = async () => {
-        setError(null);
+    // Fetches data for ALL-TIME cumulative savings AND CURRENT MONTH's income/expense totals
+    const fetchFinancialSummary = async () => {
+        setLoadingFinancialSummary(true);
         const token = localStorage.getItem('authToken');
         if (!token) {
-            // Don't necessarily set error, might just not display balance info
-            // setError("Authentication token not found for balance check.");
-            return null;
+            setError(prev => prev ? `${prev}\nAuth: Authentication token not found for summary.` : `Auth: Authentication token not found for summary.`);
+            setLoadingFinancialSummary(false);
+            return;
         }
         try {
-            const response = await fetch('/api/transactions/dashboard', {
-                 headers: { 'Authorization': `Bearer ${token}` }
+            // 1. Fetch ALL-TIME cumulative savings
+            const savingsResponse = await axios.get('/api/transactions/savings/monthly', {
+                headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (!response.ok) {
-                 const errorText = await response.text();
-                 // Don't throw page-level error for balance fetch failure here
-                 console.error(`HTTP error fetching balance! status: ${response.status}. ${errorText}`);
-                 return null;
+            const fetchedMonthlyNetSavings = savingsResponse.data || [];
+            const calculatedTotalCumulativeSavings = fetchedMonthlyNetSavings.reduce(
+                (sum, monthData) => sum + (monthData.savings || 0), 0
+            );
+            setCurrentCumulativeSavings(calculatedTotalCumulativeSavings);
+
+            // 2. Fetch CURRENT MONTH's income and expense totals
+            const dashboardResponse = await fetch('/api/transactions/dashboard', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!dashboardResponse.ok) {
+                const errorText = await dashboardResponse.text();
+                throw new Error(`Dashboard API for month summary: ${errorText.substring(0,100)}`);
             }
-            const data = await response.json();
-            const balance = (data.totalIncome || 0) - (data.totalExpense || 0);
-            setCurrentBalance(balance);
-            return balance;
+            const dashboardData = await dashboardResponse.json();
+            setCurrentMonthIncomeTotalForDisplay(dashboardData.totalIncome || 0);
+            setCurrentMonthExpenseTotalForDisplay(dashboardData.totalExpense || 0);
+
         } catch (err) {
-             console.error("Error fetching balance for Expense page:", err);
-             // Don't set page-level error
-             // setError(err.message || 'Failed to fetch current balance.');
-             setCurrentBalance(null);
-             return null;
+             console.error("Error fetching financial summary for Expense page:", err);
+             const errMsg = err.response?.data?.message || err.message || "Failed to fetch financial summary.";
+             setError(prev => prev ? `${prev}\nSummary: ${errMsg}` : `Summary: ${errMsg}`);
+             setCurrentCumulativeSavings(0);
+             setCurrentMonthIncomeTotalForDisplay(0);
+             setCurrentMonthExpenseTotalForDisplay(0);
+        } finally {
+            setLoadingFinancialSummary(false);
         }
     };
 
-    // --- Effects ---
     useEffect(() => {
+        setError(null);
         fetchAllTransactions();
-        fetchBalance(); // Fetch initial balance (optional)
-    }, []); // Initial fetch
+        fetchFinancialSummary();
+    }, []);
 
     useEffect(() => {
         const handleUpdate = () => {
             console.log("ExpensePage received update event, re-fetching...");
+            setError(null);
             fetchAllTransactions();
-            fetchBalance(); // Re-fetch balance on any transaction update (optional)
+            fetchFinancialSummary();
         };
-        // Listen to multiple events
-        window.addEventListener('expense-updated', handleUpdate); // Less common, but maybe useful
+        window.addEventListener('expense-updated', handleUpdate);
         window.addEventListener('transaction-deleted', handleUpdate);
-        window.addEventListener('transactions-updated', handleUpdate); // General update from dashboard
-
+        window.addEventListener('transactions-updated', handleUpdate);
         return () => {
             window.removeEventListener('expense-updated', handleUpdate);
             window.removeEventListener('transaction-deleted', handleUpdate);
             window.removeEventListener('transactions-updated', handleUpdate);
         };
-    }, []); // Listener setup runs once
+    }, []);
 
-    // --- Edit Handlers ---
     const handleEditClick = (tx) => {
         setEditingTxId(tx._id);
-        setEditFormData({ description: tx.description, category: tx.category, emoji: tx.emoji || '' });
+        setEditFormData({
+            description: tx.description,
+            category: tx.category,
+            emoji: tx.emoji || '',
+            amount: tx.amount !== undefined ? tx.amount.toString() : ''
+        });
         setShowEditEmojiPicker(false);
     };
 
@@ -143,16 +162,111 @@ function ExpensePage() {
         setEditFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const currentMonthBalance = useMemo(() => {
+        return currentMonthIncomeTotalForDisplay - currentMonthExpenseTotalForDisplay;
+    }, [currentMonthIncomeTotalForDisplay, currentMonthExpenseTotalForDisplay]);
+
+
+    // --- Calculate projections for display using useMemo ---
+    const projections = useMemo(() => {
+        if (!editingTxId || loadingFinancialSummary) {
+            return { currentMonthBalanceEffect: null, totalCumulativeSavings: null, isValidAmount: false };
+        }
+        const originalTx = allExpenseTransactions.find(tx => tx._id === editingTxId);
+        if (!originalTx) {
+            return { currentMonthBalanceEffect: null, totalCumulativeSavings: null, isValidAmount: false };
+        }
+
+        const originalAmount = parseFloat(originalTx.amount) || 0;
+        const newAmountInput = editFormData.amount.trim() === '' ? '0' : editFormData.amount;
+        const newAmount = parseFloat(newAmountInput);
+
+        if (isNaN(newAmount)) {
+             return { currentMonthBalanceEffect: null, totalCumulativeSavings: null, isValidAmount: false };
+        }
+        
+        // Difference in expense: newExpenseAmount - oldExpenseAmount
+        const amountDifference = newAmount - originalAmount;
+
+        // Projected Current Month's Balance:
+        // Original Current Month Balance - Change in Expense
+        const projectedCurrentMonthBalance = currentMonthBalance - amountDifference;
+
+        // Projected Total Cumulative Savings:
+        // Current Total Savings - Change in Expense (if expense increases, difference is positive, so savings decrease)
+        const projectedTotalCumulativeSavings = currentCumulativeSavings - amountDifference;
+        
+        return {
+            currentMonthBalanceEffect: projectedCurrentMonthBalance,
+            totalCumulativeSavings: projectedTotalCumulativeSavings,
+            isValidAmount: newAmount > 0 && !isNaN(newAmount)
+        };
+    }, [editingTxId, editFormData.amount, allExpenseTransactions, currentCumulativeSavings, currentMonthBalance, loadingFinancialSummary]);
+
+
     const handleSaveEdit = async (txId) => {
         setError(null);
         const token = localStorage.getItem('authToken');
-        if (!token) { setError("Authentication token not found."); return; }
+        if (!token) { setError("Authentication token not found for update."); toast.error("Authentication token not found."); return; }
+
         if (!editFormData.description.trim() || !editFormData.category.trim()) {
-            toast.error("Description and Category cannot be empty."); return;
+            toast.error("Description and Category cannot be empty.");
+            return;
+        }
+        const newAmount = parseFloat(editFormData.amount);
+        if (isNaN(newAmount) || newAmount <= 0) {
+            toast.error("Please enter a valid positive amount for the expense.");
+            return;
+        }
+
+        if (loadingFinancialSummary) {
+            toast.info("Financial summary is still loading. Please try again shortly to save.");
+            return;
         }
 
         const originalTx = allExpenseTransactions.find(tx => tx._id === txId);
-         if (!originalTx) { setError("Original transaction not found for update."); return;}
+        if (!originalTx) {
+            toast.error("Original transaction not found for update.");
+            setError("Update Error: Original transaction not found.");
+            return;
+        }
+        // const originalAmount = originalTx.amount; // Already used in projections
+        // const amountDifference = newAmount - originalAmount; // Already used in projections
+        // const projectedNewOverallNetSavings = currentCumulativeSavings - amountDifference; // Available as projections.totalCumulativeSavings
+
+        // Validation 1: Check against overall cumulative savings
+        if (projections.totalCumulativeSavings < 0) {
+            toast.error(
+                `Cannot save this expense amount (${formatCurrency(newAmount)}). Doing so ` +
+                `would result in an overall negative net savings of ${formatCurrency(projections.totalCumulativeSavings)}. ` +
+                `Your current total savings are ${formatCurrency(currentCumulativeSavings)}.`
+            );
+            return;
+        }
+
+        // Validation 2: Check if the new expense amount exceeds the current month's immediate balance
+        // This is a softer check, maybe a warning, or a hard stop depending on rules.
+        // currentMonthBalance is (current month income - current month ALL expenses BEFORE this edit)
+        // We need to see what the balance would be if this one expense is changed.
+        // projectedCurrentMonthBalance is already calculated in `projections.currentMonthBalanceEffect`.
+        if (projections.currentMonthBalanceEffect < 0 && currentMonthBalance >=0 ) { // Warn if it makes current month balance negative from a non-negative state
+             const proceed = window.confirm(
+                `Warning: This new expense amount (${formatCurrency(newAmount)}) will make your current month's balance negative (${formatCurrency(projections.currentMonthBalanceEffect)}). ` +
+                `It will be covered by your total savings. Do you want to proceed?`
+            );
+            if (!proceed) {
+                return;
+            }
+        } else if (newAmount > currentMonthIncomeTotalForDisplay && currentMonthIncomeTotalForDisplay >=0) { // If new expense alone exceeds current month's total income
+             const proceed = window.confirm(
+                `Warning: This new expense amount (${formatCurrency(newAmount)}) exceeds your total income for the current month (${formatCurrency(currentMonthIncomeTotalForDisplay)}). ` +
+                `It will be covered by your total savings. Do you want to proceed?`
+            );
+            if (!proceed) {
+                return;
+            }
+        }
+
 
         try {
             const response = await fetch(`/api/transactions/${txId}`, {
@@ -162,47 +276,41 @@ function ExpensePage() {
                     description: editFormData.description.trim(),
                     category: editFormData.category.trim(),
                     emoji: editFormData.emoji,
-                    // IMPORTANT: Send original amount and type if backend needs them for validation/updates
-                    // amount: originalTx.amount,
-                    // type: originalTx.type
+                    amount: newAmount,
+                    type: 'expense' // Send type if backend might need it
                 }),
             });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ message: 'Update failed with non-JSON response' }));
                 throw new Error(errorData.message || `Failed to update transaction: ${response.statusText}`);
             }
-
-            setAllExpenseTransactions(prevTxs =>
-                prevTxs.map(tx =>
-                    tx._id === txId ? { ...tx,
-                       description: editFormData.description.trim(),
-                       category: editFormData.category.trim(),
-                       emoji: editFormData.emoji
-                      } : tx
-                )
-            );
-            fetchBalance(); // Refetch balance (optional)
+            
+            window.dispatchEvent(new CustomEvent('expense-updated')); // Or 'transactions-updated'
+            toast.success("Expense updated successfully!");
             handleCancelEdit();
 
         } catch (err) {
             console.error("Error updating transaction:", err);
             setError(`Update Error: ${err.message}`);
+            toast.error(`Update Error: ${err.message}`);
         }
     };
 
-    // --- Delete Handler ---
     const handleDelete = async (txId) => {
         setError(null);
-
         const transactionToDelete = allExpenseTransactions.find(tx => tx._id === txId);
-        if (!transactionToDelete) { setError("Could not find the transaction to delete."); return; }
-        const transactionAmount = transactionToDelete.amount;
-
-        // No balance check needed for deleting expenses
+        if (!transactionToDelete) {
+            toast.error("Could not find the transaction to delete.");
+            setError("Delete Error: Could not find the transaction to delete.");
+            return;
+        }
+        // For expenses, deleting them *increases* savings/balance, so usually no complex validation is needed against savings.
+        // The main concern might be if this was a recurring expense template, but that's not handled here.
 
         const token = localStorage.getItem('authToken');
-        if (!token) { setError("Authentication token not found."); return; }
-        if (!window.confirm("Are you sure you want to delete this expense transaction?")) { return; }
+        if (!token) { setError("Authentication token not found for delete."); toast.error("Authentication token not found."); return; }
+        
+        if (!window.confirm(`Are you sure you want to delete this expense transaction of ${formatCurrency(transactionToDelete.amount)}?`)) { return; }
 
         try {
             const response = await fetch(`/api/transactions/${txId}`, {
@@ -213,48 +321,38 @@ function ExpensePage() {
                 const errorData = await response.json().catch(() => ({ message: 'Deletion failed with non-JSON response' }));
                 throw new Error(errorData.message || `Failed to delete transaction: ${response.statusText}`);
             }
-
-            setAllExpenseTransactions(prevTxs => prevTxs.filter(tx => tx._id !== txId));
-            // Update balance state locally (add back the expense amount)
-            setCurrentBalance(prevBalance => prevBalance !== null ? prevBalance + transactionAmount : null);
-            // Notify other components
-            window.dispatchEvent(new CustomEvent('transaction-deleted', { detail: { type: 'expense', amount: transactionAmount, id: txId } }));
-             // Dispatch general update too
-             window.dispatchEvent(new CustomEvent('transactions-updated'));
-
-             toast.success('Expense Deleted Successfully!');
-
+            window.dispatchEvent(new CustomEvent('transaction-deleted', { detail: { type: 'expense', amount: transactionToDelete.amount, id: txId } }));
+            window.dispatchEvent(new CustomEvent('transactions-updated'));
+            toast.success('Expense Deleted Successfully!');
         } catch (err) {
             console.error("Error deleting transaction:", err);
             setError(`Delete Error: ${err.message}`);
+            toast.error(`Delete Error: ${err.message}`);
         }
     };
 
-    // --- Chart Data Prep ---
     const chartData = allExpenseTransactions.map((tx) => ({
         dateValue: tx.date ? new Date(tx.date) : new Date(0),
-        dateLabel: tx.date ? new Date(tx.date).toLocaleDateString('en-CA') : `tx_${tx._id}`, // Use ID for unique key
-        amount: tx.amount,
-        description: tx.description
+        dateLabel: tx.date ? new Date(tx.date).toLocaleDateString('en-CA') : `tx_${tx._id}`,
+        amount: tx.amount || 0,
+        description: tx.description || "N/A"
     }))
-    .sort((a, b) => a.dateValue - b.dateValue); // Sort ascending for chart
+    .sort((a, b) => a.dateValue - b.dateValue);
 
-    // --- PDF Download Handler ---
     const handleDownloadPDF = () => {
         const doc = new jsPDF();
         const tableColumn = ["Date", "Description", "Category", "Amount"];
         const tableRows = [];
         doc.setFontSize(18);
-        doc.text(`Expense Transactions for ${username}`, 14, 22);
-        // Use sorted transactions if needed for PDF consistency
-        [...allExpenseTransactions].sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(tx => {
+        doc.text(`Expense Transactions (Current Month) for ${username}`, 14, 22);
+        allExpenseTransactions.forEach(tx => {
             tableRows.push([
                 formatDate(tx.date), tx.description, tx.category, formatCurrency(tx.amount)
             ]);
         });
         autoTable(doc, {
             head: [tableColumn], body: tableRows, startY: 30, theme: 'grid',
-            styles: { fontSize: 10 }, headStyles: { fillColor: [220, 53, 69] }, margin: { top: 30 } // Red header
+            styles: { fontSize: 10 }, headStyles: { fillColor: [220, 53, 69] }, margin: { top: 30 }
         });
         const date = new Date();
         const dateStr = date.toLocaleDateString() + " " + date.toLocaleTimeString();
@@ -263,15 +361,14 @@ function ExpensePage() {
         doc.save(`expense-transactions-${username}-${new Date().toISOString().slice(0,10)}.pdf`);
     };
 
-    // --- Loading/Error States ---
-    if (loading) {
-        return <div className={styles.dashboardPageContent}><p>Loading expense data...</p></div>;
-    }
-    if (error && !error.startsWith('Update Error:') && !error.startsWith('Delete Error:')) {
-        return <div className={styles.dashboardPageContent}><p style={{ color: 'red' }}>Error: {error}</p></div>;
-    }
+    const pageIsLoading = loading || loadingFinancialSummary;
 
-    // --- Component Render ---
+    if (pageIsLoading) {
+        return <div className={styles.dashboardPageContent}><p>Loading expense data and financial summary...</p></div>;
+    }
+    
+    const pageLoadError = error && (error.includes("Transactions:") || error.includes("Summary:") || error.includes("Auth:"));
+
     return (
         <div className={styles.transactionsPageContainer}>
              <div className={styles.dashboardPageContent}>
@@ -281,10 +378,16 @@ function ExpensePage() {
                        Download PDF
                     </button>
                 </div>
+                
+                {pageLoadError &&
+                    <div className={styles.pageErrorBanner}>
+                        Error loading page data:
+                        {error.split('\n').map((e, i) => <div key={i}>{e.replace(/(Transactions: |Summary: |Auth: )/g, '')}</div>)}
+                    </div>
+                }
 
-                {/* Line Chart Section */}
                  <section className={`${styles.sectionBox} ${styles.chartSection}`}>
-                     <h2 className={styles.sectionTitle}>Expense Trend by Date</h2>
+                     <h2 className={styles.sectionTitle}>Expense Trend by Date (Current Month)</h2>
                      <div className={styles.chartContainer}>
                          {chartData.length > 0 ? (
                              <ResponsiveContainer width="100%" height={300}>
@@ -298,87 +401,91 @@ function ExpensePage() {
                                  </LineChart>
                              </ResponsiveContainer>
                          ) : (
-                             <div className={styles.placeholderContent}>No expense data available to display chart.</div>
+                             <div className={styles.placeholderContent}>No expense data for the current month to display chart.</div>
                          )}
                      </div>
                  </section>
 
                  <div className={styles.mainArea}>
-                     {/* All Expense Transactions Section */}
                      <section className={`${styles.sectionBox} ${styles.transactionsSection}`} style={{gridColumn: '1 / -1'}}>
                          <div className={styles.sectionHeader}>
                              <h2 className={styles.sectionTitle}>Expense Transactions (Current Month)</h2>
                          </div>
-                         {(error && (error.startsWith('Update Error:') || error.startsWith('Delete Error:'))) && (
-                           <p style={{ color: 'red', marginBottom: '1rem' }}>{error}</p>
+                          {(error && (error.startsWith('Update Error:') || error.startsWith('Delete Error:'))) && (
+                           <p className={styles.formErrorBanner} style={{marginBottom: '1rem'}}>{error}</p>
                          )}
-                         {allExpenseTransactions.length > 0 ? (
+                         {!loading && !pageLoadError && allExpenseTransactions.length === 0 && (
+                            <div className={styles.placeholderContent}>
+                                No expense transactions found for the current month.
+                            </div>
+                         )}
+                         {!loading && !pageLoadError && allExpenseTransactions.length > 0 && (
                              <div className={styles.transactionList}>
                                  {allExpenseTransactions.map((tx) => (
+                                     <React.Fragment key={tx._id}>
                                      <div
-                                         key={tx._id}
                                          className={`${styles.transactionItem} ${styles.expenseBorder}`}
                                      >
-                                         {/* Date */}
                                          <span style={{ gridColumn: '1 / 2' }} className={styles.transactionDate}>
                                              {formatDate(tx.date)}
                                          </span>
-
                                          {editingTxId === tx._id ? (
-                                            <>
-                                                {/* Edit Inputs */}
-                                                <input
-                                                    type="text" name="description" value={editFormData.description}
-                                                    onChange={handleEditFormChange} className={styles.formInput}
-                                                    style={{ gridColumn: '2 / 3', fontSize: '0.9rem', padding: '0.4rem' }}
-                                                    required
-                                                />
-                                                <input
-                                                    type="text" name="category" value={editFormData.category}
-                                                    onChange={handleEditFormChange} className={styles.formInput}
-                                                    style={{ gridColumn: '3 / 4', fontSize: '0.9rem', padding: '0.4rem' }}
-                                                    required
-                                                />
-                                                 {/* Edit Emoji Picker Button and Container */}
-                                                 <div style={{ gridColumn: '1 / 2', gridRow: '2 / 3', marginTop: '0.5rem', position: 'relative', justifySelf:'start' }}>
-                                                   <button
-                                                     type="button"
-                                                     onClick={() => setShowEditEmojiPicker(prev => !prev)} // Toggle only this picker
-                                                     // ****** APPLY THE CSS CLASS HERE ******
-                                                     className={styles.emojiButton}
-                                                     // ************************************
-                                                     style={{fontSize: '1.2rem', padding: '0.4rem'}} // Keep inline style overrides if needed
-                                                     aria-label="Select icon"
-                                                   >
-                                                     {editFormData.emoji || '+'} {/* Default emoji */}
-                                                   </button>
-                                                   {showEditEmojiPicker && editingTxId === tx._id && ( // Show only if this row is editing AND picker toggled
-                                                     <div className={styles.emojiPickerContainer} style={{top: '100%', left: 0, right: 'auto'}}>
-                                                       <Picker
-                                                         onEmojiClick={(emojiData) => { // Renamed param
-                                                           setEditFormData(prev => ({ ...prev, emoji: emojiData.emoji }));
-                                                           setShowEditEmojiPicker(false); // Close picker on selection
-                                                         }}
-                                                         pickerStyle={{ width: '100%' }}
-                                                       />
-                                                     </div>
-                                                   )}
+                                             <>
+                                                 <div style={{ gridColumn: '2 / 5', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr auto', gap: '0.5rem', alignItems: 'center' }}>
+                                                     <input
+                                                         type="text" name="description" value={editFormData.description}
+                                                         onChange={handleEditFormChange} className={styles.formInput}
+                                                         style={{ fontSize: '0.9rem', padding: '0.4rem' }}
+                                                         required
+                                                     />
+                                                     <input
+                                                         type="text" name="category" value={editFormData.category}
+                                                         onChange={handleEditFormChange} className={styles.formInput}
+                                                         style={{ fontSize: '0.9rem', padding: '0.4rem' }}
+                                                         required
+                                                     />
+                                                     <input
+                                                         type="number" name="amount" value={editFormData.amount}
+                                                         onChange={handleEditFormChange} className={styles.formInput}
+                                                         style={{ fontSize: '0.9rem', padding: '0.4rem', textAlign: 'right' }}
+                                                         step="0.01" min="0.01"
+                                                         required
+                                                     />
+                                                      <div style={{ position: 'relative', justifySelf:'start' }}>
+                                                        <button
+                                                          type="button"
+                                                          onClick={() => setShowEditEmojiPicker(prev => !prev)}
+                                                          className={styles.emojiButton}
+                                                          style={{fontSize: '1.2rem', padding: '0.4rem'}}
+                                                          aria-label="Select icon"
+                                                        >
+                                                          {editFormData.emoji || '+'}
+                                                        </button>
+                                                        {showEditEmojiPicker && editingTxId === tx._id && (
+                                                          <div className={styles.emojiPickerContainer} style={{top: '100%', left: 0, zIndex: 10}}>
+                                                            <Picker
+                                                              onEmojiClick={(emojiData) => {
+                                                                setEditFormData(prev => ({ ...prev, emoji: emojiData.emoji }));
+                                                                setShowEditEmojiPicker(false);
+                                                              }}
+                                                              pickerStyle={{ width: '250px' }}
+                                                            />
+                                                          </div>
+                                                        )}
+                                                      </div>
                                                  </div>
-                                            </>
+                                             </>
                                          ) : (
-                                            // Display Text
-                                             <span style={{ gridColumn: '2 / 4' }} className={styles.transactionDesc}>
-                                                 {tx.emoji && <span className={styles.transactionEmoji}>{tx.emoji}</span>}
-                                                 {tx.description} ({tx.category})
-                                             </span>
+                                             <>
+                                                <span style={{ gridColumn: '2 / 4' }} className={styles.transactionDesc}>
+                                                    {tx.emoji && <span className={styles.transactionEmoji}>{tx.emoji}</span>}
+                                                    {tx.description} ({tx.category})
+                                                </span>
+                                                <span style={{ gridColumn: '4 / 5' }} className={`${styles.transactionAmount} ${styles.expense}`}>
+                                                    {'-'} {formatCurrency(tx.amount)}
+                                                </span>
+                                             </>
                                          )}
-
-                                         {/* Amount */}
-                                         <span style={{ gridColumn: '4 / 5' }} className={`${styles.transactionAmount} ${styles.expense}`}>
-                                             {'-'} {formatCurrency(tx.amount)}
-                                         </span>
-
-                                         {/* Action Buttons */}
                                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', gridColumn: '5 / 6', alignItems: 'center' }}>
                                              {editingTxId === tx._id ? (
                                                  <>
@@ -397,11 +504,28 @@ function ExpensePage() {
                                              )}
                                          </div>
                                      </div>
+                                     {editingTxId === tx._id && projections.isValidAmount && (
+                                        <div className={styles.editProjections}>
+                                            <p>
+                                                If saved, this month's balance will become: <strong>{formatCurrency(projections.currentMonthBalanceEffect)}</strong>
+                                            </p>
+                                            <p>
+                                                Your total cumulative savings will become: <strong>{formatCurrency(projections.totalCumulativeSavings)}</strong>
+                                            </p>
+                                             {projections.totalCumulativeSavings < 0 && (
+                                                <p style={{color: 'red', fontWeight: 'bold'}}>
+                                                    Warning: This change will result in overall negative savings!
+                                                </p>
+                                            )}
+                                            { projections.currentMonthBalanceEffect < 0 && currentMonthBalance >= 0 && (
+                                                <p style={{color: 'orange', fontWeight: 'bold'}}>
+                                                    Note: This change will make your current month's balance negative.
+                                                </p>
+                                            )}
+                                        </div>
+                                     )}
+                                     </React.Fragment>
                                  ))}
-                             </div>
-                         ) : (
-                             <div className={styles.placeholderContent}>
-                                 No expense transactions found for the current month.
                              </div>
                          )}
                      </section>
