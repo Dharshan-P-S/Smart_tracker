@@ -1,11 +1,52 @@
 /* OldTransactionsPage.module.css */
 
 /* Using global variables defined in index.css or App.css */
+/* :root { 
+    --box-bg-light: #f9f9f9;
+    --border-light: #ddd;
+    --text-primary-light: #333;
+    --text-secondary-light: #555;
+    --input-bg-light: #fff;
+    --primary-accent-light: #007bff;
+    --income-color-light: #28a745;
+    --expense-color-light: #dc3545;
+    --error-color-light: #dc3545;
+    --projection-bg-light: #e9ecef;
+    --projection-border-light: #ced4da;
+    --projection-text-light: #495057;
+    --info-bg-light: #e7f3fe;
+    --info-accent-light: #2196F3;
+    --button-text-light: #ffffff;
+    --primary-accent-hover-light: #0056b3;
+    --error-border-color-light: #ebccd1;
+
+
+    --box-bg-dark: #22272e;
+    --border-dark: #444c56;
+    --text-primary-dark: #c9d1d9;
+    --text-secondary-dark: #8b949e;
+    --input-bg-dark: #2d3748;
+    --primary-accent-dark: #58a6ff;
+    --income-color-dark: #56d364;
+    --expense-color-dark: #f85149;
+    --error-color-dark: #f85149;
+    --projection-bg-dark: #2d3748;
+    --projection-border-dark: #444c56;
+    --projection-text-dark: #8b949e;
+    --info-bg-dark: #0c2239;
+    --info-text-dark: #88c0d0;
+    --info-accent-dark: #5e81ac;
+    --button-text-dark: #e0e0e0;
+    --primary-accent-hover-dark: #2986ff;
+    --error-border-color-dark: #a23f38;
+   }
+*/
+
 
 /* Default Light Mode Styles */
 .container {
     padding: 20px;
-    max-width: 900px;
+    max-width: 1000px;
     margin: 20px auto;
     background-color: var(--box-bg-light, #f9f9f9);
     border-radius: 8px;
@@ -15,146 +56,24 @@
     transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
-.container h2 { /* Page Title */
+.container h2 { /* Page Title for "Old Transactions" */
     text-align: center;
     margin-bottom: 20px;
     color: var(--text-primary-light, #333);
-    font-size: 1.5rem;
+    font-size: 1.8rem; /* Slightly larger for main page title */
     font-weight: 600;
     transition: color 0.3s;
 }
 
-.transactionList {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    margin-top: 1rem; /* Space above the list within its section */
-}
-
-/* Updated .transactionItem for edit/delete actions */
-.transactionItem {
-    display: grid;
-    /* Date | Details/Inputs | Amount (static in edit) | Actions */
-    grid-template-columns: auto 1fr auto minmax(auto, 100px);
-    gap: 0.75rem;
-    padding: 1rem;
-    margin-bottom: 0.75rem;
-    border-radius: 6px;
-    background-color: var(--bg-light, #fff);
-    border: 1px solid var(--border-light, #ddd);
-    align-items: center;
-    position: relative;
-    transition: background-color 0.3s, border-color 0.3s, border-left-color 0.3s;
-}
-
-.transactionItem::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background-color: transparent;
-  border-top-left-radius: 6px;
-  border-bottom-left-radius: 6px;
-  transition: background-color 0.3s;
-}
-
-.transactionItem.income::before {
-  background-color: var(--income-color-light, #28a745);
-}
-
-.transactionItem.expense::before {
-  background-color: var(--expense-color-light, #dc3545);
-}
-
-/* General span inside transaction item, if not overridden */
-.transactionItem span {
-    font-size: 0.9rem;
-    color: var(--text-secondary-light, #555);
-}
-
-/* Specifically for the date part in display mode */
-.transactionDateDisplay {
-    grid-column: 1 / 2;
-    font-size: 0.9rem;
-    color: var(--text-secondary-light, #555);
-    white-space: nowrap;
-}
-
-.transactionDetails { /* Display mode for description/category/emoji */
-    grid-column: 2 / 3;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--text-primary-light, #333);
-    display: flex; /* To align emoji and text */
-    align-items: center;
-}
-
-.transactionEmoji {
-    margin-right: 0.5em;
-    font-size: 1em; /* Or adjust size relative to text */
-}
-
-.transactionAmount { /* Display mode for amount */
-    grid-column: 3 / 4;
-    color: var(--text-primary-light, #333);
-    font-weight: 600;
+.pageDescription { /* For the introductory text */
     font-size: 0.95rem;
-    white-space: nowrap;
-    text-align: right;
-}
-
-.transactionItem.income .transactionAmount {
-    color: var(--income-color-light, #10B981);
-}
-.transactionItem.expense .transactionAmount {
-     color: var(--expense-color-light, #EF4444);
-}
-
-.pageError {
-    color: var(--error-color-light, #dc3545);
-    background-color: #ffebee;
-    padding: 1rem;
+    color: var(--text-secondary-light, #555);
+    margin-bottom: 20px;
+    line-height: 1.6;
+    background-color: var(--info-bg-light, #e7f3fe);
+    padding: 15px;
+    border-left: 4px solid var(--info-accent-light, #2196F3);
     border-radius: 4px;
-    border: 1px solid var(--error-color-light, #dc3545);
-    text-align: center;
-    font-weight: bold;
-    transition: color 0.3s, background-color 0.3s, border-color 0.3s;
-    width: 100%;
-    box-sizing: border-box;
-    margin-top: 1rem;
-    margin-bottom: 1rem;
-}
-
-.container p { /* For loading/no transactions text */
-     color: var(--text-secondary-light, #555);
-     transition: color 0.3s;
-     text-align: center;
-     padding: 2rem;
-     font-style: italic;
-     width: 100%;
-}
-
-.monthGroup {
-    margin-top: 2rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border-light, #ddd);
-}
-.monthGroup:first-of-type {
-    margin-top: 0;
-    padding-top: 0;
-    border-top: none;
-}
-
-.monthHeading {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-primary-light, #333);
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-light, #ddd);
 }
 
 /* --- Styles for Sections (Form and Transaction Display) --- */
@@ -167,28 +86,32 @@
     transition: background-color 0.3s ease, border-color 0.3s ease;
     display: flex;
     flex-direction: column;
+    margin-bottom: 25px;
 }
 
 .addOldTransactionSection {
-    margin-bottom: 2rem; /* Space below the form section */
+    margin-bottom: 2rem; 
 }
 
 
-
-.sectionTitle { /* For titles like "Add a Past Transaction" or "Transaction History" */
+.sectionTitle {
     font-size: 1.2rem;
     font-weight: 600;
     margin-bottom: 1rem;
     color: var(--text-primary-light, #333);
+    border-bottom: 1px solid var(--border-light, #eee);
+    padding-bottom: 0.75rem;
     transition: color 0.3s;
 }
 
 /* --- Styles for the "Add Old Transaction" Form --- */
 .transactionForm {
     display: flex;
-    flex-direction: column; /* Each child (.formGroup, .formError, button) on its own line */
+    flex-direction: column; 
     gap: 1rem;
 }
+
+/* .formRow was removed as per your request for one input per line in the add form */
 
 .formGroup {
     display: flex;
@@ -211,7 +134,7 @@
     border: 1px solid var(--border-light, #ccc);
     border-radius: 6px;
     font-size: 1rem;
-    background-color: var(--input-bg-light, var(--bg-light, #fff));
+    background-color: var(--input-bg-light, #fff);
     color: var(--text-primary-light, #333);
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.3s, color 0.3s;
     width: 100%;
@@ -230,12 +153,12 @@
     opacity: 0.6;
 }
 
-.emojiSelectorContainer { /* For the main form's emoji button */
+.emojiSelectorContainer {
     position: relative;
 }
 
-.emojiButton { /* Main form emoji button */
-    background-color: var(--input-bg-light, var(--bg-light, #fff));
+.emojiButton {
+    background-color: var(--input-bg-light, #fff);
     border: 1px solid var(--border-light, #ccc);
     border-radius: 6px;
     padding: 0.5rem;
@@ -254,7 +177,7 @@
 .emojiButton:hover { border-color: var(--primary-accent-light, #60a5fa); background-color: #f0f0f0; }
 .emojiButton:focus { outline: none; border-color: var(--primary-accent-light, #60a5fa); box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3); }
 
-.emojiPickerContainer { /* Main form emoji picker */
+.emojiPickerContainer {
     position: absolute;
     z-index: 1000;
     top: calc(100% + 5px);
@@ -265,234 +188,358 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.submitButton {
-    padding: 0.85rem 1.5rem;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--button-text-light, #ffffff);
-    background-color: var(--primary-accent-light, #3b82f6);
+.submitButtonWide {
+    padding: 12px 20px;
+    background-color: var(--primary-accent-light, #5cb85c);
+    color: var(--button-text-light, white);
     border: none;
-    border-radius: 6px;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 500; /* Added for consistency */
     cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.1s ease;
+    transition: background-color 0.2s ease;
+    margin-top: 10px;
     width: 100%;
     box-sizing: border-box;
 }
-.submitButton:hover { background-color: var(--primary-accent-hover-light, #2563eb); }
-.submitButton:active { transform: scale(0.98); }
-.submitButton:disabled { background-color: #ccc; cursor: not-allowed; opacity: 0.7; }
 
-.formError { /* For errors within the form submission */
+.submitButtonWide:hover {
+    background-color: var(--primary-accent-hover-light, #4cae4c);
+}
+.submitButtonWide:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.loginPrompt, .pageErrorBanner {
     color: var(--error-color-light, #dc3545);
-    background-color: #ffebee;
-    padding: 10px;
+    background-color: #ffebee; /* Light red background for errors */
+    border: 1px solid var(--error-border-color-light, #ebccd1); /* Matching border */
+    padding: 15px;
     border-radius: 4px;
-    border: 1px solid var(--error-color-light, #dc3545);
-    text-align: left;
-    font-size: 0.9rem;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: 500;
     transition: color 0.3s, background-color 0.3s, border-color 0.3s;
     width: 100%;
     box-sizing: border-box;
 }
-
-/* --- Styles for Transaction List Item Actions (Edit/Delete) --- */
-.editInputsContainer {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    grid-column: 2 / 3; /* Takes the place of .transactionDetails */
+.formErrorBanner {
+    color: var(--error-color-light, #a94442);
+    background-color: #f2dede;
+    border-color: var(--error-border-color-light, #ebccd1);
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-size: 0.9em;
+    text-align: left;
 }
 
-.editInput {
-    padding: 0.5rem 0.75rem;
+/* --- Transaction List Specific Styles --- */
+.monthGroup {
+    margin-bottom: 30px;
+}
+.monthGroup:last-of-type {
+    margin-bottom: 10px;
+}
+
+.monthHeading {
+    font-size: 1.3rem;
+    color: var(--primary-accent-light, #007bff);
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--primary-accent-light, #007bff);
+}
+
+.transactionList {
+    list-style-type: none; /* Changed from div back to ul as per typical list semantics, ensure JS li */
+    padding: 0;
+    margin: 0;
+}
+
+.transactionItemOldPage {
+    display: grid;
+    grid-template-columns: minmax(90px, auto) 1fr auto minmax(90px, auto); 
+    gap: 10px 15px;
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--border-light, #eee);
+    align-items: center;
+    position: relative;
+}
+.transactionItemOldPage:last-child {
+    border-bottom: none;
+}
+
+.transactionItemOldPage.income { 
+    border-left: 4px solid var(--income-color-light, #28a745); 
+    background-color: var(--income-bg-light, #f0fff4); 
+}
+.transactionItemOldPage.expense { 
+    border-left: 4px solid var(--expense-color-light, #dc3545); 
+    background-color: var(--expense-bg-light, #fff0f1); 
+}
+
+.dateAndEmoji {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+}
+.transactionDateDisplay {
+    font-weight: 500; 
+    color: var(--text-secondary-light, #555); 
+    font-size: 0.9rem; 
+}
+.transactionEmoji {
+    font-size: 1em;
+    line-height: 1;
+}
+
+.transactionDetailsOld {
+    grid-column: 2 / 3;
+    color: var(--text-primary-light, #333); 
+    word-break: break-word;
+    display: flex;
+    align-items: center;
+}
+/* .transactionDetailsOld .transactionEmoji { margin-right: 8px; } */
+
+.transactionAmountOld {
+    font-weight: bold; 
+    text-align: right; 
+}
+.incomeOld { color: var(--income-color-light, #28a745); }
+.expenseOld { color: var(--expense-color-light, #dc3545); }
+
+.editFormContainerOld {
+    grid-column: 2 / 3;
+    display: grid;
+    grid-template-columns: 2fr 1.5fr 1fr; 
+    gap: 8px;
+    align-items: center;
+}
+
+.editInputOld {
+    padding: 6px 8px;
     border: 1px solid var(--border-light, #ccc);
     border-radius: 4px;
     font-size: 0.9rem;
-    background-color: var(--input-bg-light, var(--bg-light, #fff));
+    background-color: var(--input-bg-light, #fff);
     color: var(--text-primary-light, #333);
     width: 100%;
     box-sizing: border-box;
 }
-.editInput:focus {
+.editInputOld:focus {
     outline: none;
     border-color: var(--primary-accent-light, #60a5fa);
     box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
 }
 
-.editEmojiContainer { /* Container for the small emoji button within edit mode */
+.editEmojiPickerContainerOld {
+    grid-column: 1 / 2; 
+    grid-row: 2 / 3;   
     position: relative;
-    align-self: flex-start; /* Button doesn't stretch */
-    margin-top: 0.25rem; /* Optional space */
+    margin-top: 5px;
+    justify-self: start;
 }
-
-.emojiButtonSmall { /* For the emoji button in edit mode */
-    background-color: var(--input-bg-light, var(--bg-light, #fff));
+.emojiButtonSmallOld {
+    padding: 6px 10px;
+    font-size: 1rem;
+    background-color: var(--input-bg-light, #f0f0f0);
     border: 1px solid var(--border-light, #ccc);
     border-radius: 4px;
-    padding: 0.3rem 0.5rem;
-    font-size: 1rem; /* Can be smaller than main form emoji button */
-    color: var(--text-primary-light, #333);
     cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
+    min-width: 40px;
+    text-align: center;
 }
-.emojiButtonSmall:hover {
-    border-color: var(--primary-accent-light, #60a5fa);
-}
-
-.editEmojiPicker { /* Picker for in-line editing */
+.emojiPickerPopoverOld {
     position: absolute;
-    z-index: 1010; /* Above other elements if needed */
-    top: 100%; /* Position below the small emoji button */
+    top: 100%; 
     left: 0;
-    margin-top: 2px;
-    background-color: var(--box-bg-light, #fff);
+    z-index: 20; 
     border: 1px solid var(--border-light, #ccc);
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    background: var(--box-bg-light, white);
+    border-radius: 5px;
+    min-width: 280px;
 }
 
-.transactionAmountStatic { /* For displaying amount when item is in edit mode */
-    grid-column: 3 / 4;
-    color: var(--text-secondary-light, #555); /* Duller color */
-    font-weight: normal; /* Less emphasis */
-    font-size: 0.9rem;
-    white-space: nowrap;
-    text-align: right;
-}
-
-.actionButtons {
-    grid-column: 4 / 5; /* Last column */
+.actionButtonsOld {
+    grid-column: 4 / 5;
     display: flex;
-    gap: 0.5rem;
+    gap: 8px;
     justify-content: flex-end;
     align-items: center;
 }
 
-.actionButton {
+.actionButtonOld {
     background: none;
     border: none;
     cursor: pointer;
-    padding: 0.4rem;
+    padding: 5px;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border-radius: 4px;
+    transition: background-color 0.2s;
+}
+.editButtonOld { color: var(--primary-accent-light, #007bff); }
+.editButtonOld:hover { background-color: rgba(0, 123, 255, 0.1); }
+.deleteButtonOld { color: var(--error-color-light, #dc3545); }
+.deleteButtonOld:hover { background-color: rgba(220, 53, 69, 0.1); }
+.saveButtonOld { color: var(--income-color-light, #28a745); }
+.saveButtonOld:hover { background-color: rgba(40, 167, 69, 0.1); }
+.cancelButtonOld { color: var(--text-secondary-light, #6c757d); }
+.cancelButtonOld:hover { background-color: rgba(108, 117, 125, 0.1); }
+
+.projectionBox, .editProjectionsOld {
+    grid-column: 1 / -1;
+    padding: 10px 12px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    background-color: var(--projection-bg-light, #e9ecef);
+    border: 1px solid var(--projection-border-light, #ced4da);
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--projection-text-light, #495057);
+}
+.projectionBox p, .editProjectionsOld p {
+    margin: 4px 0;
+}
+.projectionBox strong, .editProjectionsOld strong {
+    color: var(--text-primary-light, #212529);
+}
+.warningText {
+    color: var(--error-color-light, #dc3545) !important; 
+    font-weight: bold;
+}
+
+/* --- Styles for the Download PDF Button --- */
+.pdfButtonOld {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #ffffff;
+    background-color: #5cb85c; /* Green background */
+    border: 1px solid #4cae4c;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 1rem; /* Icon size */
-    transition: background-color 0.2s, color 0.2s;
-}
-.actionButton svg {
-    vertical-align: middle;
+    transition: background-color 0.2s ease, transform 0.1s ease, border-color 0.2s ease;
+    /* box-shadow: 0 1px 3px rgba(0,0,0,0.1); */
 }
 
-.editButton { color: var(--primary-accent-light, #3b82f6); }
-.editButton:hover { background-color: rgba(59, 130, 246, 0.1); }
-.deleteButton { color: var(--error-color-light, #dc3545); }
-.deleteButton:hover { background-color: rgba(220, 53, 69, 0.1); }
-.saveButton { color: var(--income-color-light, #28a745); }
-.saveButton:hover { background-color: rgba(40, 167, 69, 0.1); }
-.cancelButton { color: var(--text-secondary-light, #6c757d); }
-.cancelButton:hover { background-color: rgba(108, 117, 125, 0.1); }
+.pdfButtonOld:hover {
+    background-color: #4cae4c;
+    border-color: #3b8f3b;
+    transform: translateY(-1px);
+}
+
+.pdfButtonOld:active {
+    background-color: #3e8e41;
+    border-color: #327233;
+    transform: translateY(0px);
+}
+
+.pdfButtonOld:disabled {
+    background-color: #cccccc;
+    color: #666666;
+    border-color: #bbbbbb;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
 
 
 /* Dark Mode Styles */
 @media (prefers-color-scheme: dark) {
-    .container { background-color: var(--box-bg-dark, #1a1a1a); color: var(--text-primary-dark, #e0e0e0); border-color: var(--border-dark, #444); box-shadow: 0 2px 4px rgba(255, 255, 255, 0.05); }
-    .container h2 { color: var(--text-primary-dark, #e0e0e0); }
-    .transactionItem { background-color: var(--bg-dark, #2a2a2a); border-color: var(--border-dark, #444); }
-    .transactionItem.income::before { background-color: var(--income-color-dark, lightgreen); }
-    .transactionItem.expense::before { background-color: var(--expense-color-dark, red); }
-    .transactionItem span { color: var(--text-secondary-dark, #aaa); }
-    .transactionDetails { color: var(--text-primary-dark, #e0e0e0); }
-    .transactionAmount { color: var(--text-primary-dark, #e0e0e0); }
-    .transactionItem.income .transactionAmount { color: var(--income-color-dark, lightgreen); }
-    .transactionItem.expense .transactionAmount { color: var(--expense-color-dark, red); }
-    .pageError { color: var(--error-color-dark, #ff6b6b); background-color: #522222; border-color: var(--error-color-dark, #ff6b6b); }
-    .container p { color: var(--text-secondary-dark, #aaa); }
-    .monthGroup { border-top-color: var(--border-dark, #444); }
-    .monthHeading { color: var(--text-primary-dark, #e0e0e0); border-bottom-color: var(--border-dark, #444); }
-    .sectionBox { background-color: var(--box-bg-dark, #1a1a1a); border-color: var(--border-dark, #444); }
-    .sectionTitle { color: var(--text-primary-dark, #e0e0e0); }
-    .formGroup label { color: var(--text-secondary-dark, #aaa); }
-    .formInput, .transactionForm select { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark, #444); color: var(--text-primary-dark, #e0e0e0); }
-    .formInput::placeholder { color: var(--text-secondary-dark, #777); opacity: 0.6; }
-    .formInput:focus, .transactionForm select:focus { border-color: var(--primary-accent-dark, #60a5fa); box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.4); }
-    .emojiButton { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark, #444); color: var(--text-primary-dark, #e0e0e0); }
-    .emojiButton:hover { border-color: var(--primary-accent-dark, #60a5fa); background-color: #374151; }
-    .emojiPickerContainer { background-color: var(--box-bg-dark, #2a2a2a); border-color: var(--border-dark, #555); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); }
-    .submitButton { background-color: var(--primary-accent-dark, #4299e1); color: var(--button-text-dark, #ffffff); }
-    .submitButton:hover { background-color: var(--primary-accent-hover-dark, #2b6cb0); }
-    .submitButton:disabled { background-color: #4a5568; opacity: 0.6; }
-    .formError { color: var(--error-color-dark, #ff6b6b); background-color: #522222; border-color: var(--error-color-dark, #ff6b6b); }
+    .container { background-color: var(--box-bg-dark, #22272e); color: var(--text-primary-dark, #c9d1d9); border-color: var(--border-dark, #444c56); }
+    .container h2 { color: var(--text-primary-dark, #c9d1d9); }
+    .pageDescription { background-color: var(--info-bg-dark, #0c2239); color: var(--info-text-dark, #88c0d0); border-left-color: var(--info-accent-dark, #5e81ac); }
+    .sectionBox { background-color: var(--box-bg-dark, #22272e); border-color: var(--border-dark, #444c56); }
+    .sectionTitle { color: var(--text-primary-dark, #c9d1d9); border-bottom-color: var(--border-dark, #444c56); }
+    .formGroup label { color: var(--text-secondary-dark, #8b949e); }
+    .formInput, .transactionForm select { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark, #444c56); color: var(--text-primary-dark, #c9d1d9); }
+    .formInput::placeholder { color: var(--text-secondary-dark, #768390); }
+    .formInput:focus, .transactionForm select:focus { border-color: var(--primary-accent-dark, #58a6ff); box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.3); }
+    .emojiButton { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark, #444c56); color: var(--text-primary-dark, #c9d1d9); }
+    .emojiButton:hover { border-color: var(--primary-accent-dark, #58a6ff); background-color: #374151; }
+    .emojiPickerContainer { background-color: var(--box-bg-dark, #22272e); border-color: var(--border-dark, #555); }
+    .submitButtonWide { background-color: var(--primary-accent-dark, #388bfd); color: var(--button-text-dark, #ffffff); }
+    .submitButtonWide:hover { background-color: var(--primary-accent-hover-dark, #58a6ff); }
+    .submitButtonWide:disabled { background-color: #484f58; }
+    .loginPrompt, .pageErrorBanner { color: var(--error-color-dark, #f85149); background-color: #3e1a1a; border-color: var(--error-color-dark, #f85149); }
+    .formErrorBanner { color: var(--error-color-dark, #ff7b72); background-color: #4f2626; border-color: var(--error-border-color-dark, #a23f38); }
+    .monthHeading { color: var(--primary-accent-dark, #58a6ff); border-bottom-color: var(--primary-accent-dark, #58a6ff); }
+    .transactionItemOldPage { border-bottom-color: var(--border-dark, #444c56); }
+    .transactionItemOldPage.income { border-left-color: var(--income-color-dark, #56d364); background-color: var(--income-bg-dark, #1c3522); }
+    .transactionItemOldPage.expense { border-left-color: var(--expense-color-dark, #f85149); background-color: var(--expense-bg-dark, #3e1a1a); }
+    .transactionDateDisplay { color: var(--text-secondary-dark, #8b949e); }
+    .transactionDetailsOld { color: var(--text-primary-dark, #c9d1d9); }
+    .incomeOld { color: var(--income-color-dark, #56d364); }
+    .expenseOld { color: var(--expense-color-dark, #f85149); }
+    .editInputOld { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark, #444c56); color: var(--text-primary-dark, #c9d1d9); }
+    .editInputOld:focus { border-color: var(--primary-accent-dark, #58a6ff); box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.3); }
+    .emojiButtonSmallOld { background-color: var(--input-bg-dark, #374151); border-color: var(--border-dark, #444c56); color: var(--text-primary-dark, #c9d1d9); }
+    .emojiPickerPopoverOld { background-color: var(--box-bg-dark, #22272e); border-color: var(--border-dark, #555); }
+    .editButtonOld { color: var(--primary-accent-dark, #58a6ff); }
+    .editButtonOld:hover { background-color: rgba(88, 166, 255, 0.15); }
+    .deleteButtonOld { color: var(--error-color-dark, #f85149); }
+    .deleteButtonOld:hover { background-color: rgba(248, 81, 73, 0.15); }
+    .saveButtonOld { color: var(--income-color-dark, #56d364); }
+    .saveButtonOld:hover { background-color: rgba(86, 211, 100, 0.15); }
+    .cancelButtonOld { color: var(--text-secondary-dark, #8b949e); }
+    .cancelButtonOld:hover { background-color: rgba(139, 148, 158, 0.15); }
+    .projectionBox, .editProjectionsOld { background-color: var(--projection-bg-dark, #2d3748); border-color: var(--projection-border-dark, #444c56); color: var(--projection-text-dark, #8b949e); }
+    .projectionBox strong, .editProjectionsOld strong { color: var(--text-primary-dark, #c9d1d9); }
+    .warningText { color: var(--error-color-dark, #f85149) !important; }
 
-    /* Dark Mode for Edit/Delete Actions */
-    .editInput { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark, #444); color: var(--text-primary-dark, #e0e0e0); }
-    .editInput:focus { border-color: var(--primary-accent-dark, #60a5fa); box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3); }
-    .emojiButtonSmall { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark, #444); color: var(--text-primary-dark, #e0e0e0); }
-    .emojiButtonSmall:hover { border-color: var(--primary-accent-dark, #60a5fa); }
-    .editEmojiPicker { background-color: var(--box-bg-dark, #2a2a2a); border-color: var(--border-dark, #555); }
-    .transactionAmountStatic { color: var(--text-secondary-dark, #aaa); }
-    .editButton { color: var(--primary-accent-dark, #60a5fa); }
-    .editButton:hover { background-color: rgba(96, 165, 250, 0.15); }
-    .deleteButton { color: var(--error-color-dark, #ff6b6b); }
-    .deleteButton:hover { background-color: rgba(255, 107, 107, 0.15); }
-    .saveButton { color: var(--income-color-dark, lightgreen); }
-    .saveButton:hover { background-color: rgba(144, 238, 144, 0.15); }
-    .cancelButton { color: var(--text-secondary-dark, #9ca3af); }
-    .cancelButton:hover { background-color: rgba(156, 163, 175, 0.15); }
+    /* PDF Button Dark Mode */
+    .pdfButtonOld {
+        color: var(--button-text-dark, #e0e0e0); 
+        background-color: var(--income-color-dark, #2f855a); /* Consistent green for download */
+        border-color: var(--income-color-dark, #2f855a); 
+    }
+    .pdfButtonOld:hover {
+        background-color: #276749; 
+        border-color: #276749;
+    }
+    .pdfButtonOld:active {
+        background-color: #22543d;
+        border-color: #22543d;
+    }
+     .pdfButtonOld:disabled {
+        background-color: var(--border-dark, #444c56);
+        color: var(--text-secondary-dark, #8b949e);
+        border-color: var(--border-dark, #444c56);
+    }
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .transactionItem {
-        grid-template-columns: auto 1fr minmax(auto, 80px); /* Date | Details/Inputs & Amount | Actions */
-        gap: 0.5rem;
+    /* .formRow was removed, so no specific responsive styles for it are needed unless .formGroup itself needs to change in rows */
+    
+    .transactionItemOldPage {
+        grid-template-columns: auto 1fr auto; 
     }
-    .editInputsContainer { grid-column: 2 / 3; }
-    .transactionDetails { grid-column: 2 / 3; }
-    .transactionAmount, .transactionAmountStatic {
-        grid-column: 2 / 3;
-        text-align: left;
-        margin-top: 0.25rem;
-        font-size: 0.9rem;
-    }
-    .transactionAmountStatic {
-        font-weight: bold; /* Make it more visible in edit mode stack */
-        color: var(--text-primary-light);
-    }
-    @media (prefers-color-scheme: dark) {
-        .transactionAmountStatic { color: var(--text-primary-dark); }
-    }
-    .actionButtons {
-        grid-column: 3 / 4;
-        flex-direction: column;
-        gap: 0.3rem;
-        align-items: flex-end;
-    }
-    .actionButton { padding: 0.3rem; font-size: 0.9rem; }
+    .dateAndEmoji { grid-column: 1 / 2; }
+    .transactionDetailsOld { grid-column: 2 / 3; }
+    .editFormContainerOld { grid-column: 2/3; grid-template-columns: 1fr; }
+    .editFormContainerOld .editInputOld { width: 100%; }
+    .editEmojiPickerContainerOld { grid-column: 1 / -1; grid-row: auto; margin-top: 0.5rem; justify-self: start; }
+    .transactionAmountOld { grid-column: 2 / 3; text-align: left; margin-top: 0.25rem; }
+    .actionButtonsOld { grid-column: 3 / 4; flex-direction: column; align-items: flex-end; }
+    .projectionBox, .editProjectionsOld { font-size: 0.8rem; }
 }
 
 @media (max-width: 480px) {
-    .transactionItem {
-        grid-template-columns: 1fr; /* Fully stack for very small screens */
-        padding-left: calc(1rem + 4px); /* Keep space for colored border */
-    }
-    .transactionDateDisplay,
-    .editInputsContainer,
-    .transactionDetails,
-    .transactionAmount,
-    .transactionAmountStatic,
-    .actionButtons {
-        grid-column: 1 / -1; /* Each element takes the full single column */
-    }
-    .actionButtons {
-        flex-direction: row; /* Buttons back to horizontal */
-        justify-content: flex-start; /* Align left */
-        margin-top: 0.5rem;
-    }
-    .transactionAmount, .transactionAmountStatic {
-        text-align: left;
-    }
+    .transactionItemOldPage { grid-template-columns: 1fr; padding-left: 10px; }
+    .dateAndEmoji, .transactionDetailsOld, .editFormContainerOld, .transactionAmountOld, .actionButtonsOld { grid-column: 1 / -1; }
+    .actionButtonsOld { flex-direction: row; justify-content: flex-start; margin-top: 0.5rem; }
+    .transactionAmountOld { text-align: left; }
 }
