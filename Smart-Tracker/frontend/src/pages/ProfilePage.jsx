@@ -360,7 +360,7 @@ function ProfilePage() {
                     </button>
                   </div>
                 )}
-                <div className={styles.actionButtonsContainer} style={{ justifyContent: 'flex-end', marginTop: isOtpSent ? '10px' : '0' }}>
+                <div className={styles.actionButtonsContainer} style={{ justifyContent: 'flex-end' }}>
                   <button onClick={handleCancelEditEmail} className={styles.cancelButton} disabled={isSubmittingEmail || isVerifyingOtp}>Cancel</button>
                 </div>
               </div>
