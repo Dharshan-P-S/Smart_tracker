@@ -271,10 +271,12 @@
 }
 
 .actionButton {
-   
+   border-radius: 5px;
+   padding: 5px;
   background-color: var(--primary-accent-light);
   color: var(--button-text-light);
   border-color: var(--primary-accent-light);
+  font-weight: 500;
 }
 .actionButton:hover:not(:disabled) {
   background-color: var(--primary-accent-hover-light);
@@ -423,6 +425,9 @@
     background-color: #c53030;
     border-color: #c53030;
     color: #e2e8f0;
+    padding: 6px;
+    font-weight: 500;
+    border-radius: 5px;
   }
   .cancelButton:hover:not(:disabled) { background-color: #9b2c2c; border-color: #9b2c2c; }
   .actionButton, .addProfilePicButton {
