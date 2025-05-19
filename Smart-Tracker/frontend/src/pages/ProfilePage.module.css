@@ -251,6 +251,9 @@
 .saveButton {
    
   background-color: #28a745;
+  border-radius: 5px;
+  padding-left: 10px;
+  padding-right: 10px;
   color: white;
   border-color: #28a745;
 }

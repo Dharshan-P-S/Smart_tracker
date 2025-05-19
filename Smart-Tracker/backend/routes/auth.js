@@ -8,36 +8,38 @@ const User = require('../models/User');
 // @desc    Register user
 // @access  Public
 router.post('/register', async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, profilePicture } = req.body;
 
   try {
-    // Check if user exists
-    let user = await User.findOne({ email });
-    if (user) {
-      return res.status(400).json({ msg: 'User already exists' });
+    let userByEmail = await User.findOne({ email });
+    if (userByEmail) {
+      return res.status(400).json({ msg: 'User already exists with this email address.' });
     }
 
-    // Create new user instance (password will be hashed by pre-save hook)
+    let userByName = await User.findOne({ name });
+    if (userByName) {
+      return res.status(400).json({ msg: 'This username is already taken. Please choose another.' });
+    }
+
     user = new User({
       name,
       email,
       password,
+      profilePicture: profilePicture || null,
     });
 
     await user.save();
 
-    // Create JWT Payload
     const payload = {
       user: {
         id: user.id,
       },
     };
 
-    // Sign token
     jwt.sign(
       payload,
-      process.env.JWT_SECRET, // Need to add JWT_SECRET to .env
-      { expiresIn: 3600 }, // Expires in 1 hour (adjust as needed)
+      process.env.JWT_SECRET,
+      { expiresIn: 3600 },
       (err, token) => {
         if (err) throw err;
         res.json({ token });
@@ -45,8 +47,16 @@ router.post('/register', async (req, res) => {
     );
 
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    console.error('Registration Server Error:', err.message);
+    if (err.code === 11000) {
+        if (err.keyPattern && err.keyPattern.email) {
+            return res.status(400).json({ msg: 'Email already in use (controller fallback).' });
+        }
+        if (err.keyPattern && err.keyPattern.name) {
+            return res.status(400).json({ msg: 'Username already taken (controller fallback).' });
+        }
+    }
+    res.status(500).send('Server error during registration');
   }
 });
 
@@ -54,30 +64,25 @@ router.post('/register', async (req, res) => {
 // @desc    Authenticate user & get token (Login)
 // @access  Public
 router.post('/login', async (req, res) => {
-  // Destructure username and password from request body
   const { username, password } = req.body;
 
   try {
-    // Find user by username (name field in DB)
     let user = await User.findOne({ name: username }).select('+password');
     if (!user) {
       return res.status(400).json({ msg: 'Invalid Credentials' });
     }
 
-    // Compare password
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
       return res.status(400).json({ msg: 'Invalid Credentials' });
     }
 
-    // Create JWT Payload
     const payload = {
       user: {
         id: user.id,
       },
     };
 
-    // Sign token
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
@@ -93,4 +98,38 @@ router.post('/login', async (req, res) => {
   }
 });
 
-module.exports = router; 
+// @route   POST api/auth/check-availability
+// @desc    Check if email or username is already taken
+// @access  Public
+router.post('/check-availability', async (req, res) => {
+  const { email, name } = req.body;
+
+  try {
+    let emailExists = false;
+    let nameExists = false;
+
+    if (email) {
+      const userByEmail = await User.findOne({ email: email.toLowerCase() }); // Case-insensitive email check
+      if (userByEmail) {
+        emailExists = true;
+      }
+    }
+
+    if (name) {
+      // Usernames are often case-sensitive, but if you want case-insensitive check:
+      // const userByName = await User.findOne({ name: new RegExp(`^${name}$`, 'i') });
+      const userByName = await User.findOne({ name });
+      if (userByName) {
+        nameExists = true;
+      }
+    }
+
+    res.json({ emailExists, nameExists });
+
+  } catch (err) {
+    console.error('Check availability error:', err.message);
+    res.status(500).send('Server error checking availability');
+  }
+});
+
+module.exports = router;
