@@ -1,14 +1,13 @@
 /* OldTransactionsPage.module.css */
 
-/* Define global or component-level color variables here if not already defined globally */
-/* Example:
-:root {
+/* Using global variables defined in index.css or App.css */
+/* :root { 
     --box-bg-light: #f9f9f9;
     --border-light: #ddd;
     --text-primary-light: #333;
     --text-secondary-light: #555;
     --input-bg-light: #fff;
-    --primary-accent-light: #007bff; // Your desired blue for light mode
+    --primary-accent-light: #007bff;
     --income-color-light: #28a745;
     --expense-color-light: #dc3545;
     --error-color-light: #dc3545;
@@ -17,7 +16,6 @@
     --projection-text-light: #495057;
     --info-bg-light: #e7f3fe;
     --info-accent-light: #2196F3;
-    --info-text-light: var(--primary-accent-light);
     --button-text-light: #ffffff;
     --primary-accent-hover-light: #0056b3;
     --error-border-color-light: #ebccd1;
@@ -28,7 +26,7 @@
     --text-primary-dark: #c9d1d9;
     --text-secondary-dark: #8b949e;
     --input-bg-dark: #2d3748;
-    --primary-accent-dark: #58a6ff;  // Your desired blue for dark mode
+    --primary-accent-dark: #58a6ff;
     --income-color-dark: #56d364;
     --expense-color-dark: #f85149;
     --error-color-dark: #f85149;
@@ -41,7 +39,7 @@
     --button-text-dark: #e0e0e0;
     --primary-accent-hover-dark: #2986ff;
     --error-border-color-dark: #a23f38;
-}
+   }
 */
 
 
@@ -58,16 +56,16 @@
     transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
-.container h2 {
+.container h2 { /* Page Title for "Old Transactions" */
     text-align: center;
     margin-bottom: 20px;
     color: var(--text-primary-light, #333);
-    font-size: 1.8rem;
+    font-size: 1.8rem; /* Slightly larger for main page title */
     font-weight: 600;
     transition: color 0.3s;
 }
 
-.pageDescription {
+.pageDescription { /* For the introductory text */
     font-size: 0.95rem;
     color: var(--text-secondary-light, #555);
     margin-bottom: 20px;
@@ -78,6 +76,7 @@
     border-radius: 4px;
 }
 
+/* --- Styles for Sections (Form and Transaction Display) --- */
 .sectionBox {
     background-color: var(--box-bg-light, #f9f9f9);
     padding: 1.5rem;
@@ -90,9 +89,8 @@
     margin-bottom: 25px;
 }
 
-.addOldTransactionSection,
-.addMonthlyOverrideSection {
-    margin-bottom: 2rem;
+.addOldTransactionSection {
+    margin-bottom: 2rem; 
 }
 
 
@@ -106,21 +104,14 @@
     transition: color 0.3s;
 }
 
+/* --- Styles for the "Add Old Transaction" Form --- */
 .transactionForm {
     display: flex;
-    flex-direction: column;
+    flex-direction: column; 
     gap: 1rem;
 }
 
-.formRow {
-    display: flex;
-    gap: 1rem;
-    align-items: flex-end;
-}
-
-.formRow > .formGroup {
-    flex: 1;
-}
+/* .formRow was removed as per your request for one input per line in the add form */
 
 .formGroup {
     display: flex;
@@ -136,11 +127,6 @@
     letter-spacing: 0.5px;
     transition: color 0.3s;
 }
-.formGroup small {
-    font-size: 0.8rem;
-    color: var(--text-secondary-light, #666);
-    margin-top: 2px;
-}
 
 .formInput,
 .transactionForm select {
@@ -154,42 +140,6 @@
     width: 100%;
     box-sizing: border-box;
 }
-
-/* Styling for date and month input picker icon */
-.formInput[type="date"],
-.formInput[type="month"] {
-    accent-color: var(--primary-accent-light, #007bff); /* Standard property */
-    color: var(--text-primary-light, #333); /* Text color inside the input */
-    /* Add some padding to ensure the text doesn't overlap with a potentially styled (or custom) icon area */
-    padding-right: 2.2em; /* Adjust as needed based on icon size/position */
-    /* These are more relevant if you were to use a custom background image for the icon */
-    background-repeat: no-repeat;
-    background-position: right 0.7em center; /* Position for potential custom icon */
-    background-size: 1em 1em; /* Size for potential custom icon */
-}
-
-/* WebKit/Blink specific styling for the calendar picker icon */
-.formInput[type="date"]::-webkit-calendar-picker-indicator,
-.formInput[type="month"]::-webkit-calendar-picker-indicator {
-    opacity: 1 !important; /* Make sure it's visible */
-    cursor: pointer;
-    /*
-      Attempt to colorize the native icon.
-      This filter chain tries to turn a dark icon light, then blue.
-      You WILL need to adjust hue-rotate and other values.
-    */
-    filter: invert(1) sepia(0.5) saturate(5000%) hue-rotate(180deg) brightness(100%) contrast(100%);
-    /*
-       Simpler filter if default icon is dark and you just want it light (maybe white or light gray):
-       filter: invert(1) brightness(1.2);
-
-       If default icon is ALREADY light gray, and you want to make it blueish:
-       filter: sepia(0.8) saturate(3000%) hue-rotate(170deg) brightness(0.9) contrast(1.2) opacity(0.7);
-    */
-    /* Position the native icon slightly if needed, sometimes they are too close to the edge */
-    /* margin-right: 0.2em; */
-}
-
 
 .formInput:focus,
 .transactionForm select:focus {
@@ -245,7 +195,7 @@
     border: none;
     border-radius: 4px;
     font-size: 1rem;
-    font-weight: 500;
+    font-weight: 500; /* Added for consistency */
     cursor: pointer;
     transition: background-color 0.2s ease;
     margin-top: 10px;
@@ -264,8 +214,8 @@
 
 .loginPrompt, .pageErrorBanner {
     color: var(--error-color-light, #dc3545);
-    background-color: #ffebee;
-    border: 1px solid var(--error-border-color-light, #ebccd1);
+    background-color: #ffebee; /* Light red background for errors */
+    border: 1px solid var(--error-border-color-light, #ebccd1); /* Matching border */
     padding: 15px;
     border-radius: 4px;
     margin-bottom: 20px;
@@ -286,17 +236,7 @@
     text-align: left;
 }
 
-.formInfoBanner {
-    color: var(--info-text-light, var(--primary-accent-light, #007bff));
-    background-color: var(--info-bg-light, #e7f3fe);
-    border: 1px solid var(--info-accent-light, #2196F3);
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 10px;
-    font-size: 0.9em;
-    text-align: left;
-}
-
+/* --- Transaction List Specific Styles --- */
 .monthGroup {
     margin-bottom: 30px;
 }
@@ -313,14 +253,14 @@
 }
 
 .transactionList {
-    list-style-type: none;
+    list-style-type: none; /* Changed from div back to ul as per typical list semantics, ensure JS li */
     padding: 0;
     margin: 0;
 }
 
 .transactionItemOldPage {
     display: grid;
-    grid-template-columns: auto 1fr auto minmax(90px, auto);
+    grid-template-columns: minmax(90px, auto) 1fr auto minmax(90px, auto); 
     gap: 10px 15px;
     padding: 12px 10px;
     border-bottom: 1px solid var(--border-light, #eee);
@@ -331,37 +271,25 @@
     border-bottom: none;
 }
 
-.transactionItemOldPage.income {
-    border-left: 4px solid var(--income-color-light, #28a745);
-    background-color: var(--income-bg-light, #f0fff4);
+.transactionItemOldPage.income { 
+    border-left: 4px solid var(--income-color-light, #28a745); 
+    background-color: var(--income-bg-light, #f0fff4); 
 }
-.transactionItemOldPage.expense {
-    border-left: 4px solid var(--expense-color-light, #dc3545);
-    background-color: var(--expense-bg-light, #fff0f1);
+.transactionItemOldPage.expense { 
+    border-left: 4px solid var(--expense-color-light, #dc3545); 
+    background-color: var(--expense-bg-light, #fff0f1); 
 }
-.monthlyOverrideItem {
-    border-left: 4px solid var(--primary-accent-light, #007bff) !important;
-    background-color: var(--projection-bg-light, #e9f5ff) !important;
-    font-style: italic;
-}
-.monthlyOverrideItem .transactionDateDisplay {
-    font-weight: bold;
-}
-.monthlyOverrideItem .transactionDetailsOld {
-    font-weight: 500;
-}
-
 
 .dateAndEmoji {
     display: flex;
     flex-direction: row;
-    align-items: center;
-    gap: 8px;
+    gap: 4px;
+    align-items: flex-start;
 }
 .transactionDateDisplay {
-    font-weight: 500;
-    color: var(--text-secondary-light, #555);
-    font-size: 0.9rem;
+    font-weight: 500; 
+    color: var(--text-secondary-light, #555); 
+    font-size: 0.9rem; 
 }
 .transactionEmoji {
     font-size: 1em;
@@ -370,15 +298,16 @@
 
 .transactionDetailsOld {
     grid-column: 2 / 3;
-    color: var(--text-primary-light, #333);
+    color: var(--text-primary-light, #333); 
     word-break: break-word;
     display: flex;
     align-items: center;
 }
+/* .transactionDetailsOld .transactionEmoji { margin-right: 8px; } */
 
 .transactionAmountOld {
-    font-weight: bold;
-    text-align: right;
+    font-weight: bold; 
+    text-align: right; 
 }
 .incomeOld { color: var(--income-color-light, #28a745); }
 .expenseOld { color: var(--expense-color-light, #dc3545); }
@@ -386,21 +315,10 @@
 .editFormContainerOld {
     grid-column: 2 / 3;
     display: grid;
-    grid-template-columns: 2fr 1.5fr 1fr;
+    grid-template-columns: 2fr 1.5fr 1fr; 
     gap: 8px;
     align-items: center;
 }
-.editFormContainerOld.isOverrideEdit {
-    grid-template-columns: auto 1fr;
-}
-.overrideLabel {
-    font-size: 0.9rem;
-    color: var(--text-secondary-light, #555);
-    font-weight: 600;
-    margin-right: 5px;
-    align-self: center;
-}
-
 
 .editInputOld {
     padding: 6px 8px;
@@ -419,6 +337,8 @@
 }
 
 .editEmojiPickerContainerOld {
+    grid-column: 1 / 2; 
+    grid-row: 2 / 3;   
     position: relative;
     margin-top: 5px;
     justify-self: start;
@@ -435,9 +355,9 @@
 }
 .emojiPickerPopoverOld {
     position: absolute;
-    top: 100%;
+    top: 100%; 
     left: 0;
-    z-index: 20;
+    z-index: 20; 
     border: 1px solid var(--border-light, #ccc);
     box-shadow: 0 2px 10px rgba(0,0,0,0.15);
     background: var(--box-bg-light, white);
@@ -474,11 +394,6 @@
 .cancelButtonOld { color: var(--text-secondary-light, #6c757d); }
 .cancelButtonOld:hover { background-color: rgba(108, 117, 125, 0.1); }
 
-.actionButtonOld:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
 .projectionBox, .editProjectionsOld {
     grid-column: 1 / -1;
     padding: 10px 12px;
@@ -497,16 +412,17 @@
     color: var(--text-primary-light, #212529);
 }
 .warningText {
-    color: var(--error-color-light, #dc3545) !important;
+    color: var(--error-color-light, #dc3545) !important; 
     font-weight: bold;
 }
 
+/* --- Styles for the Download PDF Button --- */
 .pdfButtonOld {
     padding: 0.6rem 1.2rem;
     font-size: 0.9rem;
     font-weight: 500;
     color: #ffffff;
-    background-color: #5cb85c;
+    background-color: #5cb85c; /* Green background */
     border: 1px solid #4cae4c;
     border-radius: 5px;
     cursor: pointer;
@@ -516,6 +432,7 @@
     align-items: center;
     justify-content: center;
     transition: background-color 0.2s ease, transform 0.1s ease, border-color 0.2s ease;
+    /* box-shadow: 0 1px 3px rgba(0,0,0,0.1); */
 }
 
 .pdfButtonOld:hover {
@@ -547,26 +464,7 @@
     .sectionBox { background-color: var(--box-bg-dark, #22272e); border-color: var(--border-dark, #444c56); }
     .sectionTitle { color: var(--text-primary-dark, #c9d1d9); border-bottom-color: var(--border-dark, #444c56); }
     .formGroup label { color: var(--text-secondary-dark, #8b949e); }
-    .formGroup small { color: var(--text-secondary-dark, #768390); }
     .formInput, .transactionForm select { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark, #444c56); color: var(--text-primary-dark, #c9d1d9); }
-
-    .formInput[type="date"],
-    .formInput[type="month"] {
-        accent-color: var(--primary-accent-dark, #58a6ff);
-        color: var(--text-primary-dark, #c9d1d9);
-    }
-
-    .formInput[type="date"]::-webkit-calendar-picker-indicator,
-    .formInput[type="month"]::-webkit-calendar-picker-indicator {
-        /* This filter assumes the browser's default dark mode icon is light (e.g., white/light grey)
-           and tries to color it blue. If the icon remains dark, use the light mode filter. */
-        filter: brightness(0.8) sepia(1) saturate(4000%) hue-rotate(185deg) contrast(1.2) opacity(0.9);
-        /*
-          If the icon is still dark in dark mode (less common), use the same filter as light mode:
-          filter: invert(1) sepia(0.5) saturate(5000%) hue-rotate(180deg) brightness(100%) contrast(100%);
-        */
-    }
-
     .formInput::placeholder { color: var(--text-secondary-dark, #768390); }
     .formInput:focus, .transactionForm select:focus { border-color: var(--primary-accent-dark, #58a6ff); box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.3); }
     .emojiButton { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark, #444c56); color: var(--text-primary-dark, #c9d1d9); }
@@ -577,24 +475,14 @@
     .submitButtonWide:disabled { background-color: #484f58; }
     .loginPrompt, .pageErrorBanner { color: var(--error-color-dark, #f85149); background-color: #3e1a1a; border-color: var(--error-color-dark, #f85149); }
     .formErrorBanner { color: var(--error-color-dark, #ff7b72); background-color: #4f2626; border-color: var(--error-border-color-dark, #a23f38); }
-    .formInfoBanner {
-        color: var(--info-text-dark, #88c0d0);
-        background-color: var(--info-bg-dark, #0c2239);
-        border-color: var(--info-accent-dark, #5e81ac);
-    }
     .monthHeading { color: var(--primary-accent-dark, #58a6ff); border-bottom-color: var(--primary-accent-dark, #58a6ff); }
     .transactionItemOldPage { border-bottom-color: var(--border-dark, #444c56); }
     .transactionItemOldPage.income { border-left-color: var(--income-color-dark, #56d364); background-color: var(--income-bg-dark, #1c3522); }
     .transactionItemOldPage.expense { border-left-color: var(--expense-color-dark, #f85149); background-color: var(--expense-bg-dark, #3e1a1a); }
-    .monthlyOverrideItem {
-        border-left-color: var(--primary-accent-dark, #58a6ff) !important;
-        background-color: var(--projection-bg-dark, #2a3b47) !important;
-    }
     .transactionDateDisplay { color: var(--text-secondary-dark, #8b949e); }
     .transactionDetailsOld { color: var(--text-primary-dark, #c9d1d9); }
     .incomeOld { color: var(--income-color-dark, #56d364); }
     .expenseOld { color: var(--expense-color-dark, #f85149); }
-    .overrideLabel { color: var(--text-secondary-dark, #8b949e); }
     .editInputOld { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark, #444c56); color: var(--text-primary-dark, #c9d1d9); }
     .editInputOld:focus { border-color: var(--primary-accent-dark, #58a6ff); box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.3); }
     .emojiButtonSmallOld { background-color: var(--input-bg-dark, #374151); border-color: var(--border-dark, #444c56); color: var(--text-primary-dark, #c9d1d9); }
@@ -611,14 +499,21 @@
     .projectionBox strong, .editProjectionsOld strong { color: var(--text-primary-dark, #c9d1d9); }
     .warningText { color: var(--error-color-dark, #f85149) !important; }
 
+    /* PDF Button Dark Mode */
     .pdfButtonOld {
-        color: var(--button-text-dark, #e0e0e0);
-        background-color: var(--income-color-dark, #2f855a);
-        border-color: var(--income-color-dark, #2f855a);
+        color: var(--button-text-dark, #e0e0e0); 
+        background-color: var(--income-color-dark, #2f855a); /* Consistent green for download */
+        border-color: var(--income-color-dark, #2f855a); 
     }
-    .pdfButtonOld:hover { background-color: #276749; border-color: #276749; }
-    .pdfButtonOld:active { background-color: #22543d; border-color: #22543d; }
-    .pdfButtonOld:disabled {
+    .pdfButtonOld:hover {
+        background-color: #276749; 
+        border-color: #276749;
+    }
+    .pdfButtonOld:active {
+        background-color: #22543d;
+        border-color: #22543d;
+    }
+     .pdfButtonOld:disabled {
         background-color: var(--border-dark, #444c56);
         color: var(--text-secondary-dark, #8b949e);
         border-color: var(--border-dark, #444c56);
@@ -627,44 +522,24 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .formRow {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 1rem;
-    }
-    .formRow > .formGroup {
-      margin-bottom: 0;
-    }
-
+    /* .formRow was removed, so no specific responsive styles for it are needed unless .formGroup itself needs to change in rows */
+    
     .transactionItemOldPage {
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: auto 1fr auto; 
     }
     .dateAndEmoji { grid-column: 1 / 2; }
     .transactionDetailsOld { grid-column: 2 / 3; }
-    .editFormContainerOld {
-        grid-column: 2/3;
-        grid-template-columns: 1fr;
-    }
-     .editFormContainerOld.isOverrideEdit {
-        grid-template-columns: 1fr;
-    }
-    .overrideLabel {
-        margin-bottom: 0.3rem;
-    }
-
+    .editFormContainerOld { grid-column: 2/3; grid-template-columns: 1fr; }
     .editFormContainerOld .editInputOld { width: 100%; }
     .editEmojiPickerContainerOld { grid-column: 1 / -1; grid-row: auto; margin-top: 0.5rem; justify-self: start; }
     .transactionAmountOld { grid-column: 2 / 3; text-align: left; margin-top: 0.25rem; }
-    .actionButtonsOld { grid-column: 3 / 4; flex-direction: column; align-items: flex-end; gap: 5px; }
+    .actionButtonsOld { grid-column: 3 / 4; flex-direction: column; align-items: flex-end; }
     .projectionBox, .editProjectionsOld { font-size: 0.8rem; }
 }
 
 @media (max-width: 480px) {
-    .container { padding: 15px; }
-    .transactionItemOldPage { grid-template-columns: 1fr; padding-left: 10px; padding-right: 10px; }
+    .transactionItemOldPage { grid-template-columns: 1fr; padding-left: 10px; }
     .dateAndEmoji, .transactionDetailsOld, .editFormContainerOld, .transactionAmountOld, .actionButtonsOld { grid-column: 1 / -1; }
-    .dateAndEmoji { margin-bottom: 5px; }
-    .transactionDetailsOld { margin-bottom: 5px; }
-    .transactionAmountOld { text-align: left; margin-bottom: 8px; }
     .actionButtonsOld { flex-direction: row; justify-content: flex-start; margin-top: 0.5rem; }
+    .transactionAmountOld { text-align: left; }
 }
