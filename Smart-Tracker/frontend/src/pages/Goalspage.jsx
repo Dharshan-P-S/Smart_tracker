@@ -222,7 +222,7 @@ function GoalsPage() {
                     onClick={() => { setShowAddForm(!showAddForm); setEditingGoal(null); }}
                     className={styles.addButton}
                 >
-                    <FaPlus /> {showAddForm ? 'Cancel' : 'Add New Goal'}
+                    {showAddForm ? <FaTimes /> : <FaPlus />} {showAddForm ? 'Cancel' : 'Add New Goal'}
                 </button>
             </div>
 
