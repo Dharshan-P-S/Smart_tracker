@@ -11,15 +11,15 @@
 
 /* Light Mode Variables */
 :root {
-  --bg-light: #EDE8F5; /* Very light lavender */
-  --box-bg-light: #FFFFFF; /* White */
-  --text-primary-light: #3D52A0; /* Strong indigo-blue */
-  --text-secondary-light: #8697C4; /* Muted slate blue */
-  --accent-primary-light: #7091E6; /* Soft periwinkle blue */
-  --accent-secondary-light: #3D52A0; /* Strong indigo-blue (for hover) */
-  --border-light: #ADBBDA; /* Pale dusty blue */
-  --error-light: #EF4444; /* Red */
-  --success-light: #10B981; /* Green */
+  --bg-light: #EDE8F5;
+  --box-bg-light: #FFFFFF;
+  --text-primary-light: #3D52A0;
+  --text-secondary-light: #8697C4;
+  --accent-primary-light: #7091E6;    /* Softer Blue - Used for OTP button normal, main button hover */
+  --accent-secondary-light: #3D52A0; /* Stronger Blue - Used for main button normal, OTP button hover */
+  --border-light: #ADBBDA;
+  --error-light: #EF4444;
+  --success-light: #10B981;
 }
 
 /* Dark Mode Variables */
@@ -28,14 +28,14 @@
   --box-bg-dark: #1F2833;
   --text-primary-dark: #C5C6C7;
   --text-secondary-dark: #9CA3AF;
-  --accent-primary-dark: #45A29E;
-  --accent-secondary-dark: #66FCF1;
+  --accent-primary-dark: #45A29E;   /* Teal - Used for OTP button normal, main button hover */
+  --accent-secondary-dark: #66FCF1;/* Cyan - Used for main button normal, OTP button hover */
   --border-dark: #374151;
   --error-dark: #F87171;
-  --success-dark: #34D399; /* Added Success Color */
+  --success-dark: #34D399;
 }
 
-.registerContainer { /* Renamed */
+.registerContainer {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -43,13 +43,13 @@
   padding: 1rem;
 }
 
-.registerBox { /* Renamed */
+.registerBox {
   background-color: var(--box-bg-light);
   padding: 2.5rem 2rem;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 420px; /* Slightly wider maybe? */
+  max-width: 420px;
   text-align: center;
   border: 1px solid var(--border-light);
   transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
@@ -61,20 +61,18 @@
   font-weight: 600;
   margin-bottom: 0.5rem;
   color: var(--text-primary-light);
-  transition: color 0.3s ease;
 }
 
 .subtitle {
   font-size: 1rem;
   color: var(--text-secondary-light);
   margin-bottom: 1.5rem;
-  transition: color 0.3s ease;
 }
 
-.registerForm { /* Renamed */
+.registerForm {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem; /* Slightly reduce gap for more fields */
+  gap: 0.2rem;
 }
 
 .inputGroup {
@@ -129,24 +127,17 @@
   box-shadow: none;
 }
 
+/* --- GENERAL BUTTON STYLES (BASE) --- */
 .button {
   padding: 0.9rem;
-  margin-top: 1rem; /* Add margin above button */
-  background-color: var(--accent-primary-light);
-  color: #FFFFFF;
+  margin-top: 1rem;
+  color: #FFFFFF; /* Default text color for light mode buttons */
   border: none;
   border-radius: 4px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.button:hover {
-  background-color: var(--accent-secondary-light);
-  color: #FFFFFF;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .button:active {
@@ -159,7 +150,32 @@
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+  background-color: var(--text-secondary-light) !important; /* Consistent disabled color */
 }
+
+
+/* --- SUBMIT BUTTON (Main Register Button) --- */
+.submitButton {
+  background-color: var(--accent-primary-light); /* Stronger Blue for normal */
+}
+.submitButton:hover {
+  background-color: var(--accent-secondary-light);   /* Softer Blue for hover */
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* --- OTP BUTTON --- */
+.otpButton {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  background-color: var(--accent-secondary-light);   /* Softer Blue for normal */
+}
+.otpButton:hover {
+  background-color: var(--accent-primary-light); /* Stronger Blue for hover */
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
 
 .errorMessage {
   color: var(--error-light);
@@ -167,15 +183,10 @@
   padding: 0.8rem;
   border-radius: 4px;
   font-size: 0.9rem;
-  /* margin-bottom: 0.5rem; Removed margin handled by form gap */
   margin-top: 0.5rem;
   border: 1px solid var(--error-light);
-  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
-  opacity: 1;
-  transform: translateY(0);
 }
 
-/* Success Message Style */
 .successMessage {
   color: var(--success-light);
   background-color: rgba(16, 185, 129, 0.1);
@@ -184,210 +195,151 @@
   font-size: 0.9rem;
   margin-top: 0.5rem;
   border: 1px solid var(--success-light);
-  transition: all 0.3s ease;
-  opacity: 1;
-  transform: translateY(0);
 }
 
-
-.loginLink { /* Renamed */
+.loginLink {
   margin-top: 1.5rem;
   font-size: 0.9rem;
   color: var(--text-secondary-light);
-  transition: color 0.3s ease;
 }
 
-.loginLink a { /* Renamed */
+.loginLink a {
   color: var(--accent-primary-light);
   text-decoration: none;
   font-weight: 500;
-  transition: color 0.2s ease;
 }
 
-.loginLink a:hover { /* Renamed */
+.loginLink a:hover {
   text-decoration: underline;
   color: var(--accent-secondary-light);
 }
 
-/* Dark Mode Styles */
+/* --- PROFILE PICTURE UPLOAD STYLES --- */
+.inputFileHidden { /* Renamed from .inputFile to be more specific */
+  display: none;
+}
+
+.profilePicUploadContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.profilePicLabel {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%; /* This makes it round */
+  border: 2px dashed var(--border-light);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  overflow: hidden; /* Crucial for circular image preview */
+  background-color: var(--bg-light); /* Placeholder background */
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.profilePicLabel:hover {
+  border-color: var(--accent-primary-light);
+  background-color: #f0eff6; /* Slightly lighter for visual feedback */
+}
+
+.profilePreviewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Ensures the image covers the circle without distortion */
+}
+
+.profilePicPlaceholderText { /* Renamed from .profilePicPlaceholder */
+  font-size: 0.8rem;
+  color: var(--text-secondary-light);
+  text-align: center;
+  padding: 5px; /* Add some padding so text doesn't touch edges */
+}
+
+.fileNameDisplay {
+  font-size: 0.8rem;
+  color: var(--text-secondary-light);
+  margin-top: 0.5rem; /* Space above the file name */
+  text-align: center;
+  word-break: break-all;
+}
+
+
+/* --- DARK MODE STYLES --- */
 @media (prefers-color-scheme: dark) {
-  .registerBox { /* Renamed */
+  .registerBox {
     background-color: var(--box-bg-dark);
     border-color: var(--border-dark);
   }
-
-  .title {
-    color: var(--text-primary-dark);
-  }
-
-  .subtitle {
-    color: var(--text-secondary-dark);
-  }
-
-  .label {
-     color: var(--text-secondary-dark);
-  }
-
+  .title { color: var(--text-primary-dark); }
+  .subtitle { color: var(--text-secondary-dark); }
+  .label { color: var(--text-secondary-dark); }
   .input {
     background-color: var(--box-bg-dark);
     border-color: var(--border-dark);
     color: var(--text-primary-dark);
   }
-
   .input:focus + .label,
   .input:not(:placeholder-shown) + .label {
     color: var(--accent-secondary-dark);
     background-color: var(--box-bg-dark);
   }
+  .input:hover { border-color: var(--text-secondary-dark); }
+  .input:focus { border-color: var(--accent-secondary-dark); }
 
-  .input:hover {
-     border-color: var(--text-secondary-dark);
-  }
-
-   .input:focus {
-     border-color: var(--accent-secondary-dark);
-   }
-
+  /* --- BUTTONS DARK MODE --- */
   .button {
-     background-color: var(--accent-secondary-dark);
-     color: var(--bg-dark);
+    color: var(--bg-dark); /* Text color for dark mode buttons */
+  }
+  .button:disabled {
+    background-color: var(--text-secondary-dark) !important;
+    color: rgba(var(--bg-dark), 0.7) !important; /* Muted text on disabled */
   }
 
-  .button:hover {
-    background-color: var(--accent-primary-dark);
+  .submitButton {
+    background-color: var(--accent-secondary-dark); /* Cyan normal */
+  }
+  .submitButton:hover {
+    background-color: var(--accent-primary-dark);   /* Teal hover */
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   }
 
-  .button:active {
-    transform: translateY(0px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  .otpButton {
+    background-color: var(--accent-secondary-dark);   /* Teal normal */
   }
+  .otpButton:hover {
+    background-color: var(--accent-primary-dark); /* Cyan hover */
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+
 
   .errorMessage {
     color: var(--error-dark);
     background-color: rgba(248, 113, 113, 0.1);
     border-color: var(--error-dark);
   }
-
-  /* Success Message Dark */
   .successMessage {
     color: var(--success-dark);
     background-color: rgba(52, 211, 153, 0.1);
     border-color: var(--success-dark);
   }
+  .loginLink { color: var(--text-secondary-dark); }
+  .loginLink a { color: var(--accent-secondary-dark); }
+  .loginLink a:hover { color: var(--text-primary-dark); }
 
-
-  .loginLink { /* Renamed */
-    color: var(--text-secondary-dark);
-  }
-
-  .loginLink a { /* Renamed */
-    color: var(--accent-secondary-dark);
-  }
-
-  .loginLink a:hover { /* Renamed */
-    color: var(--text-primary-dark);
-  }
-
-
-} 
-/* ... (keep all your existing styles) ... */
-
-/* Styles for Profile Picture Upload */
-.inputFile {
-  display: none; /* Hide the default file input */
-}
-
-.labelUploadButton {
-  display: inline-block;
-  padding: 0.75rem 1.25rem;
-  background-color: var(--box-bg-light); /* Or a different subtle color */
-  color: var(--text-secondary-light);
-  border: 1px dashed var(--border-light);
-  border-radius: 4px;
-  cursor: pointer;
-  text-align: center;
-  font-size: 0.9rem;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-  width: 100%; /* Make it full width like other inputs */
-  margin-bottom: 0.5rem; /* Space below if image preview is shown */
-}
-
-.labelUploadButton:hover {
-  background-color: var(--accent-primary-light-subtle, #e6eaf8); /* A very light shade of accent */
-  border-color: var(--accent-primary-light);
-  color: var(--accent-primary-light);
-}
-
-.labelUploadButton:disabled,
-.labelUploadButton[disabled] { /* Ensure disabled styles apply */
-  opacity: 0.6;
-  cursor: not-allowed;
-  background-color: var(--bg-light);
-  border-color: var(--border-light);
-}
-
-
-.profilePreview {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%; /* Circular preview */
-  object-fit: cover;
-  margin-top: 0.5rem; /* Space above if file selected */
-  border: 2px solid var(--border-light);
-  display: block; /* Center it */
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* OTP Button specific style if needed, or use generic .button */
-.otpButton {
-  margin-top: 0.5rem; /* Add some space above the OTP button */
-  margin-bottom: 0.5rem; /* Space before OTP input or main register button */
-  background-color: var(--accent-secondary-light); /* A different color to stand out */
-}
-.otpButton:hover {
-  background-color: var(--accent-primary-light);
-}
-.otpButton:disabled {
-  background-color: var(--text-secondary-light) !important; /* More prominent disabled state */
-  opacity: 0.7;
-}
-
-
-/* Dark Mode Styles for new elements */
-@media (prefers-color-scheme: dark) {
-  .labelUploadButton {
+  /* Profile Picture Dark Mode */
+  .profilePicLabel {
+    border: 2px dashed var(--border-dark);
     background-color: var(--box-bg-dark);
-    color: var(--text-secondary-dark);
-    border: 1px dashed var(--border-dark);
   }
-
-  .labelUploadButton:hover {
-    background-color: var(--bg-dark); /* Darker shade for hover */
+  .profilePicLabel:hover {
     border-color: var(--accent-secondary-dark);
-    color: var(--accent-secondary-dark);
-  }
-
-  .labelUploadButton:disabled,
-  .labelUploadButton[disabled] {
     background-color: var(--bg-dark);
-    border-color: var(--border-dark);
   }
-
-  .profilePreview {
-    border: 2px solid var(--border-dark);
-  }
-
-  .otpButton {
-    background-color: var(--accent-primary-dark);
-  }
-  .otpButton:hover {
-    background-color: var(--accent-secondary-dark);
-    color: var(--bg-dark); /* Ensure text is visible on hover */
-  }
-  .otpButton:disabled {
-    background-color: var(--text-secondary-dark) !important;
-  }
+  .profilePicPlaceholderText { color: var(--text-secondary-dark); }
+  .fileNameDisplay { color: var(--text-secondary-dark); }
 }

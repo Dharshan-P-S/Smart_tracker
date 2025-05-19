@@ -181,8 +181,6 @@ function RegisterPage() {
       }
 
       // Step 2: Register User
-      // The backend /api/auth/register route will perform a final check for username/email uniqueness
-      // This is a safeguard in case the pre-check was bypassed or there's a race condition.
       const newUser = {
         name,
         email,
@@ -226,22 +224,37 @@ function RegisterPage() {
           {error && <p className={styles.errorMessage}>{error}</p>}
           {success && <p className={styles.successMessage}>{success}</p>}
 
-          <div className={styles.inputGroup} style={{ alignItems: 'center', marginBottom: '1rem' }}>
-            <label htmlFor="profilePicInput" className={styles.labelUploadButton} role="button">
-              {isSendingOtp || loading ? 'Processing...' : (profilePictureFile ? `Selected: ${profilePictureFile.name.substring(0,20)}...` : 'Upload Profile Picture (Optional)')}
+          {/* Profile Picture Upload Section - CORRECTED JSX */}
+          <div className={styles.profilePicUploadContainer}>
+            <label htmlFor="profilePicInput" className={styles.profilePicLabel}>
+              {profilePicture ? (
+                <img src={profilePicture} alt="Preview" className={styles.profilePreviewImage} />
+              ) : (
+                <span className={styles.profilePicPlaceholderText}>
+                  Upload Picture
+                </span>
+              )}
             </label>
             <input
               type="file"
-              id="profilePicInput"
+              id="profilePicInput" // ID must match htmlFor
               accept="image/*"
               onChange={handleProfilePicChange}
-              className={styles.inputFile}
+              className={styles.inputFileHidden} // Keep it hidden
               ref={fileInputRef}
               disabled={isSendingOtp || loading}
             />
-             {profilePicture && <img src={profilePicture} alt="Preview" className={styles.profilePreview} />}
+            {profilePictureFile && (
+                <p className={styles.fileNameDisplay}>
+                    {profilePictureFile.name.length > 25 
+                        ? profilePictureFile.name.substring(0, 22) + "..." 
+                        : profilePictureFile.name}
+                </p>
+            )}
           </div>
 
+
+          {/* Username Input */}
           <div className={styles.inputGroup}>
             <input
               type="text"
@@ -252,11 +265,12 @@ function RegisterPage() {
               required
               className={styles.input}
               placeholder=" "
-              disabled={isOtpSent || isSendingOtp || loading} // Also disable if OTP sent as it's part of checked data
+              disabled={isOtpSent || isSendingOtp || loading}
             />
             <label htmlFor="name" className={styles.label}>Username</label>
           </div>
 
+          {/* Email Input */}
           <div className={styles.inputGroup}>
             <input
               type="email"
@@ -272,6 +286,7 @@ function RegisterPage() {
             <label htmlFor="email" className={styles.label}>Email Address</label>
           </div>
 
+          {/* Password Input */}
           <div className={styles.inputGroup}>
             <input
               type="password"
@@ -287,6 +302,7 @@ function RegisterPage() {
             <label htmlFor="password" className={styles.label}>Password</label>
           </div>
 
+          {/* Confirm Password Input */}
           <div className={styles.inputGroup}>
             <input
               type="password"
@@ -332,7 +348,7 @@ function RegisterPage() {
 
           <button
             type="submit"
-            className={styles.button}
+            className={`${styles.button} ${styles.submitButton}`} // Added specific class for main submit
             disabled={loading || isSendingOtp || !isOtpSent || !otp || otp.length !== 6}
             title={!isOtpSent ? "Please verify email with OTP first" : (!otp || otp.length !== 6) ? "Please enter a valid 6-digit OTP" : "Register"}
           >
