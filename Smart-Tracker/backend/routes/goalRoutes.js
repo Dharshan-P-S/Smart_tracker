@@ -4,11 +4,12 @@ const {
     getGoals,
     addGoal,
     updateGoal,
-    deleteGoal
+    deleteGoal,
+    contributeToGoal // Import new controller
 } = require('../controllers/goalController');
-// const { protect } = require('../middleware/authMiddleware'); // Assuming protect middleware
+// const { protect } = require('../middleware/authMiddleware');
 
-// router.use(protect); // Apply protection if you have it
+// router.use(protect);
 
 router.route('/')
     .get(getGoals)
@@ -17,5 +18,7 @@ router.route('/')
 router.route('/:id')
     .put(updateGoal)
     .delete(deleteGoal);
+
+router.post('/:id/contribute', contributeToGoal); // New route for contributions
 
 module.exports = router;

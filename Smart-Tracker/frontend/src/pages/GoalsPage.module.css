@@ -1,34 +1,33 @@
 /* GoalsPage.module.css */
 
 /* Using global variables defined in index.css or App.css if available */
-/* For standalone, define similar color schemes or use the ones from OldTransactionsPage */
 :root {
-    --box-bg-light: #ffffff; /* Slightly off-white */
+    --box-bg-light: #ffffff;
     --border-light: #e0e0e0;
-    --text-primary-light: #2c3e50; /* Darker blue-gray for text */
-    --text-secondary-light: #7f8c8d; /* Muted gray for secondary text */
+    --text-primary-light: #2c3e50;
+    --text-secondary-light: #7f8c8d;
     --input-bg-light: #ffffff;
-    --primary-accent-light: #3498db; /* Primary blue */
-    --secondary-accent-light: #2ecc71; /* Green for success/add */
-    --edit-accent-light: #f39c12; /* Orange for edit */
-    --delete-accent-light: #e74c3c; /* Red for delete */
-    --progress-bar-bg-light: #ecf0f1; /* Light gray for progress bar background */
+    --primary-accent-light: #3498db;
+    --secondary-accent-light: #2ecc71;
+    --edit-accent-light: #f39c12;
+    --delete-accent-light: #e74c3c;
+    --progress-bar-bg-light: #ecf0f1;
     --progress-bar-fill-light: var(--secondary-accent-light);
     --button-text-light: #ffffff;
 
-    /* Dark Mode (example, adjust to your theme) */
-    --box-bg-dark: #2d3748; /* Dark blue-gray */
-    --border-dark: #4a5568; /* Medium gray */
-    --text-primary-dark: #e2e8f0; /* Light gray for text */
-    --text-secondary-dark: #a0aec0; /* Lighter gray */
-    --input-bg-dark: #1a202c; /* Very dark blue-gray */
-    --primary-accent-dark: #63b3ed; /* Lighter blue */
-    --secondary-accent-dark: #48bb78; /* Lighter green */
-    --edit-accent-dark: #f6ad55; /* Lighter orange */
-    --delete-accent-dark: #fc8181; /* Lighter red */
+    /* Dark Mode */
+    --box-bg-dark: #2d3748;
+    --border-dark: #4a5568;
+    --text-primary-dark: #e2e8f0;
+    --text-secondary-dark: #a0aec0;
+    --input-bg-dark: #1a202c; /* Used for goal item backgrounds in dark mode */
+    --primary-accent-dark: #63b3ed;
+    --secondary-accent-dark: #48bb78;
+    --edit-accent-dark: #f6ad55;
+    --delete-accent-dark: #fc8181;
     --progress-bar-bg-dark: #4a5568;
     --progress-bar-fill-dark: var(--secondary-accent-dark);
-    --button-text-dark: #1a202c; /* Dark text on light buttons if needed, or white */
+    --button-text-dark: #1a202c;
 }
 
 
@@ -168,13 +167,13 @@
 .submitButton {
     background-color: var(--primary-accent-light, #3498db);
     color: var(--button-text-light, white);
-    align-self: flex-start; /* Align to the start of the flex container if form is display:flex */
+    align-self: flex-start; 
 }
 .submitButton:hover {
-    background-color: #2980b9; /* Darker blue */
+    background-color: #2980b9; 
 }
 .submitButton:disabled {
-    background-color: #bdc3c7; /* Muted gray for disabled */
+    background-color: #bdc3c7; 
     cursor: not-allowed;
 }
 
@@ -188,7 +187,7 @@
     color: var(--button-text-light, white);
 }
 .cancelButton:hover {
-    background-color: #6c7a7b; /* Darker gray */
+    background-color: #6c7a7b; 
 }
 
 .goalsList {
@@ -198,24 +197,34 @@
 }
 
 .goalItem {
-    background-color: var(--box-bg-light, #fff);
-    border: 1px solid var(--border-light, #e0e0e0);
+    background-color: var(--box-bg-light); /* Default background */
+    border: 1px solid var(--border-light);
     border-radius: 8px;
     padding: 20px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     display: flex;
     flex-direction: column;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, border-top-color 0.3s ease; /* Added transitions */
 }
 .goalItem:hover {
     transform: translateY(-3px);
     box-shadow: 0 4px 10px rgba(0,0,0,0.08);
 }
 
-/* Status-specific border */
-.goalItem.active { border-left: 5px solid var(--primary-accent-light, #3498db); }
-.goalItem.achieved { border-left: 5px solid var(--secondary-accent-light, #2ecc71); }
-.goalItem.archived { border-left: 5px solid var(--text-secondary-light, #95a5a6); }
+/* Status-specific styles (using top border and background tints) */
+.goalItem.active {
+    border-top: 5px solid var(--primary-accent-light);
+    /* background-color: var(--box-bg-light); */ /* Default light background for active */
+}
+.goalItem.achieved {
+    border-top: 5px solid var(--secondary-accent-light);
+    background-color: rgba(46, 204, 113, 0.07); /* Subtle green tint */
+}
+.goalItem.archived {
+    border-top: 5px solid var(--text-secondary-light);
+    background-color: rgba(127, 140, 141, 0.07); /* Subtle gray tint */
+    opacity: 0.85;
+}
 
 
 .goalHeader {
@@ -230,7 +239,7 @@
 .goalDescription {
     font-size: 1.25rem;
     font-weight: 600;
-    color: var(--text-primary-light, #333);
+    color: var(--text-primary-light);
     margin: 0;
     flex-grow: 1;
 }
@@ -241,29 +250,39 @@
 .actionButton {
     background: none;
     border: none;
-    color: var(--text-secondary-light, #777);
+    color: var(--text-secondary-light);
     cursor: pointer;
     padding: 5px;
     font-size: 1.1rem;
     border-radius: 4px;
 }
 .actionButton:hover {
-    color: var(--text-primary-light, #333);
+    color: var(--text-primary-light);
     background-color: rgba(0,0,0,0.05);
+}
+.deleteAction { /* Specific class if you want to style delete button differently */
+    color: var(--delete-accent-light);
+}
+.deleteAction:hover {
+    color: #c0392b; /* Darker red on hover */
+    background-color: rgba(231, 76, 60, 0.08);
 }
 
 .goalDetails p {
     margin: 6px 0;
     font-size: 0.95rem;
-    color: var(--text-secondary-light, #555);
+    color: var(--text-secondary-light);
 }
 .goalDetails p strong {
-    color: var(--text-primary-light, #444);
+    color: var(--text-primary-light);
+}
+.remainingAmount strong { /* Make remaining amount stand out a bit */
+    color: var(--primary-accent-light);
 }
 
 .progressBarContainer {
     width: 100%;
-    background-color: var(--progress-bar-bg-light, #ecf0f1);
+    background-color: var(--progress-bar-bg-light);
     border-radius: 10px;
     height: 12px;
     margin-top: 15px;
@@ -271,37 +290,132 @@
 }
 .progressBar {
     height: 100%;
-    background-color: var(--progress-bar-fill-light, #2ecc71);
+    background-color: var(--progress-bar-fill-light);
     border-radius: 10px;
     transition: width 0.5s ease-in-out;
-    text-align: right;
+    text-align: center; /* Center text in progress bar */
     color: white;
-    font-size: 0.7rem;
+    font-size: 0.75rem; /* Slightly larger for readability */
     line-height: 12px;
-    padding-right: 5px;
+    font-weight: 500;
+    /* padding-right: 5px; */ /* Removed padding-right if text is centered */
 }
 
 .statusBadge {
-    padding: 3px 8px;
-    border-radius: 12px;
+    padding: 4px 10px; /* Slightly more padding */
+    border-radius: 15px; /* More pill-like */
     font-size: 0.8rem;
-    font-weight: 500;
+    font-weight: 600; /* Bolder */
     color: white;
     text-transform: capitalize;
+    display: inline-block; /* To allow padding and centering if needed */
 }
-.statusActive { background-color: var(--primary-accent-light, #3498db); }
-.statusAchieved { background-color: var(--secondary-accent-light, #2ecc71); }
-.statusArchived { background-color: var(--text-secondary-light, #95a5a6); }
+.badgeActive { background-color: var(--primary-accent-light); }
+.badgeAchieved { background-color: var(--secondary-accent-light); }
+.badgeArchived { background-color: var(--text-secondary-light); }
 
 
 .loadingText, .errorText, .noGoalsText {
     text-align: center;
     font-size: 1.1rem;
     padding: 20px;
-    color: var(--text-secondary-light, #777);
+    color: var(--text-secondary-light);
 }
-.errorText { color: var(--delete-accent-light, #e74c3c); }
+.errorText { color: var(--delete-accent-light); }
+.errorTextSmall {
+    text-align: center;
+    font-size: 0.9rem;
+    padding: 10px;
+    margin-bottom: 15px;
+    color: var(--delete-accent-light);
+    background-color: rgba(231, 76, 60, 0.05);
+    border: 1px solid rgba(231, 76, 60, 0.2);
+    border-radius: 5px;
+}
 
+
+.contributeButton {
+    background-color: var(--primary-accent-light);
+    color: var(--button-text-light, white);
+    padding: 8px 12px;
+    border: none;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin-top: 12px; /* More space above */
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    justify-content: center;
+}
+.contributeButton:hover {
+    background-color: #2980b9;
+}
+.contributeButton:disabled {
+    background-color: #bdc3c7;
+    cursor: not-allowed;
+}
+
+/* Modal Styles */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.65); /* Slightly darker overlay */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    padding: 15px; /* Padding for smaller screens */
+}
+
+.modalContent {
+    background-color: var(--box-bg-light);
+    padding: 25px 30px;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+    width: 100%;
+    max-width: 480px; /* Slightly wider modal */
+    color: var(--text-primary-light);
+}
+
+.modalContent h3 {
+    margin-top: 0;
+    margin-bottom: 20px; /* More space below title */
+    font-size: 1.4rem; /* Consistent with form titles */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary-light);
+}
+.modalHr {
+    border: none;
+    border-top: 1px solid var(--border-light);
+    margin: 20px 0; /* More space around hr */
+}
+.cumulativeSavingsInfo {
+    font-size: 0.95em; /* Slightly larger */
+    color: var(--text-secondary-light);
+    margin-bottom: 20px;
+    padding: 10px 12px; /* More padding */
+    background-color: var(--progress-bar-bg-light); /* Consistent with progress bar bg */
+    border-radius: 6px; /* Rounded corners */
+    border: 1px solid var(--border-light);
+}
+.cumulativeSavingsInfo strong {
+    color: var(--text-primary-light);
+    font-weight: 600;
+}
+
+.modalButton {
+    font-size: 0.95rem; /* Consistent button font size */
+    padding: 10px 18px; /* Consistent button padding */
+}
 
 /* Dark Mode Specifics */
 @media (prefers-color-scheme: dark) {
@@ -310,89 +424,79 @@
         border-color: var(--border-dark);
         color: var(--text-primary-dark);
     }
-    .header {
-        border-bottom-color: var(--border-dark);
-    }
+    .header { border-bottom-color: var(--border-dark); }
     .header h1 { color: var(--text-primary-dark); }
 
-    .addButton {
-        background-color: var(--secondary-accent-dark);
-        color: var(--button-text-dark, #1a202c); /* Adjust if accent is light */
-    }
-    .addButton:hover { background-color: #38a169; } /* Darker shade of dark green */
+    .addButton { background-color: var(--secondary-accent-dark); color: var(--button-text-dark); }
+    .addButton:hover { background-color: #38a169; }
 
-    .formContainer {
-        background-color: var(--input-bg-dark); /* Slightly different for contrast */
-        border-color: var(--border-dark);
-    }
+    .formContainer { background-color: var(--input-bg-dark); border-color: var(--border-dark); }
     .formContainer h3 { color: var(--text-primary-dark); }
     .formGroup label { color: var(--text-secondary-dark); }
-    .formGroup input[type="text"],
-    .formGroup input[type="number"],
-    .formGroup input[type="date"],
-    .formGroup select {
-        background-color: var(--box-bg-dark); /* Match container or be distinct */
-        border-color: var(--border-dark);
-        color: var(--text-primary-dark);
+    .formGroup input[type="text"], .formGroup input[type="number"], .formGroup input[type="date"], .formGroup select {
+        background-color: var(--box-bg-dark); border-color: var(--border-dark); color: var(--text-primary-dark);
     }
     .formGroup input:focus, .formGroup select:focus {
-        border-color: var(--primary-accent-dark);
-        box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.25);
+        border-color: var(--primary-accent-dark); box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.25);
     }
-
-    .emojiButton {
-        background-color: var(--box-bg-dark);
-        border-color: var(--border-dark);
+    .emojiButton { background-color: var(--box-bg-dark); border-color: var(--border-dark); }
+    .emojiPickerPopover aside.emoji-picker-react { background-color: var(--input-bg-dark) !important; border-color: var(--border-dark) !important; }
+    .emojiPickerPopover .emoji-categories button, .emojiPickerPopover .emoji-search, .emojiPickerPopover .emoji-group:before {
+        background-color: var(--box-bg-dark) !important; color: var(--text-primary-dark) !important; border-color: var(--border-dark) !important;
     }
-    .emojiPickerPopover aside.emoji-picker-react {
-        background-color: var(--input-bg-dark) !important; /* Override picker's default */
-        border-color: var(--border-dark) !important;
-    }
-    /* You might need more specific selectors for emoji-picker-react theme in dark mode */
-    .emojiPickerPopover .emoji-categories button,
-    .emojiPickerPopover .emoji-search,
-    .emojiPickerPopover .emoji-group:before {
-        background-color: var(--box-bg-dark) !important;
-        color: var(--text-primary-dark) !important;
-        border-color: var(--border-dark) !important;
-    }
-
-
-    .submitButton {
-        background-color: var(--primary-accent-dark);
-        color: var(--button-text-dark, #1a202c);
-    }
+    .submitButton { background-color: var(--primary-accent-dark); color: var(--button-text-dark); }
     .submitButton:hover { background-color: #4299e1; }
     .submitButton:disabled { background-color: #4a5568; }
-
-    .cancelButton {
-        background-color: var(--text-secondary-dark);
-        color: var(--button-text-dark, #1a202c);
-    }
+    .cancelButton { background-color: var(--text-secondary-dark); color: var(--button-text-dark); }
     .cancelButton:hover { background-color: #718096; }
 
-
-    .goalItem {
-        background-color: var(--input-bg-dark);
-        border-color: var(--border-dark);
+    .goalItem { background-color: var(--input-bg-dark); border-color: var(--border-dark); }
+    /* Status-specific BACKGROUNDS - DARK MODE */
+    .goalItem.active {
+        border-top-color: var(--primary-accent-dark);
+        /* background-color: var(--input-bg-dark); */ /* Default dark background */
     }
-    .goalItem.active { border-left-color: var(--primary-accent-dark); }
-    .goalItem.achieved { border-left-color: var(--secondary-accent-dark); }
-    .goalItem.archived { border-left-color: var(--text-secondary-dark); }
+    .goalItem.achieved {
+        border-top-color: var(--secondary-accent-dark);
+        background-color: rgba(72, 187, 120, 0.1); /* Darker subtle green tint */
+    }
+    .goalItem.archived {
+        border-top-color: var(--text-secondary-dark);
+        background-color: rgba(160, 174, 192, 0.1); /* Darker subtle gray tint */
+        opacity: 0.75;
+    }
 
     .goalDescription { color: var(--text-primary-dark); }
     .goalActions .actionButton { color: var(--text-secondary-dark); }
     .goalActions .actionButton:hover { color: var(--text-primary-dark); background-color: rgba(255,255,255,0.08); }
+    .deleteAction { color: var(--delete-accent-dark); }
+    .deleteAction:hover { color: #e53e3e; background-color: rgba(252, 129, 129, 0.1); }
+
     .goalDetails p { color: var(--text-secondary-dark); }
     .goalDetails p strong { color: var(--text-primary-dark); }
+    .remainingAmount strong { color: var(--primary-accent-dark); }
     
     .progressBarContainer { background-color: var(--progress-bar-bg-dark); }
     .progressBar { background-color: var(--progress-bar-fill-dark); }
 
-    .statusActive { background-color: var(--primary-accent-dark); }
-    .statusAchieved { background-color: var(--secondary-accent-dark); }
-    .statusArchived { background-color: var(--text-secondary-dark); }
+    .badgeActive { background-color: var(--primary-accent-dark); }
+    .badgeAchieved { background-color: var(--secondary-accent-dark); }
+    .badgeArchived { background-color: var(--text-secondary-dark); }
 
     .loadingText, .errorText, .noGoalsText { color: var(--text-secondary-dark); }
     .errorText { color: var(--delete-accent-dark); }
+    .errorTextSmall {
+      color: var(--delete-accent-dark);
+      background-color: rgba(252, 129, 129, 0.05);
+      border-color: rgba(252, 129, 129, 0.2);
+    }
+
+    .contributeButton { background-color: var(--primary-accent-dark); color: var(--button-text-dark); }
+    .contributeButton:hover { background-color: #4299e1; }
+    .contributeButton:disabled { background-color: #4a5568; }
+
+    .modalContent { background-color: var(--box-bg-dark); color: var(--text-primary-dark); }
+    .modalHr { border-top-color: var(--border-dark); }
+    .cumulativeSavingsInfo { color: var(--text-secondary-dark); background-color: var(--input-bg-dark); border-color: var(--border-dark); }
+    .cumulativeSavingsInfo strong { color: var(--text-primary-dark); }
 }

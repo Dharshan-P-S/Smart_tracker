@@ -15,7 +15,6 @@ const transactionSchema = new mongoose.Schema({
     amount: {
         type: Number,
         required: true,
-        // min: [0.01, 'Amount must be positive'], // For income/expense. monthly_savings can be negative.
         validate: {
             validator: function(v) {
                 if (this.type === 'income' || this.type === 'expense') {
@@ -60,6 +59,6 @@ const transactionSchema = new mongoose.Schema({
 });
 
 transactionSchema.index({ user: 1, date: -1 });
-transactionSchema.index({ user: 1, type: 1, date: 1 }); // For querying monthly_savings efficiently
+transactionSchema.index({ user: 1, type: 1, date: 1 });
 
 module.exports = mongoose.model('Transaction', transactionSchema);
