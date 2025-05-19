@@ -1,20 +1,25 @@
+// models/Transaction.js
 const mongoose = require('mongoose');
 
 const transactionSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Assuming you have a User model
+    ref: 'User',
     required: true,
   },
-  type: {
+  type: { // For regular transactions: 'income' or 'expense'. For override: could be 'income' if net positive, 'expense' if net negative.
     type: String,
     required: true,
-    enum: ['income', 'expense'], // Only allow these two values
+    enum: ['income', 'expense'],
   },
-  amount: {
+  amount: { // For regular transactions: always positive. For override: absolute value of the net savings.
     type: Number,
     required: true,
-    min: [0.01, 'Amount must be positive'], // Ensure amount is positive
+    min: [0.00, 'Amount must be non-negative'], // Allow 0 for overrides that result in zero net savings
+  },
+  actualAmount: { // Specific for overrides: stores the actual net savings (can be negative)
+    type: Number,
+    required: function() { return this.isOverride === true; } // Required only if it's an override
   },
   description: {
     type: String,
@@ -28,32 +33,32 @@ const transactionSchema = new mongoose.Schema({
     trim: true,
     maxlength: [50, 'Category cannot be more than 50 characters'],
   },
-  emoji: { // New field for storing the emoji
+  emoji: {
     type: String,
     trim: true,
-    maxlength: [5, 'Emoji cannot be more than 5 characters'], // Emojis are usually 1-2 chars, but allow for variation
-    default: '', // Default to empty string if no emoji is provided
+    maxlength: [5, 'Emoji cannot be more than 5 characters'],
+    default: '',
   },
-  date: {
+  date: { // For overrides, this will be the first day of the month
     type: Date,
     required: true,
-    default: Date.now, // Default to current date
+    default: Date.now,
   },
-  recurrence: {
+  recurrence: { // Overrides will always be 'once'
     type: String,
     required: true,
     enum: ['once', 'daily', 'weekly', 'monthly'],
     default: 'once',
   },
-  // Optional fields for recurrence tracking (add later if implementing scheduler)
-  // lastProcessedDate: { type: Date },
-  // recurringEndDate: { type: Date },
-  // originalRecurringTxId: { type: mongoose.Schema.Types.ObjectId, ref: 'Transaction' } // Links generated tx back to original
+  isOverride: { // New field to clearly mark override transactions
+    type: Boolean,
+    default: false,
+  }
 }, {
-  timestamps: true, // Adds createdAt and updatedAt fields
+  timestamps: true,
 });
 
-// Optional: Indexing for faster queries based on user and date
 transactionSchema.index({ user: 1, date: -1 });
+transactionSchema.index({ user: 1, monthYearKey: 1, isOverride: 1 }); // For quick override checks
 
 module.exports = mongoose.model('Transaction', transactionSchema);
