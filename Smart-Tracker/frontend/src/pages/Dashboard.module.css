@@ -933,5 +933,140 @@
   }
 }
 
+.goalListDashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 12px; /* Space between goal items */
+}
 
+.goalItemDashboard {
+    background-color: var(--item-bg-light, #fdfdff); /* Or var(--box-bg-light) */
+    padding: 12px 15px;
+    border-radius: 6px;
+    border: 1px solid var(--border-light, #e8e8f3);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.goalItemHeaderDashboard {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.goalIconDashboard {
+    font-size: 1.3rem; /* Slightly smaller for dashboard view */
+    color: var(--primary-accent-light); /* Or a specific goal color */
+}
+
+.goalDescriptionDashboard {
+    font-weight: 500;
+    color: var(--text-primary-light);
+    font-size: 0.9rem; /* Slightly smaller */
+    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px; /* Adjust as needed */
+}
+
+.goalProgressDashboard {
+    font-size: 0.8rem;
+    color: var(--text-secondary-light);
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.goalPercentageDashboard {
+    font-weight: 500;
+    color: var(--secondary-accent-light); /* Or a progress-specific color */
+}
+
+.progressBarContainerSmall {
+    width: 100%;
+    background-color: var(--progress-bar-bg-light, #e9ecef);
+    border-radius: 4px; /* Smaller radius */
+    height: 6px; /* Smaller progress bar */
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.progressBarSmall {
+    height: 100%;
+    background-color: var(--progress-bar-fill-light, #2ecc71);
+    border-radius: 4px;
+    transition: width 0.4s ease-in-out;
+}
+.goalDeadlineDashboard {
+    font-size: 0.75rem;
+    color: var(--text-secondary-light);
+    text-align: right;
+}
+
+/* Dark Mode for Goals Section on Dashboard */
+@media (prefers-color-scheme: dark) {
+    .goalItemDashboard {
+        background-color: var(--input-bg-dark, #252c35);
+        border-color: var(--border-dark, #3a424d);
+    }
+    .goalIconDashboard {
+        color: var(--primary-accent-dark);
+    }
+    .goalDescriptionDashboard {
+        color: var(--text-primary-dark);
+    }
+    .goalProgressDashboard {
+        color: var(--text-secondary-dark);
+    }
+    .goalPercentageDashboard {
+        color: var(--secondary-accent-dark);
+    }
+    .progressBarContainerSmall {
+        background-color: var(--progress-bar-bg-dark, #3f4a59);
+    }
+    .progressBarSmall {
+        background-color: var(--progress-bar-fill-dark, #48bb78);
+    }
+    .goalDeadlineDashboard {
+        color: var(--text-secondary-dark);
+    }
+}
+
+/* Adjust layout for the bottom row container to include goals */
+/* Assuming your existing .bottomRowContainer CSS is something like this: */
+.bottomRowContainer {
+    display: grid;
+    grid-template-columns: 1fr; /* Default to single column for smaller screens */
+    gap: 20px;
+    margin-top: 20px;
+}
+
+@media (min-width: 1024px) { /* For larger screens, adjust to fit 3 items */
+    .bottomRowContainer {
+        /* If form was 2fr and limits 1fr, now make them share or adjust */
+        /* Example: form 1.5fr, limits 1fr, goals 1fr */
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));   
+      grid-template-columns: 1fr 1fr;      /* Or if you want them to be equal: grid-template-columns: repeat(3, 1fr); */
+    }
+
+}
+/* If you have a medium breakpoint (e.g., 768px) where it was 2 columns,
+   you might need to adjust that too or decide how goals fit.
+   For example, goals could stack under limits or form could take full width then limits/goals below.
+   Example for 768px where form takes full width then limits and goals share:
+*/
+@media (min-width: 768px) and (max-width: 1023px) {
+    .bottomRowContainer {
+        grid-template-columns: 1fr; /* Form takes full width */
+    }
+    .addTransactionSection {
+      grid-column: 1 / -1; /* Span full width */
+      margin-bottom: 20px; /* Add space before next row */
+    }
+    /* Then create a new row for limits and goals */
+    /* This would require a subgrid or another wrapper, or simply let them stack. */
+    /* For simplicity now, they will stack under the form if the above 1024px rule isn't met */
+    /* A more complex grid setup might be needed for precise 2-column then 3-column behavior */
+}
 /* --- End of file --- */
