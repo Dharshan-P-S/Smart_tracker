@@ -208,7 +208,7 @@ function ProfilePage() {
     } catch (err) {
       console.error("Error during email update process:", err);
       if (!toast.isActive('error-toast')) {
-        toast.error(`Error: ${err.message}`, { toastId: 'error-toast'});
+        toast.error( { toastId: 'error-toast'});
       }
     } finally {
       setIsVerifyingOtp(false);
