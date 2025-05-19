@@ -13,6 +13,7 @@ import LimitsPage from './pages/LimitsPage';
 import OldTransactionsPage from './pages/OldTransactionsPage';
 import SavingsPage from './pages/SavingsPage';
 import ProfilePage from './pages/ProfilePage';
+import GoalsPage from './pages/Goalspage'; // Adjust path as needed
 import ProtectedRoute from './routing/ProtectedRoute';
 import Layout from './components/Layout';
 import './App.css';
@@ -72,6 +73,7 @@ function App() {
             <Route path="/old-transactions" element={<OldTransactionsPage />} />
             <Route path="/savings" element={<SavingsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/goals" element={<GoalsPage />} />
           </Route>
         </Route>
 

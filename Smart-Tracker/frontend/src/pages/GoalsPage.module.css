@@ -1,0 +1,398 @@
+/* GoalsPage.module.css */
+
+/* Using global variables defined in index.css or App.css if available */
+/* For standalone, define similar color schemes or use the ones from OldTransactionsPage */
+:root {
+    --box-bg-light: #ffffff; /* Slightly off-white */
+    --border-light: #e0e0e0;
+    --text-primary-light: #2c3e50; /* Darker blue-gray for text */
+    --text-secondary-light: #7f8c8d; /* Muted gray for secondary text */
+    --input-bg-light: #ffffff;
+    --primary-accent-light: #3498db; /* Primary blue */
+    --secondary-accent-light: #2ecc71; /* Green for success/add */
+    --edit-accent-light: #f39c12; /* Orange for edit */
+    --delete-accent-light: #e74c3c; /* Red for delete */
+    --progress-bar-bg-light: #ecf0f1; /* Light gray for progress bar background */
+    --progress-bar-fill-light: var(--secondary-accent-light);
+    --button-text-light: #ffffff;
+
+    /* Dark Mode (example, adjust to your theme) */
+    --box-bg-dark: #2d3748; /* Dark blue-gray */
+    --border-dark: #4a5568; /* Medium gray */
+    --text-primary-dark: #e2e8f0; /* Light gray for text */
+    --text-secondary-dark: #a0aec0; /* Lighter gray */
+    --input-bg-dark: #1a202c; /* Very dark blue-gray */
+    --primary-accent-dark: #63b3ed; /* Lighter blue */
+    --secondary-accent-dark: #48bb78; /* Lighter green */
+    --edit-accent-dark: #f6ad55; /* Lighter orange */
+    --delete-accent-dark: #fc8181; /* Lighter red */
+    --progress-bar-bg-dark: #4a5568;
+    --progress-bar-fill-dark: var(--secondary-accent-dark);
+    --button-text-dark: #1a202c; /* Dark text on light buttons if needed, or white */
+}
+
+
+.container {
+    padding: 25px;
+    max-width: 900px;
+    margin: 30px auto;
+    background-color: var(--box-bg-light, #f9f9f9);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--border-light, #e0e0e0);
+    color: var(--text-primary-light, #333);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-light, #e0e0e0);
+}
+
+.header h1 {
+    font-size: 2rem;
+    color: var(--text-primary-light, #2c3e50);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.addButton, .submitButton, .cancelButton {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.addButton {
+    background-color: var(--secondary-accent-light, #2ecc71);
+    color: var(--button-text-light, white);
+}
+.addButton:hover {
+    background-color: #27ae60; /* Darker green */
+    transform: translateY(-1px);
+}
+
+.formContainer {
+    background-color: var(--box-bg-light, #f9f9f9);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border-light, #d1d1d1);
+    margin-bottom: 25px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+.formContainer h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 1.4rem;
+    color: var(--text-primary-light, #333);
+}
+
+.goalForm {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.formRow {
+    display: flex;
+    gap: 18px;
+}
+.formGroup {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative; /* For emoji picker popover */
+}
+
+.formGroup label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary-light, #555);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.formGroup input[type="text"],
+.formGroup input[type="number"],
+.formGroup input[type="date"],
+.formGroup select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-light, #ccc);
+    border-radius: 6px;
+    font-size: 1rem;
+    background-color: var(--input-bg-light, #fff);
+    color: var(--text-primary-light, #333);
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.formGroup input:focus, .formGroup select:focus {
+    outline: none;
+    border-color: var(--primary-accent-light, #3498db);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.emojiButton {
+    padding: 10px;
+    font-size: 1.5rem; /* Larger emoji */
+    border: 1px solid var(--border-light, #ccc);
+    border-radius: 6px;
+    background-color: var(--input-bg-light, #fff);
+    cursor: pointer;
+    width: 50px; /* Fixed width */
+    height: 50px; /* Fixed height to match inputs */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.emojiPickerPopover {
+    position: absolute;
+    z-index: 10;
+    top: 100%;
+    left: 0;
+    margin-top: 5px;
+}
+
+.submitButton {
+    background-color: var(--primary-accent-light, #3498db);
+    color: var(--button-text-light, white);
+    align-self: flex-start; /* Align to the start of the flex container if form is display:flex */
+}
+.submitButton:hover {
+    background-color: #2980b9; /* Darker blue */
+}
+.submitButton:disabled {
+    background-color: #bdc3c7; /* Muted gray for disabled */
+    cursor: not-allowed;
+}
+
+.editActions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+.cancelButton {
+    background-color: var(--text-secondary-light, #7f8c8d);
+    color: var(--button-text-light, white);
+}
+.cancelButton:hover {
+    background-color: #6c7a7b; /* Darker gray */
+}
+
+.goalsList {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.goalItem {
+    background-color: var(--box-bg-light, #fff);
+    border: 1px solid var(--border-light, #e0e0e0);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.goalItem:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+
+/* Status-specific border */
+.goalItem.active { border-left: 5px solid var(--primary-accent-light, #3498db); }
+.goalItem.achieved { border-left: 5px solid var(--secondary-accent-light, #2ecc71); }
+.goalItem.archived { border-left: 5px solid var(--text-secondary-light, #95a5a6); }
+
+
+.goalHeader {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    gap: 10px;
+}
+.goalIcon {
+    font-size: 1.8rem;
+}
+.goalDescription {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary-light, #333);
+    margin: 0;
+    flex-grow: 1;
+}
+.goalActions {
+    display: flex;
+    gap: 8px;
+}
+.actionButton {
+    background: none;
+    border: none;
+    color: var(--text-secondary-light, #777);
+    cursor: pointer;
+    padding: 5px;
+    font-size: 1.1rem;
+    border-radius: 4px;
+}
+.actionButton:hover {
+    color: var(--text-primary-light, #333);
+    background-color: rgba(0,0,0,0.05);
+}
+
+.goalDetails p {
+    margin: 6px 0;
+    font-size: 0.95rem;
+    color: var(--text-secondary-light, #555);
+}
+.goalDetails p strong {
+    color: var(--text-primary-light, #444);
+}
+
+.progressBarContainer {
+    width: 100%;
+    background-color: var(--progress-bar-bg-light, #ecf0f1);
+    border-radius: 10px;
+    height: 12px;
+    margin-top: 15px;
+    overflow: hidden;
+}
+.progressBar {
+    height: 100%;
+    background-color: var(--progress-bar-fill-light, #2ecc71);
+    border-radius: 10px;
+    transition: width 0.5s ease-in-out;
+    text-align: right;
+    color: white;
+    font-size: 0.7rem;
+    line-height: 12px;
+    padding-right: 5px;
+}
+
+.statusBadge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: white;
+    text-transform: capitalize;
+}
+.statusActive { background-color: var(--primary-accent-light, #3498db); }
+.statusAchieved { background-color: var(--secondary-accent-light, #2ecc71); }
+.statusArchived { background-color: var(--text-secondary-light, #95a5a6); }
+
+
+.loadingText, .errorText, .noGoalsText {
+    text-align: center;
+    font-size: 1.1rem;
+    padding: 20px;
+    color: var(--text-secondary-light, #777);
+}
+.errorText { color: var(--delete-accent-light, #e74c3c); }
+
+
+/* Dark Mode Specifics */
+@media (prefers-color-scheme: dark) {
+    .container {
+        background-color: var(--box-bg-dark);
+        border-color: var(--border-dark);
+        color: var(--text-primary-dark);
+    }
+    .header {
+        border-bottom-color: var(--border-dark);
+    }
+    .header h1 { color: var(--text-primary-dark); }
+
+    .addButton {
+        background-color: var(--secondary-accent-dark);
+        color: var(--button-text-dark, #1a202c); /* Adjust if accent is light */
+    }
+    .addButton:hover { background-color: #38a169; } /* Darker shade of dark green */
+
+    .formContainer {
+        background-color: var(--input-bg-dark); /* Slightly different for contrast */
+        border-color: var(--border-dark);
+    }
+    .formContainer h3 { color: var(--text-primary-dark); }
+    .formGroup label { color: var(--text-secondary-dark); }
+    .formGroup input[type="text"],
+    .formGroup input[type="number"],
+    .formGroup input[type="date"],
+    .formGroup select {
+        background-color: var(--box-bg-dark); /* Match container or be distinct */
+        border-color: var(--border-dark);
+        color: var(--text-primary-dark);
+    }
+    .formGroup input:focus, .formGroup select:focus {
+        border-color: var(--primary-accent-dark);
+        box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.25);
+    }
+
+    .emojiButton {
+        background-color: var(--box-bg-dark);
+        border-color: var(--border-dark);
+    }
+    .emojiPickerPopover aside.emoji-picker-react {
+        background-color: var(--input-bg-dark) !important; /* Override picker's default */
+        border-color: var(--border-dark) !important;
+    }
+    /* You might need more specific selectors for emoji-picker-react theme in dark mode */
+    .emojiPickerPopover .emoji-categories button,
+    .emojiPickerPopover .emoji-search,
+    .emojiPickerPopover .emoji-group:before {
+        background-color: var(--box-bg-dark) !important;
+        color: var(--text-primary-dark) !important;
+        border-color: var(--border-dark) !important;
+    }
+
+
+    .submitButton {
+        background-color: var(--primary-accent-dark);
+        color: var(--button-text-dark, #1a202c);
+    }
+    .submitButton:hover { background-color: #4299e1; }
+    .submitButton:disabled { background-color: #4a5568; }
+
+    .cancelButton {
+        background-color: var(--text-secondary-dark);
+        color: var(--button-text-dark, #1a202c);
+    }
+    .cancelButton:hover { background-color: #718096; }
+
+
+    .goalItem {
+        background-color: var(--input-bg-dark);
+        border-color: var(--border-dark);
+    }
+    .goalItem.active { border-left-color: var(--primary-accent-dark); }
+    .goalItem.achieved { border-left-color: var(--secondary-accent-dark); }
+    .goalItem.archived { border-left-color: var(--text-secondary-dark); }
+
+    .goalDescription { color: var(--text-primary-dark); }
+    .goalActions .actionButton { color: var(--text-secondary-dark); }
+    .goalActions .actionButton:hover { color: var(--text-primary-dark); background-color: rgba(255,255,255,0.08); }
+    .goalDetails p { color: var(--text-secondary-dark); }
+    .goalDetails p strong { color: var(--text-primary-dark); }
+    
+    .progressBarContainer { background-color: var(--progress-bar-bg-dark); }
+    .progressBar { background-color: var(--progress-bar-fill-dark); }
+
+    .statusActive { background-color: var(--primary-accent-dark); }
+    .statusAchieved { background-color: var(--secondary-accent-dark); }
+    .statusArchived { background-color: var(--text-secondary-dark); }
+
+    .loadingText, .errorText, .noGoalsText { color: var(--text-secondary-dark); }
+    .errorText { color: var(--delete-accent-dark); }
+}
