@@ -231,7 +231,7 @@ function RegisterPage() {
                 <img src={profilePicture} alt="Preview" className={styles.profilePreviewImage} />
               ) : (
                 <span className={styles.profilePicPlaceholderText}>
-                  Upload Picture
+                  Upload Picture (Optional)
                 </span>
               )}
             </label>
