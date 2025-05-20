@@ -494,7 +494,7 @@ function Dashboard() {
                         fill="#8884d8" 
                         dataKey="value" 
                         nameKey="name" 
-                        label={({ name, percent, value }) => `${name}: ${formatCurrency(value)} (${(percent * 100).toFixed(0)}%)`}
+                        label={({ name, value }) => `${name}: ${formatCurrency(value)} `}
                     >
                      {filteredPieData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={colorMapping[entry.name] || '#8884d8'} />
