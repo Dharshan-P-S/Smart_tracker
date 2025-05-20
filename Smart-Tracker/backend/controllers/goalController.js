@@ -1,11 +1,12 @@
+const mongoose = require('mongoose'); // Still needed for ObjectId, etc.
 const Goal = require('../models/Goal');
-const User = require('../models/User'); // For placeholder ID
-const Transaction = require('../models/Transaction'); // Import Transaction model
-const mongoose = require('mongoose'); // Keep mongoose import for other uses if any
+const User = require('../models/User');
+const Transaction = require('../models/Transaction');
 
 // --- INSECURE PLACEHOLDER ---
 const getPlaceholderUserId = async () => {
-    const firstUser = await User.findOne().select('_id');
+    // In a real app, this would come from req.user.id set by auth middleware
+    const firstUser = await User.findOne().select('_id').lean();
     if (!firstUser) {
         throw new Error("No users found in the database to use as a placeholder.");
     }
@@ -15,14 +16,13 @@ const getPlaceholderUserId = async () => {
 
 // --- Helper to calculate current total cumulative savings ---
 const calculateUserCumulativeSavings = async (userId) => {
-    // console.log(`[calculateUserCumulativeSavings] Called for userId: ${userId}`); // Optional: keep for debugging
     try {
         const allTransactions = await Transaction.find({ user: userId }).lean();
-        // console.log(`[calculateUserCumulativeSavings] Fetched ${allTransactions.length} transactions for user ${userId}`);
         const monthlyAggregates = {};
-
         for (let tx of allTransactions) {
-            const monthKey = `${tx.date.getUTCFullYear()}-${(tx.date.getUTCMonth() + 1).toString().padStart(2, '0')}`;
+            const txDate = new Date(tx.date);
+            if (isNaN(txDate.getTime())) continue;
+            const monthKey = `${txDate.getUTCFullYear()}-${(txDate.getUTCMonth() + 1).toString().padStart(2, '0')}`;
             if (!monthlyAggregates[monthKey]) {
                 monthlyAggregates[monthKey] = { totalIncome: 0, totalExpense: 0, monthlySummaryAmount: null, hasMonthlySummary: false };
             }
@@ -33,268 +33,401 @@ const calculateUserCumulativeSavings = async (userId) => {
                 monthlyAggregates[monthKey].hasMonthlySummary = true;
             }
         }
-
         let cumulativeSavings = 0;
         const sortedMonthKeys = Object.keys(monthlyAggregates).sort();
         for (const monthKey of sortedMonthKeys) {
             const data = monthlyAggregates[monthKey];
-            const netSavingsForMonth = data.hasMonthlySummary ? data.monthlySummaryAmount : (data.totalIncome - data.totalExpense);
-            cumulativeSavings += netSavingsForMonth;
-            // console.log(`[calculateUserCumulativeSavings] Month: ${monthKey}, Net: ${netSavingsForMonth}, Cumulative: ${cumulativeSavings}`);
+            cumulativeSavings += data.hasMonthlySummary ? data.monthlySummaryAmount : (data.totalIncome - data.totalExpense);
         }
-        // console.log(`[calculateUserCumulativeSavings] Final cumulative for user ${userId}: ${cumulativeSavings}`);
         return cumulativeSavings;
     } catch (calcError) {
-        console.error(`[calculateUserCumulativeSavings] Error for user ${userId}:`, calcError);
-        throw calcError;
+        console.error(`[calculateUserCumulativeSavings] Error for user ${userId}:`, calcError.message, calcError.stack);
+        throw calcError; // Re-throw to be handled by caller
     }
 };
-
 
 // @desc    Get all goals for the logged-in user
 exports.getGoals = async (req, res) => {
     try {
-        const userId = await getPlaceholderUserId();
-        const goals = await Goal.find({ user: userId }).sort({ status: 1, targetDate: 1 });
+        const userId = await getPlaceholderUserId(); // Replace with req.user.id in a real app
+        const goals = await Goal.find({ user: userId }).sort({ status: 1, targetDate: 1 }).lean();
         const goalsWithProgress = goals.map(goal => {
             const progress = goal.targetAmount > 0 ? (goal.savedAmount / goal.targetAmount) * 100 : 0;
             return {
-                ...goal.toObject(),
-                progress: Math.min(progress, 100),
+                ...goal,
+                progress: Math.min(progress, 100), // Cap progress at 100%
                 remainingAmount: Math.max(0, goal.targetAmount - goal.savedAmount)
             };
         });
         res.json(goalsWithProgress);
     } catch (err) {
-        console.error('[getGoals] Error fetching goals:', err.message);
-        res.status(500).send('Server Error');
+        console.error('[getGoals] Error fetching goals:', err.message, err.stack);
+        res.status(500).json({ message: 'Server Error fetching goals.' });
     }
 };
 
 // @desc    Add a new goal
 exports.addGoal = async (req, res) => {
+    console.log('[addGoal] Received request to add a new goal.');
+    console.log('[addGoal] Request body:', JSON.stringify(req.body, null, 2));
+
     const { description, targetAmount, targetDate, icon } = req.body;
     let userId;
-    if (!description || !targetAmount || !targetDate) {
-        return res.status(400).json({ message: 'Description, target amount, and target date are required' });
+
+    const trimmedDescription = description ? description.trim() : "";
+
+    if (!trimmedDescription) { // Check trimmed description
+        return res.status(400).json({ message: 'Description is required and cannot be empty.' });
     }
-    if (parseFloat(targetAmount) <= 0) {
-        return res.status(400).json({ message: 'Target amount must be a positive number' });
+    if (targetAmount === undefined || targetAmount === null || targetAmount === '') {
+        return res.status(400).json({ message: 'Target amount is required.' });
     }
-    const parsedTargetDate = new Date(targetDate + "T00:00:00.000Z");
-    if (isNaN(parsedTargetDate.getTime()) || parsedTargetDate <= new Date(new Date().setUTCHours(0,0,0,0))) {
-        return res.status(400).json({ message: 'Target date must be a valid future date' });
+    const parsedTargetAmount = parseFloat(targetAmount);
+    if (isNaN(parsedTargetAmount) || parsedTargetAmount <= 0) {
+        return res.status(400).json({ message: 'Target amount must be a positive number.' });
     }
+    if (!targetDate || typeof targetDate !== 'string') {
+        return res.status(400).json({ message: 'Target date is required and must be a string (YYYY-MM-DD).' });
+    }
+    const parsedTargetDate = new Date(targetDate + "T00:00:00.000Z"); // Ensure UTC context for date comparison
+    const todayUTCStart = new Date();
+    todayUTCStart.setUTCHours(0, 0, 0, 0);
+
+    if (isNaN(parsedTargetDate.getTime())) {
+        return res.status(400).json({ message: 'Target date is invalid.' });
+    }
+    if (parsedTargetDate <= todayUTCStart) { // Compare with today's start in UTC
+        return res.status(400).json({ message: 'Target date must be a valid future date.' });
+    }
+
     try {
-        userId = await getPlaceholderUserId();
-        const newGoal = new Goal({
-            user: userId, description, targetAmount: parseFloat(targetAmount),
-            targetDate: parsedTargetDate, icon: icon || '🎯',
+        userId = await getPlaceholderUserId(); // Replace with req.user.id
+
+        // Server-side check for duplicate description (case-insensitive)
+        const existingGoal = await Goal.findOne({
+            user: userId,
+            description: { $regex: new RegExp(`^${trimmedDescription}$`, 'i') }
         });
-        const goal = await newGoal.save();
-        const progress = 0;
-        res.status(201).json({
-            ...goal.toObject(), progress,
-            remainingAmount: goal.targetAmount
-        });
+
+        if (existingGoal) {
+            return res.status(400).json({ message: 'A goal with this description already exists. Please use a different description.' });
+        }
+
+        const newGoalData = {
+            user: userId,
+            description: trimmedDescription, // Use the trimmed description
+            targetAmount: parsedTargetAmount,
+            targetDate: parsedTargetDate, // Store as Date object
+            icon: icon || '🎯',
+            // savedAmount and status will default as per schema
+        };
+        const newGoalInstance = new Goal(newGoalData);
+        const goal = await newGoalInstance.save();
+        const progress = 0; // New goals start with 0 progress
+        const responsePayload = {
+            ...goal.toObject(), // Convert Mongoose doc to plain object
+            progress,
+            remainingAmount: goal.targetAmount // Initially, remaining is the target
+        };
+        res.status(201).json(responsePayload);
     } catch (err) {
-        console.error('[addGoal] Error adding goal:', err.message);
-        res.status(500).send('Server Error');
+        console.error('[addGoal] CRITICAL ERROR ADDING GOAL:', err.name, err.message, err.stack);
+        if (err.name === 'ValidationError') {
+            return res.status(400).json({ message: 'Validation failed.', errors: err.errors });
+        }
+        if (err.message && err.message.includes("No users found")) { // Handle placeholder error specifically
+            return res.status(500).json({ message: "Server setup error: No placeholder user available." });
+        }
+        res.status(500).json({ message: 'Server Error adding goal.' });
     }
 };
 
 // @desc    Update an existing goal
 exports.updateGoal = async (req, res) => {
-    const { description, targetAmount, targetDate, savedAmount, status, icon } = req.body;
+    const { description: newDescription, targetAmount: newTargetAmountStr, targetDate: newTargetDateStr, savedAmount: newSavedAmountStr, status: newStatus, icon: newIcon } = req.body;
     const goalId = req.params.id;
     let userId;
+
     try {
-        userId = await getPlaceholderUserId();
+        userId = await getPlaceholderUserId(); // Replace with req.user.id
         let goal = await Goal.findById(goalId);
+
         if (!goal) return res.status(404).json({ message: 'Goal not found' });
         if (goal.user.toString() !== userId.toString()) return res.status(401).json({ message: 'Not authorized' });
 
-        if (description !== undefined) goal.description = description;
-        if (targetAmount !== undefined) {
-            const newTarget = parseFloat(targetAmount);
-            if (newTarget <= 0) return res.status(400).json({ message: 'Target amount must be > 0.' });
-            goal.targetAmount = newTarget;
-        }
-        if (targetDate !== undefined) {
-            const newDate = new Date(targetDate + "T00:00:00.000Z");
-            if (isNaN(newDate.getTime()) || (newDate <= new Date(new Date().setUTCHours(0,0,0,0)) && status !== 'achieved' && goal.status !== 'achieved')) { // Corrected logic
-                return res.status(400).json({ message: 'Target date must be future for active goals.'});
+        const originalDescription = goal.description;
+        const originalSavedAmountOnGoal = goal.savedAmount;
+
+        let pendingGoalUpdates = {};
+        let descriptionChanged = false;
+
+        if (newDescription !== undefined) {
+            const trimmedNewDescription = newDescription.trim();
+            if (trimmedNewDescription === "") {
+                return res.status(400).json({ message: 'Description cannot be empty.' });
             }
-            goal.targetDate = newDate;
+            // Check for duplicate description if it's being changed (case-insensitive)
+            if (trimmedNewDescription.toLowerCase() !== originalDescription.toLowerCase()) {
+                const existingGoalWithNewDesc = await Goal.findOne({
+                    user: userId,
+                    _id: { $ne: goalId }, // Exclude the current goal being updated
+                    description: { $regex: new RegExp(`^${trimmedNewDescription}$`, 'i') }
+                });
+                if (existingGoalWithNewDesc) {
+                    return res.status(400).json({ message: 'Another goal with this description already exists. Please use a different description.' });
+                }
+                descriptionChanged = true; // Mark that description has changed
+            }
+            pendingGoalUpdates.description = trimmedNewDescription; // Store trimmed
         }
-        if (savedAmount !== undefined) {
-            const newSaved = parseFloat(savedAmount);
-            if (newSaved < 0) return res.status(400).json({ message: 'Saved amount cannot be negative.' });
-            goal.savedAmount = Math.min(newSaved, goal.targetAmount);
+
+        if (newIcon !== undefined) pendingGoalUpdates.icon = newIcon;
+
+        if (newTargetAmountStr !== undefined) {
+            const newTarget = parseFloat(newTargetAmountStr);
+            if (isNaN(newTarget) || newTarget <= 0) return res.status(400).json({ message: 'Target amount must be > 0.' });
+            pendingGoalUpdates.targetAmount = newTarget;
         }
-        if (status !== undefined && ['active', 'achieved', 'archived'].includes(status)) {
-            goal.status = status;
-            if (status === 'achieved') goal.savedAmount = goal.targetAmount;
+        // Use the potentially updated target amount for subsequent checks
+        const currentTargetAmount = pendingGoalUpdates.targetAmount !== undefined ? pendingGoalUpdates.targetAmount : goal.targetAmount;
+
+
+        if (newTargetDateStr !== undefined) {
+            const newDate = new Date(newTargetDateStr + "T00:00:00.000Z"); // UTC context
+            const todayUTCStart = new Date();
+            todayUTCStart.setUTCHours(0, 0, 0, 0);
+            // Allow past date only if newStatus is achieved/archived or current status is achieved/archived
+            const canHavePastDate = (newStatus && ['achieved', 'archived'].includes(newStatus)) || ['achieved', 'archived'].includes(goal.status);
+
+            if (isNaN(newDate.getTime())) {
+                return res.status(400).json({ message: 'Target date is invalid.'});
+            }
+            if (!canHavePastDate && newDate <= todayUTCStart) {
+                return res.status(400).json({ message: 'Target date must be in the future for active goals.'});
+            }
+            pendingGoalUpdates.targetDate = newDate;
         }
-        if (icon !== undefined) goal.icon = icon;
+
+        let finalTargetSavedAmountForGoal = originalSavedAmountOnGoal;
+        let savedAmountManuallyChanged = false;
+
+        if (newSavedAmountStr !== undefined) {
+            const parsedSavedAmount = parseFloat(newSavedAmountStr);
+            if (isNaN(parsedSavedAmount) || parsedSavedAmount < 0) return res.status(400).json({ message: 'Saved amount cannot be negative.' });
+            
+            // Cap saved amount at current target amount
+            finalTargetSavedAmountForGoal = Math.min(parsedSavedAmount, currentTargetAmount);
+            if (finalTargetSavedAmountForGoal !== originalSavedAmountOnGoal) {
+                savedAmountManuallyChanged = true;
+            }
+        }
+        
+        // If status is being set to 'achieved', force saved amount to target amount
+        if (newStatus === 'achieved') {
+            finalTargetSavedAmountForGoal = currentTargetAmount;
+            if (finalTargetSavedAmountForGoal !== originalSavedAmountOnGoal) {
+                savedAmountManuallyChanged = true; // Treat as manual change if status forces it
+            }
+        }
+        
+        // Determine the description to use for transaction lookup/creation
+        const effectiveDescriptionForTransactions = pendingGoalUpdates.description !== undefined ? pendingGoalUpdates.description : originalDescription;
+
+        // If saved amount was manually changed OR if the description changed (which affects transaction linkage)
+        if (savedAmountManuallyChanged || (descriptionChanged && originalSavedAmountOnGoal > 0) ) {
+            // 1. Get sum of old transactions (before deleting them)
+            // Important: Use originalDescription for finding old transactions
+            const oldGoalTransactions = await Transaction.find({
+                user: userId, category: 'Goal Savings',
+                description: `Saving for: ${originalDescription}`
+            }).lean();
+            const sumOfOldGoalTransactions = oldGoalTransactions.reduce((acc, tx) => acc + tx.amount, 0);
+
+            // 2. Delete old transactions linked to the original description
+            await Transaction.deleteMany({
+                user: userId, category: 'Goal Savings',
+                description: `Saving for: ${originalDescription}`
+            });
+
+            // 3. If new saved amount is > 0, create a new consolidated transaction
+            if (finalTargetSavedAmountForGoal > 0) {
+                const now = new Date();
+                const currentMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+                const currentMonthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+                const existingMonthlySummary = await Transaction.findOne({
+                    user: userId, type: 'monthly_savings',
+                    date: { $gte: currentMonthStart, $lte: currentMonthEnd }
+                });
+                if (existingMonthlySummary) {
+                    // This is a critical state. Old transactions deleted. New one can't be made.
+                    // A more robust solution would involve database transactions or a compensating action.
+                    console.error("[updateGoal] CRITICAL: Aborted update due to monthly summary. Old goal transactions deleted.");
+                    return res.status(400).json({ message: `Cannot update saved amount or description. A monthly summary exists for the current month. Old goal transactions related to '${originalDescription}' were removed. Manual adjustment of funds or goal may be needed.` });
+                }
+
+                // Recalculate cumulative savings *without* the old goal transactions, then check if new amount is valid
+                const cumulativeSavingsWithoutOldGoalTx = await calculateUserCumulativeSavings(userId); // This now reflects savings pool *after* deleting old goal tx
+                
+                if (finalTargetSavedAmountForGoal > cumulativeSavingsWithoutOldGoalTx) {
+                    console.error("[updateGoal] CRITICAL: Aborted update. Insufficient funds after removing old goal transactions.");
+                     // Attempt to restore old transactions or log for manual fix
+                    // For now, return error, data is inconsistent.
+                    return res.status(400).json({
+                        message: `Cannot set saved amount to ${finalTargetSavedAmountForGoal.toFixed(2)}. After removing previous savings for '${originalDescription}', available funds are only ${cumulativeSavingsWithoutOldGoalTx.toFixed(2)}. Manual adjustment needed.`
+                    });
+                }
+                
+                // Create new transaction with the effective description
+                const newGoalTransaction = new Transaction({
+                    user: userId, type: 'expense', amount: finalTargetSavedAmountForGoal,
+                    description: `Saving for: ${effectiveDescriptionForTransactions}`, // Use potentially new description
+                    category: 'Goal Savings',
+                    emoji: pendingGoalUpdates.icon !== undefined ? pendingGoalUpdates.icon : goal.icon, 
+                    date: new Date(), recurrence: 'once',
+                });
+                await newGoalTransaction.save();
+            }
+            // Update the goal's saved amount with the final calculated value
+            pendingGoalUpdates.savedAmount = finalTargetSavedAmountForGoal;
+        } else if (newSavedAmountStr !== undefined) { // If only saved amount changed (no description change, no status to achieved)
+            pendingGoalUpdates.savedAmount = finalTargetSavedAmountForGoal; // This case should not require transaction recreation if description is same
+        }
+
+
+        if (newStatus !== undefined && ['active', 'achieved', 'archived'].includes(newStatus)) {
+            pendingGoalUpdates.status = newStatus;
+        }
+        
+        Object.assign(goal, pendingGoalUpdates); // Apply all pending updates to the goal model
+
+        // Final status adjustments based on amounts
         if (goal.status === 'active' && goal.savedAmount >= goal.targetAmount) {
             goal.status = 'achieved';
-            goal.savedAmount = goal.targetAmount;
         }
+        if (goal.status === 'achieved') { // If achieved, ensure savedAmount is exactly targetAmount
+            goal.savedAmount = goal.targetAmount;
+        } else if (goal.status === 'active' && goal.savedAmount > goal.targetAmount) { // If active and somehow over, cap it
+             goal.savedAmount = goal.targetAmount;
+        }
+        
         const updatedGoal = await goal.save();
+
         const progress = updatedGoal.targetAmount > 0 ? (updatedGoal.savedAmount / updatedGoal.targetAmount) * 100 : 0;
         res.json({
-            ...updatedGoal.toObject(), progress: Math.min(progress, 100),
+            ...updatedGoal.toObject(),
+            progress: Math.min(progress, 100), // Cap progress
             remainingAmount: Math.max(0, updatedGoal.targetAmount - updatedGoal.savedAmount)
         });
     } catch (err) {
-        console.error('[updateGoal] Error updating goal:', err.message);
-        res.status(500).send('Server Error');
+        console.error('[updateGoal] Error updating goal:', err.name, err.message, err.stack);
+        if (err.name === 'ValidationError') {
+            return res.status(400).json({ message: 'Validation failed.', errors: err.errors });
+        }
+        res.status(500).json({ message: 'Server Error updating goal. Data might be in an inconsistent state.' });
     }
 };
 
-// @desc    Delete a goal
+// @desc    Delete a goal and its associated savings transactions
 exports.deleteGoal = async (req, res) => {
+    const goalId = req.params.id;
     try {
-        const userId = await getPlaceholderUserId();
-        const goal = await Goal.findOne({ _id: req.params.id, user: userId });
+        const userId = await getPlaceholderUserId(); // Replace with req.user.id
+        const goal = await Goal.findOne({ _id: goalId, user: userId });
+
         if (!goal) return res.status(404).json({ message: 'Goal not found or not authorized' });
-        await Goal.findByIdAndDelete(req.params.id);
-        res.json({ message: 'Goal removed successfully' });
+
+        // 1. Delete associated transactions first (use the goal's current description)
+        await Transaction.deleteMany({
+            user: userId, category: 'Goal Savings',
+            description: `Saving for: ${goal.description}` // Use the description from the goal to be deleted
+        });
+
+        // 2. Delete the goal
+        await Goal.findByIdAndDelete(goalId); // Use findByIdAndDelete for Mongoose
+
+        res.json({ message: 'Goal and associated savings transactions removed successfully' });
     } catch (err) {
-        console.error('[deleteGoal] Error deleting goal:', err.message);
-        res.status(500).send('Server Error');
+        console.error('[deleteGoal] Error deleting goal:', err.name, err.message, err.stack);
+        res.status(500).json({ message: 'Server Error deleting goal.' });
     }
 };
-
 
 // @desc    Contribute funds towards a goal
-// @route   POST /api/goals/:id/contribute
-// @access  Private (using placeholder)
 exports.contributeToGoal = async (req, res) => {
     const { amount } = req.body;
     const goalId = req.params.id;
     let userId;
-    // console.log(`[contributeToGoal] Received request for goalId: ${goalId}, amount: ${amount}`); // Optional debug
 
     try {
-        userId = await getPlaceholderUserId();
-        // console.log(`[contributeToGoal] Placeholder userId: ${userId}`); // Optional debug
-
+        userId = await getPlaceholderUserId(); // Replace with req.user.id
         const contributionAmount = parseFloat(amount);
-        // console.log(`[contributeToGoal] Parsed contributionAmount: ${contributionAmount}`); // Optional debug
 
         if (isNaN(contributionAmount) || contributionAmount <= 0) {
-            // console.log('[contributeToGoal] Validation failed: Invalid contribution amount.'); // Optional debug
             return res.status(400).json({ message: 'Contribution amount must be a positive number.' });
         }
 
         const goal = await Goal.findById(goalId);
-        // console.log('[contributeToGoal] Fetched goal:', goal ? `ID: ${goal._id}, Status: ${goal.status}` : 'Not Found'); // Optional debug
-        if (!goal) {
-            // console.log('[contributeToGoal] Goal not found in DB.'); // Optional debug
-            return res.status(404).json({ message: 'Goal not found.' });
-        }
-        if (goal.user.toString() !== userId.toString()) {
-            // console.log(`[contributeToGoal] Authorization failed: Goal user ${goal.user} !== current user ${userId}`); // Optional debug
-            return res.status(401).json({ message: 'Not authorized.' });
-        }
-        if (goal.status !== 'active') {
-            // console.log(`[contributeToGoal] Validation failed: Goal status is '${goal.status}', not 'active'.`); // Optional debug
-            return res.status(400).json({ message: 'Can only contribute to active goals.' });
-        }
+        if (!goal) return res.status(404).json({ message: 'Goal not found.' });
+        if (goal.user.toString() !== userId.toString()) return res.status(401).json({ message: 'Not authorized.' });
+        if (goal.status !== 'active') return res.status(400).json({ message: 'Can only contribute to active goals.' });
 
+        let actualContribution = contributionAmount;
         const remainingForGoal = goal.targetAmount - goal.savedAmount;
-        // console.log(`[contributeToGoal] Goal target: ${goal.targetAmount}, saved: ${goal.savedAmount}, remaining for goal: ${remainingForGoal}`); // Optional debug
-        if (contributionAmount > remainingForGoal) {
-            // console.log(`[contributeToGoal] Validation failed: Contribution ${contributionAmount} exceeds remaining ${remainingForGoal}.`); // Optional debug
-            return res.status(400).json({ message: `Contribution exceeds remaining amount for goal. Max: ${remainingForGoal.toFixed(2)}` });
-        }
 
-        // console.log('[contributeToGoal] Calculating currentOverallCumulativeSavings...'); // Optional debug
+        if (remainingForGoal <= 0) { // Should not happen if status is 'active', but as a safeguard
+            return res.status(400).json({ message: `Goal "${goal.description}" is already fully funded or achieved.` });
+        }
+        
+        if (contributionAmount > remainingForGoal) {
+             // Backend will cap the contribution to exactly what's needed to achieve the goal.
+             // The frontend toast warning is good, but backend enforces.
+            actualContribution = remainingForGoal;
+            console.log(`[contributeToGoal] Contribution ${contributionAmount} exceeds remaining ${remainingForGoal}. Capping to ${actualContribution}.`);
+        }
+        
         const currentOverallCumulativeSavings = await calculateUserCumulativeSavings(userId);
-        // console.log(`[contributeToGoal] Current overall cumulative savings for user ${userId}: ${currentOverallCumulativeSavings}`); // Optional debug
-        if (contributionAmount > currentOverallCumulativeSavings) {
-            // console.log(`[contributeToGoal] Validation failed: Contribution ${contributionAmount} exceeds cumulative savings ${currentOverallCumulativeSavings}.`); // Optional debug
+        if (actualContribution > currentOverallCumulativeSavings) {
             return res.status(400).json({
-                message: `Cannot contribute ${contributionAmount.toFixed(2)}. Your current total cumulative savings is only ${currentOverallCumulativeSavings.toFixed(2)}.`
+                message: `Cannot contribute ${actualContribution.toFixed(2)}. Your current total cumulative savings is only ${currentOverallCumulativeSavings.toFixed(2)}.`
             });
         }
         
         const now = new Date();
         const currentMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
         const currentMonthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
-        // console.log(`[contributeToGoal] Current month boundaries for summary check: ${currentMonthStart.toISOString()} to ${currentMonthEnd.toISOString()}`); // Optional debug
-
         const existingMonthlySummary = await Transaction.findOne({
             user: userId, type: 'monthly_savings',
             date: { $gte: currentMonthStart, $lte: currentMonthEnd }
         });
-        // console.log('[contributeToGoal] Existing monthly summary for current month:', existingMonthlySummary ? `ID: ${existingMonthlySummary._id}` : 'None'); // Optional debug
-
         if (existingMonthlySummary) {
-            // console.log('[contributeToGoal] Validation failed: Monthly summary exists for current month.'); // Optional debug
-            return res.status(400).json({ message: `Cannot add goal contribution as expense. A monthly total savings summary already exists for the current month. Please manage savings via the monthly summary or delete it to add individual savings expenses.` });
+            return res.status(400).json({ message: `Cannot add goal contribution. A monthly summary already exists for the current month. Please remove it first or wait until next month.` });
         }
 
-        // No Mongoose session/transaction used here
-        // console.log('[contributeToGoal] Proceeding WITHOUT Mongoose session.'); // Optional debug
-
+        // 1. Create transaction for the actual (possibly capped) contribution
         const newTransaction = new Transaction({
-            user: userId,
-            type: 'expense',
-            amount: contributionAmount,
-            description: `Saving for: ${goal.description}`,
-            category: 'Goal Savings',
-            emoji: goal.icon || '🐖',
-            date: new Date(), // Contribution happens now
-            recurrence: 'once',
+            user: userId, type: 'expense', amount: actualContribution,
+            description: `Saving for: ${goal.description}`, category: 'Goal Savings',
+            emoji: goal.icon || '🐖', date: new Date(), recurrence: 'once',
         });
-        // console.log('[contributeToGoal] New transaction object to save:', JSON.stringify(newTransaction, null, 2)); // Optional debug
-        await newTransaction.save(); // Save without session
-        // console.log('[contributeToGoal] New transaction saved successfully.'); // Optional debug
+        await newTransaction.save();
 
-        goal.savedAmount += contributionAmount;
-        // console.log(`[contributeToGoal] Goal savedAmount updated to: ${goal.savedAmount}`); // Optional debug
+        // 2. Update goal's savedAmount
+        goal.savedAmount += actualContribution;
         if (goal.savedAmount >= goal.targetAmount) {
-            goal.savedAmount = goal.targetAmount; // Cap at target
+            goal.savedAmount = goal.targetAmount; // Ensure it doesn't exceed target
             goal.status = 'achieved';
-            // console.log(`[contributeToGoal] Goal status changed to 'achieved'. Saved amount capped at target.`); // Optional debug
         }
-        // console.log('[contributeToGoal] Goal object to update:', JSON.stringify(goal, null, 2)); // Optional debug
-        await goal.save(); // Save without session
-        // console.log('[contributeToGoal] Goal updated successfully.'); // Optional debug
-
+        await goal.save();
+        
         const progress = goal.targetAmount > 0 ? (goal.savedAmount / goal.targetAmount) * 100 : 0;
-        const responsePayload = {
+        res.json({
             ...goal.toObject(),
             progress: Math.min(progress, 100),
             remainingAmount: Math.max(0, goal.targetAmount - goal.savedAmount)
-        };
-        // console.log('[contributeToGoal] Contribution successful. Sending response:', JSON.stringify(responsePayload, null, 2)); // Optional debug
-        res.json(responsePayload);
+        });
 
     } catch (err) {
-        console.error('[contributeToGoal] Outer catch - Error contributing to goal:', err.message, err.stack); // Log stack for more detail
-        
-        let clientMessage = 'Server Error contributing to goal. Please check logs.';
-        // Check for specific known error messages to pass to client
-        const knownClientErrors = [
-            "Cannot contribute", "monthly total savings summary", "Not authorized", 
-            "Goal not found", "Contribution amount must be a positive number", 
-            "Can only contribute to active goals", "Contribution exceeds remaining amount"
-        ];
-
-        if (knownClientErrors.some(knownError => err.message.includes(knownError))) {
-            clientMessage = err.message;
-        } else if (err.name === 'ValidationError') { // Mongoose validation error
-            clientMessage = "Validation failed. Please check your input.";
-        }
-        
-        if (!res.headersSent) {
-            res.status(err.isClientError || err.name === 'ValidationError' ? 400 : 500).json({ message: clientMessage });
-        } else {
-            console.error("[contributeToGoal] Headers already sent, could not send error response for:", err.message);
-        }
+        console.error('[contributeToGoal] Error contributing to goal:', err.name, err.message, err.stack);
+        res.status(500).json({ message: 'Server Error contributing to goal.' });
     }
 };
