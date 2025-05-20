@@ -1033,40 +1033,34 @@
     }
 }
 
-/* Adjust layout for the bottom row container to include goals */
-/* Assuming your existing .bottomRowContainer CSS is something like this: */
+/*
+  START OF CORRECTED SECTION for .bottomRowContainer
+*/
 .bottomRowContainer {
     display: grid;
-    grid-template-columns: 1fr; /* Default to single column for smaller screens */
-    gap: 20px;
-    margin-top: 20px;
+    grid-template-columns: 1fr; /* Default: 1 column for small screens (mobile-first) */
+    gap: 20px; /* Retaining original gap */
+    margin-top: 20px; /* Retaining original margin-top */
 }
 
-@media (min-width: 1024px) { /* For larger screens, adjust to fit 3 items */
+/* Apply 2-column layout from tablet size (768px) upwards */
+@media (min-width: 768px) {
     .bottomRowContainer {
-        /* If form was 2fr and limits 1fr, now make them share or adjust */
-        /* Example: form 1.5fr, limits 1fr, goals 1fr */
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));   
-      grid-template-columns: 1fr 1fr;      /* Or if you want them to be equal: grid-template-columns: repeat(3, 1fr); */
+        grid-template-columns: 1fr 1fr; /* 2 equal columns */
+                                        /* This will arrange the 4 items into a 2x2 grid:
+                                           [Add Transaction]  [Spending Limits]
+                                           [Active Goals]     [Monthly Savings Trend]
+                                        */
     }
-
+    /*
+      The rule for .addTransactionSection that was previously inside the
+      (min-width: 768px) and (max-width: 1023px) media query
+      (i.e., .addTransactionSection { grid-column: 1 / -1; margin-bottom: 20px; })
+      is removed as it's no longer needed for this corrected layout and would interfere.
+    */
 }
-/* If you have a medium breakpoint (e.g., 768px) where it was 2 columns,
-   you might need to adjust that too or decide how goals fit.
-   For example, goals could stack under limits or form could take full width then limits/goals below.
-   Example for 768px where form takes full width then limits and goals share:
+/*
+  END OF CORRECTED SECTION for .bottomRowContainer
 */
-@media (min-width: 768px) and (max-width: 1023px) {
-    .bottomRowContainer {
-        grid-template-columns: 1fr; /* Form takes full width */
-    }
-    .addTransactionSection {
-      grid-column: 1 / -1; /* Span full width */
-      margin-bottom: 20px; /* Add space before next row */
-    }
-    /* Then create a new row for limits and goals */
-    /* This would require a subgrid or another wrapper, or simply let them stack. */
-    /* For simplicity now, they will stack under the form if the above 1024px rule isn't met */
-    /* A more complex grid setup might be needed for precise 2-column then 3-column behavior */
-}
+
 /* --- End of file --- */
