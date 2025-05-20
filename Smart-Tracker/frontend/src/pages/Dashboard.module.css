@@ -739,15 +739,33 @@
   /* Color is set inline based on value */
 }
 
-/* NEW: Style for limit exceeded message */
+/* NEW: Style for limit exceeded message (This is the older, larger message style if you still use it elsewhere) */
 .limitExceededMessage {
   color: #EF4444; /* Red color for warning */
   font-weight: 600;
   font-size: 0.9rem;
+  background-color: rgba(221, 27, 27, 0.3);
   text-align: center;
   margin-top: -0.25rem; /* Adjust spacing relative to details */
   margin-bottom: 0.5rem; /* Space before total limit */
 }
+
+/* START OF MODIFIED SECTION FOR .limitExceededMessageSmall */
+.limitExceededMessageSmall {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 3px 0; /* Padding top/bottom 3px, no horizontal padding as text-align centers it */
+    /* border-radius: 4px; */ /* Removed as per "no background" implies no visible box needing radius */
+    margin-top: 0.5rem;
+    text-align: center;     /* Centers text content */
+    color: red;
+    background-color: rgba(221, 27, 27, 0.3);
+    align-self: center;     /* Centers the element itself horizontally within .limitItem */
+    width: 100%;            /* Make it take full width to truly center text within the item width */
+    background-color: transparent; /* Explicitly no background */
+    /* Text color will be applied via inline styles in the React component */
+}
+/* END OF MODIFIED SECTION FOR .limitExceededMessageSmall */
 
 /* NEW: Style for the total limit amount */
 .limitTotal {
@@ -925,9 +943,17 @@
     /* Inherits dark mode styles from .seeAllButton */
     opacity: 1;
   }
-  .limitExceededMessage {
+  .limitExceededMessage { /* This is the larger, older message style */
     color: #F87171; /* Lighter red for dark mode */
+    background-color: rgba(221, 27, 27, 0.3);
+
+    
   }
+  /* START OF MODIFIED DARK MODE FOR .limitExceededMessageSmall */
+  .limitExceededMessageSmall {
+    background-color: rgba(221, 27, 27, 0.2);    /* Text color will be applied via inline styles in the React component */
+  }
+  /* END OF MODIFIED DARK MODE FOR .limitExceededMessageSmall */
   .categoryWarningMessage {
     color: #F87171; /* Lighter red for dark mode */
   }
@@ -1033,34 +1059,27 @@
     }
 }
 
-/*
-  START OF CORRECTED SECTION for .bottomRowContainer
-*/
+/* Adjust layout for the bottom row container to include goals */
+/* Assuming your existing .bottomRowContainer CSS is something like this: */
 .bottomRowContainer {
     display: grid;
     grid-template-columns: 1fr; /* Default: 1 column for small screens (mobile-first) */
-    gap: 20px; /* Retaining original gap */
-    margin-top: 20px; /* Retaining original margin-top */
+    gap: 20px; /* Retaining original gap from user's code */
+    margin-top: 20px; /* Retaining original margin-top from user's code */
 }
 
 /* Apply 2-column layout from tablet size (768px) upwards */
 @media (min-width: 768px) {
     .bottomRowContainer {
         grid-template-columns: 1fr 1fr; /* 2 equal columns */
-                                        /* This will arrange the 4 items into a 2x2 grid:
-                                           [Add Transaction]  [Spending Limits]
-                                           [Active Goals]     [Monthly Savings Trend]
-                                        */
     }
-    /*
-      The rule for .addTransactionSection that was previously inside the
-      (min-width: 768px) and (max-width: 1023px) media query
-      (i.e., .addTransactionSection { grid-column: 1 / -1; margin-bottom: 20px; })
-      is removed as it's no longer needed for this corrected layout and would interfere.
-    */
 }
 /*
-  END OF CORRECTED SECTION for .bottomRowContainer
+  The media queries @media (min-width: 1024px) {...} and
+  @media (min-width: 768px) and (max-width: 1023px) {...}
+  that were previously here are removed as they are superseded by the simpler rule above.
+  The .addTransactionSection rule that was inside the (min-width: 768px) and (max-width: 1023px)
+  is also implicitly removed as that entire media query block is gone.
 */
 
 /* --- End of file --- */
