@@ -525,7 +525,7 @@ return (
                <Legend />
              </PieChart>
            </ResponsiveContainer>
-          ) : ( <div className={styles.placeholderContent} style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}> No income or expense data for the current month. </div> )}
+          ) : ( <div className={styles.placeholderContent} style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}> No income or expense data for the current month. </div> )}
        </div>
    </section>
   </div>
