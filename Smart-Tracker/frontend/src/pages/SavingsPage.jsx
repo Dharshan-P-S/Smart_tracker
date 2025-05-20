@@ -13,15 +13,32 @@ const SavingsPage = () => {
       setLoading(true);
       setError(null);
       try {
+        // Simulate API delay for testing loading state
+        // await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // Mock data for frontend testing if backend is not ready
+        // const mockData = [
+        //   { month: '2023-01-01', savings: 100 },
+        //   { month: '2023-02-01', savings: 150 },
+        //   { month: '2023-03-01', savings: 80 },
+        //   { month: '2023-04-01', savings: 200 },
+        //   { month: '2023-05-01', savings: -50 }, // Example of negative savings
+        //   { month: '2023-06-01', savings: 120 },
+        // ];
+        // const data = mockData; // Use mock data
+
         const { data } = await axios.get('/api/transactions/savings/monthly');
+
 
         // Assuming data is sorted by month from backend
         // Calculate cumulative savings
         let cumulativeTotal = 0;
         const processedData = data.map(item => {
-          cumulativeTotal += item.savings;
+          const monthlySavings = parseFloat(item.savings) || 0; // Ensure savings is a number
+          cumulativeTotal += monthlySavings;
           return {
             ...item,
+            savings: monthlySavings,
             cumulativeSavings: cumulativeTotal,
           };
         });
@@ -51,14 +68,14 @@ const SavingsPage = () => {
     }
     return (
       <div className={styles.chartContainer}>
-        <ResponsiveContainer width="100%" height={300}> {/* Specify a height */}
+        <ResponsiveContainer width="100%" height={400}> {/* Specify a height */}
           <AreaChart
             data={chartData}
             margin={{
               top: 10, // Adjusted top margin
               right: 30,
               left: 20, // Increased left margin for Y-axis labels
-              bottom: 5,
+              bottom: 20, // Increased bottom margin for legend if it's close
             }}
           >
             <defs>
@@ -80,8 +97,24 @@ const SavingsPage = () => {
               cursor={{ fill: 'rgba(204,204,204,0.2)' }}
             />
             <Legend wrapperStyle={{ paddingTop: '20px' }}/>
-            <Area type="monotone" dataKey="Savings" stroke="#8884d8" fillOpacity={1} fill="url(#colorSavings)" />
-            <Area type="monotone" dataKey="Cumulative Savings" stroke="#82ca9d" fillOpacity={1} fill="url(#colorCumulative)" />
+            <Area
+              type="monotone"
+              dataKey="Savings"
+              stroke="#8884d8"
+              fillOpacity={1}
+              fill="url(#colorSavings)"
+              dot={{ fill: '#8884d8', stroke: '#fff', strokeWidth: 1, r: 3 }} // Added dot prop
+              activeDot={{ r: 5, stroke: '#fff', strokeWidth: 2 }}          // Optional: style for active dot
+            />
+            <Area
+              type="monotone"
+              dataKey="Cumulative Savings"
+              stroke="#82ca9d"
+              fillOpacity={1}
+              fill="url(#colorCumulative)"
+              dot={{ fill: '#82ca9d', stroke: '#fff', strokeWidth: 1, r: 3 }} // Added dot prop
+              activeDot={{ r: 5, stroke: '#fff', strokeWidth: 2 }}          // Optional: style for active dot
+            />
           </AreaChart>
         </ResponsiveContainer>
       </div>
