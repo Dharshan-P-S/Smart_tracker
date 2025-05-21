@@ -36,8 +36,20 @@ const date = new Date(dateString);
 if (isNaN(date.getTime())) {
 return 'Invalid Date';
 }
-const utcDate = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-return utcDate.toLocaleDateString('en-US', { timeZone: 'UTC', ...options });
+// For display, use local date parts. For backend, ensure UTC or consistent timezone.
+// The input type="date" uses local timezone of browser.
+// If dateString is already YYYY-MM-DD from a date picker, it's fine.
+// If it's a full ISO string from backend, then UTC conversion for display consistency is good.
+const dateToFormat = new Date(dateString.includes('T') ? dateString : dateString + 'T00:00:00'); // Ensure it's treated as local if no T
+return dateToFormat.toLocaleDateString('en-US', options);
+};
+
+// Helper to get YYYY-MM-DD string from a Date object (using local timezone for display consistency with picker)
+const getDisplayDateString = (dateObj) => {
+    const year = dateObj.getFullYear();
+    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+    const day = dateObj.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
 
@@ -46,31 +58,31 @@ console.log("--- Dashboard Component Render Start ---");
 
 const [totalIncome, setTotalIncome] = useState(0);
 const [totalExpense, setTotalExpense] = useState(0);
-const [transactions, setTransactions] = useState([]); // For "Recent Transactions (All Types)"
+const [transactions, setTransactions] = useState([]);
 const [loading, setLoading] = useState(true);
 const [error, setError] = useState(null);
 const [allCategories, setAllCategories] = useState([]);
 const [username, setUsername] = useState(() => localStorage.getItem('username') || 'User');
 
-// Form state
 const [type, setType] = useState('expense');
 const [amount, setAmount] = useState('');
 const [description, setDescription] = useState('');
 const [category, setCategory] = useState('');
 const [selectedEmoji, setSelectedEmoji] = useState('');
 const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+const todayDateString = getDisplayDateString(new Date());
+const [date, setDate] = useState(todayDateString);
+
 const [frequency, setFrequency] = useState('once');
 const [selectedDayOfWeek, setSelectedDayOfWeek] = useState('');
 const [isSubmitting, setIsSubmitting] = useState(false);
 
-// Limits state
 const [limits, setLimits] = useState([]);
 const [loadingLimits, setLoadingLimits] = useState(true);
 const [categoryLimitWarning, setCategoryLimitWarning] = useState(null);
 const [registrationDate, setRegistrationDate] = useState(null);
 
-// Financial Summary state
 const [monthlySavingsData, setMonthlySavingsData] = useState([]);
 const [currentCumulativeSavings, setCurrentCumulativeSavings] = useState(0);
 const [loadingFinancialSummary, setLoadingFinancialSummary] = useState(true);
@@ -78,15 +90,12 @@ const [loadingFinancialSummary, setLoadingFinancialSummary] = useState(true);
 const [currentMonthIncomeTotalForDisplay, setCurrentMonthIncomeTotalForDisplay] = useState(0);
 const [currentMonthExpenseTotalForDisplay, setCurrentMonthExpenseTotalForDisplay] = useState(0);
 
-// Goals state
 const [recentGoals, setRecentGoals] = useState([]);
 const [loadingGoals, setLoadingGoals] = useState(true);
 
-// Current Month Income state
 const [currentMonthIncomeTransactions, setCurrentMonthIncomeTransactions] = useState([]);
 const [loadingCurrentMonthIncome, setLoadingCurrentMonthIncome] = useState(true);
 
-// NEW: Current Month Expense state
 const [currentMonthExpenseTransactions, setCurrentMonthExpenseTransactions] = useState([]);
 const [loadingCurrentMonthExpenses, setLoadingCurrentMonthExpenses] = useState(true);
 
@@ -220,7 +229,6 @@ const fetchCurrentMonthIncomeData = useCallback(async () => {
     }
 }, []);
 
-// NEW: Function to fetch all expense transactions for the current month
 const fetchCurrentMonthExpenseData = useCallback(async () => {
     setLoadingCurrentMonthExpenses(true);
     try {
@@ -230,7 +238,7 @@ const fetchCurrentMonthExpenseData = useCallback(async () => {
             headers: { 'Authorization': `Bearer ${token}` },
         });
         const expenseData = response.data || [];
-        expenseData.sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort recent first
+        expenseData.sort((a, b) => new Date(b.date) - new Date(a.date));
         setCurrentMonthExpenseTransactions(expenseData);
     } catch (err) {
         console.error("Error fetching current month expense data:", err.response?.data || err);
@@ -252,7 +260,7 @@ fetchFinancialSummaryAndSavings();
 fetchLimitsFromAPI();
 fetchRecentGoalsFromAPI();
 fetchCurrentMonthIncomeData();
-fetchCurrentMonthExpenseData(); // Fetch current month expense data
+fetchCurrentMonthExpenseData();
 
 const storedCategories = localStorage.getItem('allCategories');
     if (storedCategories) {
@@ -265,7 +273,7 @@ const storedCategories = localStorage.getItem('allCategories');
             const profileResponse = await axios.get('/api/users/me', { headers: { 'Authorization': `Bearer ${token}` } });
             if (profileResponse.data.createdAt) {
                 const regDate = new Date(profileResponse.data.createdAt);
-                setRegistrationDate(regDate.toISOString().split('T')[0]);
+                setRegistrationDate(getDisplayDateString(regDate)); // Store as YYYY-MM-DD
             }
             if(profileResponse.data.username) {
                 setUsername(profileResponse.data.username);
@@ -299,7 +307,7 @@ fetchFinancialSummaryAndSavings();
 fetchLimitsFromAPI();
 fetchRecentGoalsFromAPI();
 fetchCurrentMonthIncomeData();
-fetchCurrentMonthExpenseData(); // Re-fetch current month expenses on update
+fetchCurrentMonthExpenseData();
 }
 };
 window.addEventListener('transactions-updated', handleDataUpdate);
@@ -317,6 +325,16 @@ setCategoryLimitWarning(`Limit for "${relevantLimit.category}" is nearly or alre
 } else { setCategoryLimitWarning(null); }
 } else { setCategoryLimitWarning(null); }
 }, [category, type, limits]);
+
+const dateInputProps = useMemo(() => {
+    const today = new Date();
+    const currentMonthFirstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    const minDate = getDisplayDateString(currentMonthFirstDay);
+    const maxDate = getDisplayDateString(today);
+
+    return { min: minDate, max: maxDate };
+}, []);
 
 const currentMonthBalanceForDisplay = useMemo(() => totalIncome - totalExpense, [totalIncome, totalExpense]);
 
@@ -339,12 +357,10 @@ const incomeByCategoryPieData = useMemo(() => {
                  .filter(item => item.value > 0);
 }, [currentMonthIncomeTransactions]);
 
-// NEW: Data for "Recent Expense Transactions" list
 const recentExpensesForDisplay = useMemo(() => {
-    return currentMonthExpenseTransactions.slice(0, 5); // Already sorted by date descending
+    return currentMonthExpenseTransactions.slice(0, 5);
 }, [currentMonthExpenseTransactions]);
 
-// NEW: Data for "Expense Breakdown by Category" bar chart
 const expenseByCategoryBarData = useMemo(() => {
     if (!currentMonthExpenseTransactions || currentMonthExpenseTransactions.length === 0) {
         return [];
@@ -361,27 +377,55 @@ const expenseByCategoryBarData = useMemo(() => {
                      amount: parseFloat(value.toFixed(2)),
                  }))
                  .filter(item => item.amount > 0)
-                 .sort((a,b) => b.amount - a.amount); // Sort by amount descending for bar chart
+                 .sort((a,b) => b.amount - a.amount);
 }, [currentMonthExpenseTransactions]);
 
 
 const handleAddTransaction = async (event) => {
 event.preventDefault();
 if (isSubmitting) return;
-if (!date) { toast.error("Please select a date."); return; }
-const [yearStr, monthStr, dayStr] = date.split('-');
-const year = parseInt(yearStr, 10);
-const monthNum = parseInt(monthStr, 10);
-const day = parseInt(dayStr, 10);
-if (isNaN(year) || isNaN(monthNum) || isNaN(day)) { toast.error("Invalid date selected."); return; }
-const selectedDateObj = new Date(Date.UTC(year, monthNum - 1, day));
-const today = new Date();
-const todayDateObj = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
-if (selectedDateObj > todayDateObj) { toast.error("Cannot add a transaction with a future date."); return; }
-if (registrationDate && selectedDateObj < new Date(registrationDate + "T00:00:00.000Z")) {
-toast.error(`Transactions cannot be before registration date (${formatDate(registrationDate, {year: 'numeric', month: 'long', day: 'numeric'})}).`);
-return;
+
+if (!date) { // date state is YYYY-MM-DD
+    toast.error("Please select a date."); return;
 }
+
+const [selectedYear, selectedMonthNum, selectedDayNum] = date.split('-').map(Number);
+// selectedMonthNum is 1-12 from split, convert to 0-11 for JS Date
+const selectedJsMonth = selectedMonthNum - 1;
+
+const todayForValidation = new Date();
+const currentYear = todayForValidation.getFullYear();
+const currentJsMonth = todayForValidation.getMonth(); // 0-11
+const currentDay = todayForValidation.getDate();
+
+// Check 1: Is the selected date in the future?
+if (selectedYear > currentYear ||
+    (selectedYear === currentYear && selectedJsMonth > currentJsMonth) ||
+    (selectedYear === currentYear && selectedJsMonth === currentJsMonth && selectedDayNum > currentDay)) {
+    toast.error("Cannot add a transaction with a future date.");
+    return;
+}
+
+// Check 2: Is the selected date in the current calendar month?
+if (selectedYear !== currentYear || selectedJsMonth !== currentJsMonth) {
+    toast.error("Please select a date within the current month.");
+    return;
+}
+
+// Check 3: (Optional but recommended) If registrationDate is a hard business rule for transactions
+if (registrationDate) { // registrationDate is YYYY-MM-DD
+    const [regYear, regMonthNum, regDayNum] = registrationDate.split('-').map(Number);
+    const regJsMonth = regMonthNum - 1;
+
+    if (selectedYear < regYear ||
+        (selectedYear === regYear && selectedJsMonth < regJsMonth) ||
+        (selectedYear === regYear && selectedJsMonth === regJsMonth && selectedDayNum < regDayNum)) {
+        toast.error(`Transactions cannot be before your registration date of ${formatDate(registrationDate)}. This rule is independent of the current month selection.`);
+        return;
+    }
+}
+
+
 if (!amount || parseFloat(amount) <= 0) { toast.error("Please enter a valid positive amount."); return; }
 if (!description.trim()) { toast.error("Please enter a description."); return; }
 if (!category.trim()) { toast.error("Please enter a category."); return; }
@@ -398,16 +442,20 @@ const countDaysInMonth = (yearFreq, monthFreq, dayOfWeekVal) => {
     }
     return count;
 };
-const currentTransactionDate = new Date(date + "T00:00:00.000Z");
+
+// Use the already parsed selectedYear and selectedJsMonth (0-indexed)
+const transactionYearForFreq = selectedYear;
+const transactionMonthForFreq = selectedJsMonth;
+
 if (frequency === 'daily') {
-    const daysInMonth = new Date(Date.UTC(currentTransactionDate.getUTCFullYear(), currentTransactionDate.getUTCMonth() + 1, 0)).getUTCDate();
+    const daysInMonth = new Date(Date.UTC(transactionYearForFreq, transactionMonthForFreq + 1, 0)).getUTCDate();
     finalAmount = baseAmount * daysInMonth;
 } else if (frequency === 'weekly') {
     if (selectedDayOfWeek === '') {
          toast.error("Please select a day of the week for weekly frequency.");
          setIsSubmitting(false); return;
     }
-    finalAmount = baseAmount * countDaysInMonth(currentTransactionDate.getUTCFullYear(), currentTransactionDate.getUTCMonth(), parseInt(selectedDayOfWeek, 10));
+    finalAmount = baseAmount * countDaysInMonth(transactionYearForFreq, transactionMonthForFreq, parseInt(selectedDayOfWeek, 10));
 }
 finalAmount = Math.round(finalAmount * 100) / 100;
 
@@ -431,7 +479,8 @@ try {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
     });
     setType('expense'); setAmount(''); setDescription(''); setCategory(''); setSelectedEmoji(''); setFrequency('once');
-    setDate(() => new Date().toISOString().split('T')[0]); setSelectedDayOfWeek('');
+    setDate(todayDateString); // Reset date to today
+    setSelectedDayOfWeek('');
     window.dispatchEvent(new CustomEvent('transactions-updated'));
     toast.success("Transaction added successfully.");
     if (!allCategories.some(cat => cat.toLowerCase() === newTransaction.category.toLowerCase().trim())) {
@@ -479,13 +528,12 @@ const savingsChartData = useMemo(() => {
     }
     const dataSlice = monthlySavingsData.slice(-12);
     return dataSlice.map(item => ({
-        name: formatDate(item.month, { month: 'short', year: '2-digit' }),
+        name: formatDate(item.month, { month: 'short', year: '2-digit' }), // Ensure formatDate handles YYYY-MM-DD from backend
         Savings: parseFloat(item.savings?.toFixed(2) || 0),
     }));
 }, [monthlySavingsData]);
 
 
-// Updated pageIsLoading check
 const pageIsLoading = loading || loadingLimits || loadingFinancialSummary || loadingGoals || loadingCurrentMonthIncome || loadingCurrentMonthExpenses;
 const isPageLoading = pageIsLoading;
 
@@ -533,7 +581,6 @@ return (
         <div className={styles.pageErrorBanner}> Please <Link to="/login">log in</Link> to view your dashboard. </div>
    )}
 
-  {/* Summary Section */}
   <section className={styles.summarySection}>
      <div className={styles.summaryItem}>
        <div className={styles.summaryTitle}>
@@ -563,7 +610,6 @@ return (
     </div>
   </section>
 
-  {/* Main Content Area Grid (Existing Recent Transactions and Financial Overview) */}
   <div className={styles.mainArea}>
     <section className={`${styles.sectionBox} ${styles.transactionsSection}`}>
       <div className={styles.sectionHeader}>
@@ -620,7 +666,6 @@ return (
    </section>
   </div>
 
-   {/* --- Bottom Row Container holds Add Transaction, Limits, Goals, and Savings Chart --- */}
    <div className={styles.bottomRowContainer}>
      <section className={`${styles.sectionBox} ${styles.addTransactionSection}`}>
        <h2 className={styles.sectionTitle}>Add New Transaction</h2>
@@ -647,9 +692,16 @@ return (
          </div>
          <div className={styles.formGroup}>
            <label htmlFor="date">Date:</label>
-           <input type="date" id="date" value={date} onChange={(e) => setDate(e.target.value)} required className={styles.formInput} disabled={isSubmitting}
-             min={registrationDate ? registrationDate : undefined }
-             max={new Date().toISOString().split('T')[0]}
+           <input
+             type="date"
+             id="date"
+             value={date}
+             onChange={(e) => setDate(e.target.value)}
+             required
+             className={styles.formInput}
+             disabled={isSubmitting}
+             min={dateInputProps.min}
+             max={dateInputProps.max}
            />
          </div>
          <div className={styles.formGroup}>
@@ -820,8 +872,6 @@ return (
     </section>
    </div> {/* End of bottomRowContainer */}
 
-
-    {/* --- Income Details Row --- */}
     <div className={styles.incomeDetailsRow}>
         <section className={`${styles.sectionBox} ${styles.recentIncomeSection}`}>
             <div className={styles.sectionHeader}>
@@ -887,9 +937,7 @@ return (
             </div>
         </section>
     </div>
-    {/* --- End Income Details Row --- */}
 
-    {/* --- NEW Expense Details Row - AT THE VERY END --- */}
     <div className={styles.expenseDetailsRow}>
         <section className={`${styles.sectionBox} ${styles.recentExpenseSection}`}>
             <div className={styles.sectionHeader}>
@@ -927,8 +975,8 @@ return (
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                             data={expenseByCategoryBarData}
-                            layout="vertical" // For horizontal bars
-                            margin={{ top: 5, right: 30, left: 50, bottom: 25 }} // Adjusted margins for labels
+                            layout="vertical"
+                            margin={{ top: 5, right: 30, left: 50, bottom: 25 }}
                         >
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis
@@ -938,26 +986,25 @@ return (
                                 label={{
                                     value: 'Expense Amount',
                                     position: 'insideBottom',
-                                    offset: -15, // Adjust offset to position below ticks
+                                    offset: -15,
                                     style: { fill: '#666', fontSize: '12px' }
                                 }}
                             />
                             <YAxis
                                 type="category"
                                 dataKey="name"
-                                width={100} // Adjust width for category names if needed
+                                width={100}
                                 tick={{fontSize: 10, fill: '#666'}}
                                 label={{
                                     value: 'Categories',
                                     angle: -90,
                                     position: 'insideLeft',
-                                    offset: -35, // Adjust offset to position left of Y-axis ticks
+                                    offset: -35,
                                     style: { textAnchor: 'middle', fill: '#666', fontSize: '12px' }
                                 }}
                             />
                             <RechartsTooltip formatter={(value) => formatCurrency(value)} />
-                            {/* <Legend wrapperStyle={{ paddingTop: '5px' }} /> REMOVED LEGEND FOR THIS CHART */}
-                            <Bar dataKey="amount" barSize={20} radius={[0, 4, 4, 0]}> {/* REMOVED name="" prop */}
+                            <Bar dataKey="amount" barSize={20} radius={[0, 4, 4, 0]}>
                                 {expenseByCategoryBarData.map((entry, index) => (
                                     <Cell key={`cell-expense-cat-${index}`} fill={EXPENSE_CATEGORY_COLORS[index % EXPENSE_CATEGORY_COLORS.length]} />
                                 ))}
@@ -972,8 +1019,6 @@ return (
             </div>
         </section>
     </div>
-    {/* --- End Expense Details Row --- */}
-
 
 </div>
 );
