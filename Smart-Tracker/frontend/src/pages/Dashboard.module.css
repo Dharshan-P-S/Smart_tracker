@@ -492,7 +492,7 @@
 
   .formInput,
   .transactionForm select {
-    background-color: var(--input-bg-dark, #2d3748);
+    background-color: 	#1d2e33;
     border-color: var(--border-dark);
     color: var(--text-primary-dark);
   }
