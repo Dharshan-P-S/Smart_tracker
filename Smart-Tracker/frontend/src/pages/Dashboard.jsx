@@ -982,25 +982,25 @@ return (
                             <XAxis
                                 type="number"
                                 tickFormatter={formatCurrency}
-                                tick={{ fontSize: 14, fill: '#666' }}
+                                tick={{ fontSize: 14, fill: '#e0e0e0' }}
                                 label={{
                                     value: 'Expense Amount',
                                     position: 'insideBottom',
                                     offset: -15,
-                                    style: { fill: '#666', fontSize: '16px' }
+                                    style: { fill: '#e0e0e0', fontSize: '16px' }
                                 }}
                             />
                             <YAxis
                                 type="category"
                                 dataKey="name"
                                 width={100}
-                                tick={{fontSize: 14, fill: '#666'}}
+                                tick={{fontSize: 14, fill: '#e0e0e0'}}
                                 label={{
                                     value: 'Categories',
                                     angle: -90,
                                     position: 'insideLeft',
                                     offset: -35,
-                                    style: { textAnchor: 'middle', fill: '#666', fontSize: '16px' }
+                                    style: { textAnchor: 'middle', fill: '#e0e0e0', fontSize: '16px' }
                                 }}
                             />
                             <RechartsTooltip formatter={(value) => formatCurrency(value)} />
