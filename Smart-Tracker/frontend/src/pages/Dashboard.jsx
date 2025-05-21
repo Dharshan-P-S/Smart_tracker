@@ -4,16 +4,21 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Link } from 'react-router-dom';
 import styles from './Dashboard.module.css';
 // Updated recharts import
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import Picker from 'emoji-picker-react';
 import axios from 'axios';
-import { FaBullseye, FaPiggyBank } from 'react-icons/fa'; // Removed FaEdit, FaTrash as they are not directly used in Dashboard render
+import { FaBullseye, FaPiggyBank } from 'react-icons/fa';
 
-// Define a color palette for the income category pie chart
 const INCOME_CATEGORY_COLORS = [
   '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A230ED',
   '#FF5733', '#33FF57', '#3357FF', '#FF33A8', '#A833FF',
   '#FF6666', '#66FF66', '#6666FF', '#FFFF66', '#FF66FF',
+];
+
+// Define a color palette for the expense category bar chart
+const EXPENSE_CATEGORY_COLORS = [ // Can be the same or different
+  '#FF8042', '#FFBB28', '#FF5733', '#A230ED', '#00C49F',
+  '#F87171', '#DC2626', '#B91C1C', '#7F1D1D', '#FCA5A5'
 ];
 
 
@@ -31,7 +36,6 @@ const date = new Date(dateString);
 if (isNaN(date.getTime())) {
 return 'Invalid Date';
 }
-// Ensure date is treated as UTC for formatting consistency
 const utcDate = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 return utcDate.toLocaleDateString('en-US', { timeZone: 'UTC', ...options });
 };
@@ -42,12 +46,13 @@ console.log("--- Dashboard Component Render Start ---");
 
 const [totalIncome, setTotalIncome] = useState(0);
 const [totalExpense, setTotalExpense] = useState(0);
-const [transactions, setTransactions] = useState([]);
+const [transactions, setTransactions] = useState([]); // For "Recent Transactions (All Types)"
 const [loading, setLoading] = useState(true);
 const [error, setError] = useState(null);
 const [allCategories, setAllCategories] = useState([]);
 const [username, setUsername] = useState(() => localStorage.getItem('username') || 'User');
 
+// Form state
 const [type, setType] = useState('expense');
 const [amount, setAmount] = useState('');
 const [description, setDescription] = useState('');
@@ -59,11 +64,13 @@ const [frequency, setFrequency] = useState('once');
 const [selectedDayOfWeek, setSelectedDayOfWeek] = useState('');
 const [isSubmitting, setIsSubmitting] = useState(false);
 
+// Limits state
 const [limits, setLimits] = useState([]);
 const [loadingLimits, setLoadingLimits] = useState(true);
 const [categoryLimitWarning, setCategoryLimitWarning] = useState(null);
 const [registrationDate, setRegistrationDate] = useState(null);
 
+// Financial Summary state
 const [monthlySavingsData, setMonthlySavingsData] = useState([]);
 const [currentCumulativeSavings, setCurrentCumulativeSavings] = useState(0);
 const [loadingFinancialSummary, setLoadingFinancialSummary] = useState(true);
@@ -71,12 +78,17 @@ const [loadingFinancialSummary, setLoadingFinancialSummary] = useState(true);
 const [currentMonthIncomeTotalForDisplay, setCurrentMonthIncomeTotalForDisplay] = useState(0);
 const [currentMonthExpenseTotalForDisplay, setCurrentMonthExpenseTotalForDisplay] = useState(0);
 
+// Goals state
 const [recentGoals, setRecentGoals] = useState([]);
 const [loadingGoals, setLoadingGoals] = useState(true);
 
-// New state for current month's income transactions (for list and pie chart)
+// Current Month Income state
 const [currentMonthIncomeTransactions, setCurrentMonthIncomeTransactions] = useState([]);
 const [loadingCurrentMonthIncome, setLoadingCurrentMonthIncome] = useState(true);
+
+// NEW: Current Month Expense state
+const [currentMonthExpenseTransactions, setCurrentMonthExpenseTransactions] = useState([]);
+const [loadingCurrentMonthExpenses, setLoadingCurrentMonthExpenses] = useState(true);
 
 
 const fetchDashboardData = useCallback(async () => {
@@ -90,7 +102,6 @@ headers: { 'Authorization': `Bearer ${token}` },
 const data = response.data;
 setTotalIncome(data.totalIncome || 0);
 setTotalExpense(data.totalExpense || 0);
-// Assuming data.recentTransactions includes all types for the "Recent Transactions" section
 setTransactions(data.recentTransactions || []);
 } catch (err) {
 console.error("Error fetching dashboard data:", err.response?.data || err);
@@ -104,11 +115,11 @@ setLoading(false);
 const fetchAllCategoriesFromAPI = useCallback(async () => {
 try {
 const response = await axios.get('/api/categories/all');
-const categories = response.data;
-if (Array.isArray(categories)) {
-setAllCategories(categories);
-localStorage.setItem('allCategories', JSON.stringify(categories));
-} else { console.error("Fetched categories is not an array:", categories); }
+const categoriesData = response.data;
+if (Array.isArray(categoriesData)) {
+setAllCategories(categoriesData);
+localStorage.setItem('allCategories', JSON.stringify(categoriesData));
+} else { console.error("Fetched categories is not an array:", categoriesData); }
 } catch (err) { console.error("Error fetching all categories:", err); }
 }, []);
 
@@ -188,7 +199,6 @@ setLoadingGoals(false);
 }
 }, []);
 
-// New function to fetch all income transactions for the current month
 const fetchCurrentMonthIncomeData = useCallback(async () => {
     setLoadingCurrentMonthIncome(true);
     try {
@@ -198,7 +208,6 @@ const fetchCurrentMonthIncomeData = useCallback(async () => {
             headers: { 'Authorization': `Bearer ${token}` },
         });
         const incomeData = response.data || [];
-        // Sort by date descending to easily get recent ones
         incomeData.sort((a, b) => new Date(b.date) - new Date(a.date));
         setCurrentMonthIncomeTransactions(incomeData);
     } catch (err) {
@@ -211,6 +220,28 @@ const fetchCurrentMonthIncomeData = useCallback(async () => {
     }
 }, []);
 
+// NEW: Function to fetch all expense transactions for the current month
+const fetchCurrentMonthExpenseData = useCallback(async () => {
+    setLoadingCurrentMonthExpenses(true);
+    try {
+        const token = localStorage.getItem('authToken');
+        if (!token) throw new Error("Auth token not found for current month expenses.");
+        const response = await axios.get('/api/transactions/current-month/expense', {
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+        const expenseData = response.data || [];
+        expenseData.sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort recent first
+        setCurrentMonthExpenseTransactions(expenseData);
+    } catch (err) {
+        console.error("Error fetching current month expense data:", err.response?.data || err);
+        const msg = (err.response?.data?.message || err.message || "Failed to load current month expenses.").substring(0, 150);
+        setError(prev => prev ? `${prev}\nMonthExpense: ${msg}` : `MonthExpense: ${msg}`);
+        setCurrentMonthExpenseTransactions([]);
+    } finally {
+        setLoadingCurrentMonthExpenses(false);
+    }
+}, []);
+
 
 useEffect(() => {
 setError(null);
@@ -220,7 +251,8 @@ fetchDashboardData();
 fetchFinancialSummaryAndSavings();
 fetchLimitsFromAPI();
 fetchRecentGoalsFromAPI();
-fetchCurrentMonthIncomeData(); // Fetch current month income data
+fetchCurrentMonthIncomeData();
+fetchCurrentMonthExpenseData(); // Fetch current month expense data
 
 const storedCategories = localStorage.getItem('allCategories');
     if (storedCategories) {
@@ -247,11 +279,10 @@ const storedCategories = localStorage.getItem('allCategories');
     fetchUserProfile();
 } else {
     setError("Please log in to view the dashboard.");
-    setLoading(false); setLoadingLimits(false); setLoadingFinancialSummary(false); setLoadingGoals(false); setLoadingCurrentMonthIncome(false);
-    setTotalIncome(0); setTotalExpense(0); setTransactions([]); setLimits([]); setMonthlySavingsData([]); setCurrentCumulativeSavings(0); setRecentGoals([]); setCurrentMonthIncomeTransactions([]);
+    setLoading(false); setLoadingLimits(false); setLoadingFinancialSummary(false); setLoadingGoals(false); setLoadingCurrentMonthIncome(false); setLoadingCurrentMonthExpenses(false);
+    setTotalIncome(0); setTotalExpense(0); setTransactions([]); setLimits([]); setMonthlySavingsData([]); setCurrentCumulativeSavings(0); setRecentGoals([]); setCurrentMonthIncomeTransactions([]); setCurrentMonthExpenseTransactions([]);
 }
-// Added fetchCurrentMonthIncomeData to dependencies
-}, [fetchDashboardData, fetchFinancialSummaryAndSavings, fetchLimitsFromAPI, fetchRecentGoalsFromAPI, fetchAllCategoriesFromAPI, fetchCurrentMonthIncomeData]);
+}, [fetchDashboardData, fetchFinancialSummaryAndSavings, fetchLimitsFromAPI, fetchRecentGoalsFromAPI, fetchAllCategoriesFromAPI, fetchCurrentMonthIncomeData, fetchCurrentMonthExpenseData]);
 
 useEffect(() => {
 setCurrentMonthIncomeTotalForDisplay(totalIncome);
@@ -267,15 +298,15 @@ fetchDashboardData();
 fetchFinancialSummaryAndSavings();
 fetchLimitsFromAPI();
 fetchRecentGoalsFromAPI();
-fetchCurrentMonthIncomeData(); // Re-fetch current month income on update
+fetchCurrentMonthIncomeData();
+fetchCurrentMonthExpenseData(); // Re-fetch current month expenses on update
 }
 };
 window.addEventListener('transactions-updated', handleDataUpdate);
 return () => {
 window.removeEventListener('transactions-updated', handleDataUpdate);
 };
-// Added fetchCurrentMonthIncomeData to dependencies
-}, [fetchDashboardData, fetchFinancialSummaryAndSavings, fetchLimitsFromAPI, fetchRecentGoalsFromAPI, fetchCurrentMonthIncomeData]);
+}, [fetchDashboardData, fetchFinancialSummaryAndSavings, fetchLimitsFromAPI, fetchRecentGoalsFromAPI, fetchCurrentMonthIncomeData, fetchCurrentMonthExpenseData]);
 
 useEffect(() => {
 if (type === 'expense' && category.trim() !== '' && limits.length > 0) {
@@ -289,26 +320,49 @@ setCategoryLimitWarning(`Limit for "${relevantLimit.category}" is nearly or alre
 
 const currentMonthBalanceForDisplay = useMemo(() => totalIncome - totalExpense, [totalIncome, totalExpense]);
 
-// Data for "Recent Income Transactions" list
 const recentIncomeForDisplay = useMemo(() => {
-    return currentMonthIncomeTransactions.slice(0, 5); // Already sorted by date descending from fetch
+    return currentMonthIncomeTransactions.slice(0, 5);
 }, [currentMonthIncomeTransactions]);
 
-// Data for "Income Breakdown by Category" pie chart
 const incomeByCategoryPieData = useMemo(() => {
     if (!currentMonthIncomeTransactions || currentMonthIncomeTransactions.length === 0) {
         return [];
     }
     const categoryMap = currentMonthIncomeTransactions.reduce((acc, tx) => {
-        const cat = tx.category || 'Uncategorized'; // Handle undefined/empty categories
+        const cat = tx.category || 'Uncategorized';
         acc[cat] = (acc[cat] || 0) + (parseFloat(tx.amount) || 0);
         return acc;
     }, {});
 
     return Object.entries(categoryMap)
                  .map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }))
-                 .filter(item => item.value > 0); // Ensure only categories with value are shown
+                 .filter(item => item.value > 0);
 }, [currentMonthIncomeTransactions]);
+
+// NEW: Data for "Recent Expense Transactions" list
+const recentExpensesForDisplay = useMemo(() => {
+    return currentMonthExpenseTransactions.slice(0, 5); // Already sorted by date descending
+}, [currentMonthExpenseTransactions]);
+
+// NEW: Data for "Expense Breakdown by Category" bar chart
+const expenseByCategoryBarData = useMemo(() => {
+    if (!currentMonthExpenseTransactions || currentMonthExpenseTransactions.length === 0) {
+        return [];
+    }
+    const categoryMap = currentMonthExpenseTransactions.reduce((acc, tx) => {
+        const cat = tx.category || 'Uncategorized';
+        acc[cat] = (acc[cat] || 0) + (parseFloat(tx.amount) || 0);
+        return acc;
+    }, {});
+
+    return Object.entries(categoryMap)
+                 .map(([name, value]) => ({
+                     name,
+                     amount: parseFloat(value.toFixed(2)),
+                 }))
+                 .filter(item => item.amount > 0)
+                 .sort((a,b) => b.amount - a.amount); // Sort by amount descending for bar chart
+}, [currentMonthExpenseTransactions]);
 
 
 const handleAddTransaction = async (event) => {
@@ -395,30 +449,6 @@ try {
 }
 };
 
-// handleDeleteTransaction is not directly used by any UI element in Dashboard.js after recent changes.
-// If there's no "delete" button on the dashboard itself for transactions, this can be removed.
-// However, if it's intended for future use or if other components rely on Dashboard exporting it, keep it.
-// For now, I'll comment it out as it's not actively used by the Dashboard's rendered output.
-/*
-const handleDeleteTransaction = async (transactionId) => {
-if (!window.confirm("Are you sure you want to delete this transaction?")) return;
-setError(null);
-try {
-const token = localStorage.getItem('authToken');
-if (!token) throw new Error("Authentication token not found for delete.");
-await axios.delete(`/api/transactions/${transactionId}`, {
-headers: { 'Authorization': `Bearer ${token}` }
-});
-window.dispatchEvent(new CustomEvent('transactions-updated'));
-toast.success("Transaction deleted successfully.");
-} catch (err) {
-console.error("Error deleting transaction:", err.response?.data || err);
-const deleteErrorMsg = err.response?.data?.message || err.message || "Failed to delete transaction.";
-setError(prev => prev ? `${prev}\nDelete: ${deleteErrorMsg}` : `Delete: ${deleteErrorMsg}`);
-toast.error(deleteErrorMsg);
-}
-};
-*/
 
 const pieChartDataForRender = useMemo(() => {
 const data = [];
@@ -456,8 +486,8 @@ const savingsChartData = useMemo(() => {
 
 
 // Updated pageIsLoading check
-const pageIsLoading = loading || loadingLimits || loadingFinancialSummary || loadingGoals || loadingCurrentMonthIncome;
-const isPageLoading = pageIsLoading; 
+const pageIsLoading = loading || loadingLimits || loadingFinancialSummary || loadingGoals || loadingCurrentMonthIncome || loadingCurrentMonthExpenses;
+const isPageLoading = pageIsLoading;
 
 if (pageIsLoading && !localStorage.getItem('authToken')) {
 return <div className={styles.dashboardPageContent}><p className={styles.loadingMessage}>Checking authentication...</p></div>;
@@ -476,7 +506,7 @@ Please <Link to="/login">log in</Link> to view your dashboard.
 </div>
 );
 }
-const showMajorError = error && !loading && !loadingFinancialSummary && !loadingLimits && !loadingGoals && !loadingCurrentMonthIncome && transactions.length === 0 && limits.length === 0 && recentGoals.length === 0 && currentMonthIncomeTransactions.length === 0;
+const showMajorError = error && !loading && !loadingFinancialSummary && !loadingLimits && !loadingGoals && !loadingCurrentMonthIncome && !loadingCurrentMonthExpenses && transactions.length === 0 && limits.length === 0 && recentGoals.length === 0 && currentMonthIncomeTransactions.length === 0 && currentMonthExpenseTransactions.length === 0;
 if (showMajorError ) {
 return (
 <div className={styles.dashboardPageContent}>
@@ -484,7 +514,7 @@ return (
 <div className={styles.pageErrorBanner}>
 Failed to load essential dashboard components. Please try refreshing.
 <br/>
-<small>Details: {error.split('\n').map((e,i)=> <span key={i}>{e.replace(/(Dashboard: |Profile: |Limits: |Monthly Savings: |Goals: |Auth: |Submit: |MonthIncome: )/g, '')}<br/></span>)}</small>
+<small>Details: {error.split('\n').map((e,i)=> <span key={i}>{e.replace(/(Dashboard: |Profile: |Limits: |Monthly Savings: |Goals: |Auth: |Submit: |MonthIncome: |MonthExpense: )/g, '')}<br/></span>)}</small>
 </div>
 </div>
 );
@@ -496,7 +526,7 @@ return (
 
 {error && !showMajorError && (
      <div className={`${styles.pageErrorBanner} ${styles.nonCriticalError}`}>
-        Some data might be unavailable: {error.split('\n').map((e,i)=> <span key={i}>{e.replace(/(Dashboard: |Profile: |Limits: |Monthly Savings: |Goals: |Submit: |Auth: |Delete: |MonthIncome: )/g, '')}<br/></span>)}
+        Some data might be unavailable: {error.split('\n').map((e,i)=> <span key={i}>{e.replace(/(Dashboard: |Profile: |Limits: |Monthly Savings: |Goals: |Submit: |Auth: |Delete: |MonthIncome: |MonthExpense: )/g, '')}<br/></span>)}
      </div>
    )}
    {!localStorage.getItem('authToken') && !error && !isPageLoading && (
@@ -540,7 +570,7 @@ return (
         <h2 className={styles.sectionTitle}>Recent Transactions (Current Month)</h2>
         <Link to="/transactions" className={styles.seeAllButton}>See All</Link>
       </div>
-       {(loading && transactions.length === 0 && !error) ? <div className={styles.placeholderContent}>Loading transactions...</div> : 
+       {(loading && transactions.length === 0 && !error) ? <div className={styles.placeholderContent}>Loading transactions...</div> :
         transactions.length > 0 ? (
          <div className={styles.transactionList}>
            {transactions.slice(0,5).map((tx) => (
@@ -566,15 +596,15 @@ return (
           hasChartData ? (
            <ResponsiveContainer width="100%" height={300}>
              <PieChart>
-               <Pie 
-                    data={filteredPieData} 
-                    cx="50%" 
-                    cy="50%" 
-                    labelLine={false} 
-                    outerRadius={100} 
-                    fill="#8884d8" 
-                    dataKey="value" 
-                    nameKey="name" 
+               <Pie
+                    data={filteredPieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                    nameKey="name"
                     label={({ name, value }) => `${name}: ${formatCurrency(value)}`}
                 >
                  {filteredPieData.map((entry, index) => (
@@ -677,7 +707,7 @@ return (
             <div className={styles.limitList}>
                 {limits.slice(0, 4).map((limit) => {
                     const { amount: limitAmount, currentSpending: spentAmount, remainingAmount } = limit;
-                    const percentage = limitAmount > 0 ? (spentAmount / limitAmount) * 100 : (spentAmount > 0 ? 101 : 0); 
+                    const percentage = limitAmount > 0 ? (spentAmount / limitAmount) * 100 : (spentAmount > 0 ? 101 : 0);
                     const isOverspent = limit.exceeded || (limitAmount > 0 && spentAmount > limitAmount);
                     const progressPercentage = Math.min(percentage, 100);
 
@@ -694,11 +724,11 @@ return (
                             </div>
                             <div className={styles.limitTotal}>Limit: {formatCurrency(limitAmount)}</div>
                             <div className={styles.progressBarContainer}>
-                                <div 
-                                    className={styles.progressBar} 
-                                    style={{ 
-                                        width: `${progressPercentage}%`, 
-                                        backgroundColor: isOverspent ? '#EF4444' : (percentage >= 90 ? '#F59E0B' : '#4299e1') 
+                                <div
+                                    className={styles.progressBar}
+                                    style={{
+                                        width: `${progressPercentage}%`,
+                                        backgroundColor: isOverspent ? '#EF4444' : (percentage >= 90 ? '#F59E0B' : '#4299e1')
                                     }}
                                     title={`${percentage.toFixed(1)}% Used`}
                                 ></div>
@@ -732,9 +762,9 @@ return (
                             <span className={styles.goalPercentageDashboard}>({goal.progress ? goal.progress.toFixed(1) : '0.0'}%)</span>
                         </div>
                         <div className={styles.progressBarContainerSmall}>
-                            <div 
+                            <div
                                 className={styles.progressBarSmall}
-                                style={{ width: `${goal.progress ? Math.min(goal.progress, 100) : 0}%`}} 
+                                style={{ width: `${goal.progress ? Math.min(goal.progress, 100) : 0}%`}}
                                 title={`${goal.progress ? goal.progress.toFixed(1) : '0.0'}% Complete`}
                             ></div>
                         </div>
@@ -757,18 +787,29 @@ return (
                 <div className={styles.placeholderContent}>Loading savings...</div>
             ) : savingsChartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={savingsChartData} margin={{ top: 20, right: 20, left: -20, bottom: 5 }}>
+                    <LineChart data={savingsChartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                         <XAxis dataKey="name" stroke="#666" fontSize="10px" />
-                        <YAxis stroke="#666" tickFormatter={(value) => formatCurrency(value).replace('$', '')} fontSize="10px" width={70} />
-                        <RechartsTooltip 
+                        <YAxis
+                            stroke="#666"
+                            tickFormatter={(value) => formatCurrency(value).replace('$', '')}
+                            fontSize="10px"
+                            width={70}
+                        />
+                        <RechartsTooltip
                             formatter={(value, name) => [formatCurrency(value), name]}
                             contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', border: '1px solid #ccc', borderRadius: '5px' }}
-                            cursor={{ fill: 'rgba(204,204,204,0.2)' }}
                         />
                         <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}/>
-                        <Bar dataKey="Savings" fill="#82ca9d" radius={[4, 4, 0, 0]} barSize={20} />
-                    </BarChart>
+                        <Line
+                            type="monotone"
+                            dataKey="Savings"
+                            stroke="#82ca9d"
+                            strokeWidth={2}
+                            activeDot={{ r: 6 }}
+                            dot={{ r: 3 }}
+                        />
+                    </LineChart>
                 </ResponsiveContainer>
             ) : (
                 <div className={styles.placeholderContent} style={{ height: '250px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
@@ -780,7 +821,7 @@ return (
    </div> {/* End of bottomRowContainer */}
 
 
-    {/* --- New Income Details Row - MOVED TO THE END --- */}
+    {/* --- Income Details Row --- */}
     <div className={styles.incomeDetailsRow}>
         <section className={`${styles.sectionBox} ${styles.recentIncomeSection}`}>
             <div className={styles.sectionHeader}>
@@ -821,7 +862,7 @@ return (
                                 data={incomeByCategoryPieData}
                                 cx="50%"
                                 cy="50%"
-                                innerRadius={60} 
+                                innerRadius={60}
                                 outerRadius={100}
                                 fill="#8884d8"
                                 paddingAngle={2}
@@ -846,9 +887,95 @@ return (
             </div>
         </section>
     </div>
-    {/* --- End New Income Details Row --- */}
+    {/* --- End Income Details Row --- */}
 
-</div> 
+    {/* --- NEW Expense Details Row - AT THE VERY END --- */}
+    <div className={styles.expenseDetailsRow}>
+        <section className={`${styles.sectionBox} ${styles.recentExpenseSection}`}>
+            <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Recent Expenses (Current Month)</h2>
+                <Link to="/expenses" className={styles.seeAllButton}>See All Expenses</Link>
+            </div>
+            {loadingCurrentMonthExpenses && recentExpensesForDisplay.length === 0 && !error ? (
+                <div className={styles.placeholderContent}>Loading recent expenses...</div>
+            ) : recentExpensesForDisplay.length > 0 ? (
+                <div className={styles.transactionList}>
+                    {recentExpensesForDisplay.map((tx) => (
+                        <div key={tx._id} className={`${styles.transactionItem} ${styles.expenseBorder}`}>
+                            <span className={styles.transactionDate}>{formatDate(tx.date, { month: 'short', day: 'numeric' })}</span>
+                            <span className={styles.transactionDesc}>
+                                {tx.emoji && <span className={styles.transactionEmoji}>{tx.emoji}</span>}
+                                {tx.description} ({tx.category})
+                            </span>
+                            <span className={`${styles.transactionAmount} ${styles.expense}`}>
+                                - {formatCurrency(tx.amount)}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className={styles.placeholderContent}>No expense transactions this month.</div>
+            )}
+        </section>
+
+        <section className={`${styles.sectionBox} ${styles.expenseCategoryChartSection}`}>
+            <h2 style={{marginTop:"50px", marginBottom:"50px"}} className={styles.sectionTitle}>Monthly Expense Breakdown</h2>
+            <div className={styles.chartContainer} style={{ height: '300px' }}>
+                {loadingCurrentMonthExpenses && expenseByCategoryBarData.length === 0 && !error ? (
+                    <div className={styles.placeholderContent}>Loading expense chart...</div>
+                ) : expenseByCategoryBarData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                            data={expenseByCategoryBarData}
+                            layout="vertical" // For horizontal bars
+                            margin={{ top: 5, right: 30, left: 50, bottom: 25 }} // Adjusted margins for labels
+                        >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis
+                                type="number"
+                                tickFormatter={formatCurrency}
+                                tick={{ fontSize: 10, fill: '#666' }}
+                                label={{
+                                    value: 'Expense Amount',
+                                    position: 'insideBottom',
+                                    offset: -15, // Adjust offset to position below ticks
+                                    style: { fill: '#666', fontSize: '12px' }
+                                }}
+                            />
+                            <YAxis
+                                type="category"
+                                dataKey="name"
+                                width={100} // Adjust width for category names if needed
+                                tick={{fontSize: 10, fill: '#666'}}
+                                label={{
+                                    value: 'Categories',
+                                    angle: -90,
+                                    position: 'insideLeft',
+                                    offset: -35, // Adjust offset to position left of Y-axis ticks
+                                    style: { textAnchor: 'middle', fill: '#666', fontSize: '12px' }
+                                }}
+                            />
+                            <RechartsTooltip formatter={(value) => formatCurrency(value)} />
+                            {/* <Legend wrapperStyle={{ paddingTop: '5px' }} /> REMOVED LEGEND FOR THIS CHART */}
+                            <Bar dataKey="amount" barSize={20} radius={[0, 4, 4, 0]}> {/* REMOVED name="" prop */}
+                                {expenseByCategoryBarData.map((entry, index) => (
+                                    <Cell key={`cell-expense-cat-${index}`} fill={EXPENSE_CATEGORY_COLORS[index % EXPENSE_CATEGORY_COLORS.length]} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <div className={styles.placeholderContent} style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        No expense data to display breakdown.
+                    </div>
+                )}
+            </div>
+        </section>
+    </div>
+    {/* --- End Expense Details Row --- */}
+
+
+</div>
 );
 }
 

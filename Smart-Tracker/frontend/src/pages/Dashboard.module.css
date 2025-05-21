@@ -1156,6 +1156,65 @@
   min-height: 200px; /* Adjust if needed */
 }
 
+/* Dashboard.module.css */
+
+/* ... (all your existing styles, including .incomeDetailsRow and its children) ... */
+
+/* NEW: Styles for the Expense Details Row */
+.expenseDetailsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Two equal columns */
+  gap: 1.5rem; /* Same gap as other rows */
+  margin-top: 1.5rem; /* Space above this new row */
+  margin-bottom: 1.5rem; /* Space at the very bottom of the page content */
+}
+
+
+.expenseCategoryChartSection {
+  /* Inherits .sectionBox styles */
+  align-items: center; /* Center chart horizontally if needed */
+}
+
+/* Adjust chart container height for the new expense bar chart */
+.expenseCategoryChartSection .chartContainer {
+  height: 300px; /* Or adjust as preferred, can be same as income pie chart */
+}
+
+
+/* Responsive Adjustments for Expense Details Row */
+@media (max-width: 992px) { /* Or your preferred breakpoint for stacking */
+  .expenseDetailsRow {
+    grid-template-columns: 1fr; /* Stack columns on smaller screens */
+  }
+}
+
+/* Ensure transaction item styling is generic enough or add specific overrides if needed */
+/* .transactionItem, .transactionList, .transactionDate, .transactionDesc, .transactionAmount, .incomeBorder, .expenseBorder
+   are assumed to be styled generically from previous additions. */
+
+
+/* Placeholder content styling (already exists, ensure it works well here too) */
+.expenseCategoryChartSection .placeholderContent {
+  min-height: 200px; /* Adjust if needed */
+}
+
+/* Add these if they don't exist or need adjustment for dark mode */
+@media (prefers-color-scheme: dark) {
+  /* ... other dark mode styles ... */
+
+  .recentExpenseSection .sectionTitle, /* Example if specific title color needed */
+  .expenseCategoryChartSection .sectionTitle {
+    color: var(--text-primary-dark);
+  }
+
+  /* Ensure placeholder for expense chart is also themed */
+  .expenseCategoryChartSection .placeholderContent {
+     color: var(--text-secondary-dark);
+  }
+   .expenseCategoryChartSection .placeholderContent a {
+     color: var(--primary-accent-dark);
+   }
+}
 /*
   If you have specific height set on .chartContainer globally,
   you might need to override it for each chart instance or make the global one more flexible.
