@@ -464,7 +464,7 @@
     .sectionBox { background-color: var(--box-bg-dark, #22272e); border-color: var(--border-dark, #444c56); }
     .sectionTitle { color: var(--text-primary-dark, #c9d1d9); border-bottom-color: var(--border-dark, #444c56); }
     .formGroup label { color: var(--text-secondary-dark, #8b949e); }
-    .formInput, .transactionForm select { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark, #444c56); color: var(--text-primary-dark, #c9d1d9); }
+    .formInput, .transactionForm select { background-color: #1d2e33; border-color: var(--border-dark, #444c56); color: var(--text-primary-dark, #c9d1d9); }
     .formInput::placeholder { color: var(--text-secondary-dark, #768390); }
     .formInput:focus, .transactionForm select:focus { border-color: var(--primary-accent-dark, #58a6ff); box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.3); }
     .emojiButton { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark, #444c56); color: var(--text-primary-dark, #c9d1d9); }
