@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-// import { Link } from 'react-router-dom'; // No longer used in this snippet
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaCalculator } from 'react-icons/fa';
@@ -9,7 +8,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import styles from './OldTransactionsPage.module.css';
 
-// Reusable formatCurrency function
+// Reusable formatCurrency function - (No changes needed here)
 const formatCurrency = (value, type = null) => {
     const numValue = parseFloat(value);
     let prefix = '';
@@ -22,67 +21,98 @@ const formatCurrency = (value, type = null) => {
     return (prefix) + new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Math.abs(numValue));
 };
 
-// Reusable formatDate function for display (MM/DD/YYYY)
+// REVERTED and IMPROVED formatDateDisplay
 const formatDateDisplay = (dateString) => {
     if (!dateString) return 'Invalid Date';
-    const dateParts = dateString.split('T')[0].split('-');
-    const date = new Date(Date.UTC(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2])));
+    // Attempt to parse the date string. Works for ISO, YYYY-MM-DD, etc.
+    // Crucially, new Date() will parse ISO strings considering the Z (UTC) or offset.
+    // If it's just YYYY-MM-DD, it's treated as local midnight by default in many implementations,
+    // but for display, we want to ensure we use UTC parts if the original was UTC.
+    const date = new Date(dateString);
     if (isNaN(date.getTime())) { return 'Invalid Date'; }
-    return date.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
+
+    // To ensure consistency, especially if dateString might be YYYY-MM-DD (local) vs ISO (UTC)
+    // For display, it's often best to use UTC methods to get date parts if the source is UTC.
+    // If your backend `transaction.date` is reliably UTC:
+    return date.toLocaleDateString('en-US', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        timeZone: dateString.includes('T') && dateString.includes('Z') ? 'UTC' : undefined // Use UTC if it's clearly a UTC ISO string
+    });
+    // If your backend dates are consistently YYYY-MM-DD representing a specific day
+    // without time, the previous method of splitting and Date.UTC was also fine,
+    // but new Date() is more general.
 };
 
-// Helper to get YYYY-MM key for monthlyFinancialData and form inputs
-const formatMonthYearKey = (dateStringOrDate) => {
-    if (!dateStringOrDate) return 'unknown-month';
-    const date = (typeof dateStringOrDate === 'string' && dateStringOrDate.includes('T')) 
-                 ? new Date(dateStringOrDate) 
-                 : (typeof dateStringOrDate === 'string' ? new Date(dateStringOrDate + "T00:00:00Z") : dateStringOrDate);
 
-    if (isNaN(date.getTime())) return 'unknown-month-invalid';
+// Helper to get YYYY-MM key (e.g., "2023-10") - (No changes needed here)
+const formatMonthYearKey = (dateStringOrDate) => {
+    let date;
+    if (typeof dateStringOrDate === 'string') {
+        const parts = dateStringOrDate.split('T')[0].split('-');
+        date = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parts[2] ? parseInt(parts[2]) : 1));
+    } else {
+        date = dateStringOrDate;
+    }
+    if (!date || isNaN(date.getTime())) return 'unknown-month-invalid';
     const year = date.getUTCFullYear();
     const month = date.getUTCMonth() + 1;
     return `${year}-${month < 10 ? '0' + month : month}`;
 };
 
-// Helper function to format month and year for display (e.g., "January 2023")
+// REVERTED and IMPROVED formatMonthYearDisplay for group headers
 const formatMonthYearDisplay = (dateString) => {
     if (!dateString) return "Invalid Date";
-    const dateParts = dateString.split('T')[0].split('-'); // Handles full ISO strings
-    const date = new Date(Date.UTC(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2])));
+    // Similar to formatDateDisplay, handle different date string inputs
+    const date = new Date(dateString);
     if (isNaN(date.getTime())) return "Invalid Date";
-    return date.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+    return date.toLocaleString('default', {
+        month: 'long',
+        year: 'numeric',
+        timeZone: dateString.includes('T') && dateString.includes('Z') ? 'UTC' : undefined
+    });
 };
 
-// Helper function to get the last day of the previous month in YYYY-MM-DD format
+// Helper function to get a date string in YYYY-MM-DD format - (No changes needed here)
+const getYYYYMMDD = (dateObj) => {
+    const year = dateObj.getFullYear();
+    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+    const day = dateObj.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+// Helper function to get the last day of the PREVIOUS month in YYYY-MM-DD format - (No changes needed here)
 const getLastDayOfPreviousMonth = () => {
     const today = new Date();
-    const firstDayCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDayPreviousMonth = new Date(firstDayCurrentMonth);
-    lastDayPreviousMonth.setDate(0); // Sets to the last day of the previous month
-    return lastDayPreviousMonth.toISOString().split('T')[0];
+    const lastDayPreviousMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+    return getYYYYMMDD(lastDayPreviousMonth);
 };
 
 
 function OldTransactionsPage() {
+    // ... (all state variables remain the same) ...
     const [oldTransactions, setOldTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [username, setUsername] = useState(() => localStorage.getItem('username') || 'User');
 
-    // State for "Add Past Transaction" (Individual Income/Expense)
+
+    const lastDayPrevMonthStatic = useMemo(() => getLastDayOfPreviousMonth(), []);
+
     const [formType, setFormType] = useState('expense');
     const [formAmount, setFormAmount] = useState('');
     const [formDescription, setFormDescription] = useState('');
     const [formCategory, setFormCategory] = useState('');
     const [formSelectedEmoji, setFormSelectedEmoji] = useState('');
     const [formShowEmojiPicker, setFormShowEmojiPicker] = useState(false);
-    const [formDate, setFormDate] = useState(getLastDayOfPreviousMonth());
-    const [formFrequency, setFormFrequency] = useState('once'); // Should be 'once' for old tx
+    const [formDate, setFormDate] = useState(lastDayPrevMonthStatic);
+    const [formFrequency, setFormFrequency] = useState('once');
     const [formIsSubmitting, setFormIsSubmitting] = useState(false);
     const [formError, setFormError] = useState('');
 
-    // State for "Add Monthly Total Savings"
-    const [monthlySavingsFormMonth, setMonthlySavingsFormMonth] = useState(formatMonthYearKey(getLastDayOfPreviousMonth()));
+    const [monthlySavingsFormMonth, setMonthlySavingsFormMonth] = useState(lastDayPrevMonthStatic.substring(0, 7));
     const [monthlySavingsFormAmount, setMonthlySavingsFormAmount] = useState('');
     const [monthlySavingsFormError, setMonthlySavingsFormError] = useState('');
     const [monthlySavingsFormIsSubmitting, setMonthlySavingsFormIsSubmitting] = useState(false);
@@ -94,10 +124,12 @@ function OldTransactionsPage() {
     const [editFormData, setEditFormData] = useState({ description: '', category: '', emoji: '', amount: '', type: '' });
     const [showEditEmojiPicker, setShowEditEmojiPicker] = useState(null);
 
-    const maxDateForForm = useMemo(() => getLastDayOfPreviousMonth(), []); // YYYY-MM-DD
-    const maxMonthForMonthlySavingsForm = useMemo(() => maxDateForForm.substring(0, 7), [maxDateForForm]); // YYYY-MM
+    const maxDateForForm = lastDayPrevMonthStatic;
+    const maxMonthForMonthlySavingsForm = lastDayPrevMonthStatic.substring(0,7);
 
-    const fetchOldTransactions = useCallback(async () => {
+
+    // ... (fetch functions: fetchOldTransactions, fetchMonthlyFinancialData remain the same) ...
+     const fetchOldTransactions = useCallback(async () => {
         setLoading(true); setError('');
         try {
             const token = localStorage.getItem('authToken');
@@ -121,9 +153,9 @@ function OldTransactionsPage() {
 
             let runningCumulative = 0;
             const processedData = (response.data || []).reduce((acc, item) => {
-                const netSavingsForMonth = item.savings || 0; // 'savings' is now directly from backend
+                const netSavingsForMonth = item.savings || 0;
                 runningCumulative += netSavingsForMonth;
-                acc[item.month] = {
+                acc[item.month] = { // item.month is YYYY-MM
                     netSavings: netSavingsForMonth,
                     cumulativeSavingsUpToMonth: runningCumulative
                 };
@@ -137,6 +169,7 @@ function OldTransactionsPage() {
         } finally { setLoadingSavings(false); }
     }, []);
 
+    // ... (useEffect hooks remain the same) ...
     useEffect(() => {
         const token = localStorage.getItem('authToken');
         if (token) {
@@ -157,8 +190,10 @@ function OldTransactionsPage() {
         return () => window.removeEventListener('transactions-updated', handleDataUpdate);
     }, [fetchOldTransactions, fetchMonthlyFinancialData]);
 
+
     const groupedTransactions = useMemo(() => {
         return oldTransactions.reduce((acc, transaction) => {
+            // transaction.date from backend is likely an ISO string
             const monthYearDisplayKey = formatMonthYearDisplay(transaction.date);
             if (!acc[monthYearDisplayKey]) { acc[monthYearDisplayKey] = []; }
             acc[monthYearDisplayKey].push(transaction);
@@ -167,9 +202,17 @@ function OldTransactionsPage() {
     }, [oldTransactions]);
 
     const sortedMonthKeys = useMemo(() => {
-        return Object.keys(groupedTransactions).sort((a, b) => new Date(b) - new Date(a));
+        return Object.keys(groupedTransactions).sort((a, b) => {
+            const parseMonthYear = (myStr) => {
+                const [monthName, yearStr] = myStr.split(' ');
+                const monthIndex = new Date(Date.parse(monthName +" 1, 2000")).getMonth(); // Get month index
+                return new Date(parseInt(yearStr), monthIndex, 1); // Create date for comparison
+            };
+            return parseMonthYear(b) - parseMonthYear(a); // Sort descending
+        });
     }, [groupedTransactions]);
 
+    // ... (handleAddOldTransaction and handleAddMonthlySavings with corrected date validations as per last response)
     const handleAddOldTransaction = async (event) => {
         event.preventDefault();
         setFormError('');
@@ -178,58 +221,68 @@ function OldTransactionsPage() {
         if (formIsSubmitting || loadingSavings) { if (loadingSavings) toast.info("Financial data is loading, please wait..."); return; }
 
         if (!formDate) { toast.error("Please select a date."); setFormError("Date is required."); return; }
+
         if (formDate > maxDateForForm) {
             toast.error(`Date must be in a past month. Max allowed date is ${formatDateDisplay(maxDateForForm)}.`);
             setFormError(`Date must be in a past month. Max allowed date is ${formatDateDisplay(maxDateForForm)}.`);
             return;
         }
+
+        const selectedMonthYearKey = formDate.substring(0, 7);
+        const today = new Date();
+        const currentMonthYearKey = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
+
+        if (selectedMonthYearKey >= currentMonthYearKey) {
+            toast.error("Please select a date from a previous month only.");
+            setFormError("Date must be from a previous month.");
+            return;
+        }
+
         if (!formAmount || parseFloat(formAmount) <= 0) { toast.error("Please enter a valid positive amount."); setFormError("Valid positive amount is required."); return; }
         const transactionAmountNum = parseFloat(formAmount);
         if (!formDescription.trim()) { toast.error("Please enter a description."); setFormError("Description is required."); return; }
         if (!formCategory.trim()) { toast.error("Please enter a category."); setFormError("Category is required."); return; }
 
-        // Check if a monthly total savings entry exists for this month
-        const transactionMonthKey = formDate.substring(0, 7); // YYYY-MM
+        const transactionMonthKeyForLogic = formDate.substring(0, 7);
         const hasMonthlyTotalForThisMonth = oldTransactions.some(
-            tx => tx.type === 'monthly_savings' && formatMonthYearKey(tx.date) === transactionMonthKey
+            tx => tx.type === 'monthly_savings' && formatMonthYearKey(tx.date) === transactionMonthKeyForLogic
         );
         if (hasMonthlyTotalForThisMonth) {
-            const monthName = new Date(formDate + "T12:00:00Z").toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+            const monthName = formatMonthYearDisplay(formDate);
             toast.error(`Cannot add individual transaction. A monthly total savings entry already exists for ${monthName}.`);
             setFormError(`A monthly total already exists for ${monthName}. Delete it to add individual transactions.`);
             return;
         }
-        
-        // Cumulative savings validation (for expense only)
-        if (formType === 'expense') {
-            const financialDataForMonth = monthlyFinancialData[transactionMonthKey];
-            const netSavingsForMonth = financialDataForMonth ? financialDataForMonth.netSavings : 0; // This should be from income-expense as no monthly_total exists
 
-            // This validation needs to consider cumulative savings.
-            // If adding this expense makes CUMULATIVE savings for THIS month negative, block.
+        if (formType === 'expense') {
+            const financialDataForMonth = monthlyFinancialData[transactionMonthKeyForLogic];
+            const netSavingsForMonth = financialDataForMonth ? financialDataForMonth.netSavings : 0;
+
             const sortedMonthKeysFromData = Object.keys(monthlyFinancialData).sort();
-            const currentMonthIndex = sortedMonthKeysFromData.indexOf(transactionMonthKey);
-            const cumulativeSavingsUpToPreviousMonth = currentMonthIndex > 0 
-                ? (monthlyFinancialData[sortedMonthKeysFromData[currentMonthIndex - 1]]?.cumulativeSavingsUpToMonth || 0)
+            const currentMonthIndex = sortedMonthKeysFromData.indexOf(transactionMonthKeyForLogic);
+            const cumulativeSavingsUpToPreviousMonth = currentMonthIndex > 0 && monthlyFinancialData[sortedMonthKeysFromData[currentMonthIndex - 1]]
+                ? (monthlyFinancialData[sortedMonthKeysFromData[currentMonthIndex - 1]].cumulativeSavingsUpToMonth || 0)
                 : 0;
-            
+
             const projectedNetForThisMonth = netSavingsForMonth - transactionAmountNum;
             const projectedCumulativeForThisMonth = cumulativeSavingsUpToPreviousMonth + projectedNetForThisMonth;
 
             if (projectedCumulativeForThisMonth < 0) {
-                 const monthName = new Date(formDate + "T12:00:00Z").toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-                 toast.error(`Adding this expense of ${formatCurrency(transactionAmountNum)} would make cumulative savings for ${monthName} negative (${formatCurrency(projectedCumulativeForThisMonth)}). Current net for month: ${formatCurrency(netSavingsForMonth)}`);
+                 const monthName = formatMonthYearDisplay(formDate);
+                 toast.error(`Adding this expense of ${formatCurrency(transactionAmountNum)} would make cumulative savings for ${monthName} negative (${formatCurrency(projectedCumulativeForThisMonth, null)}). Current net for month: ${formatCurrency(netSavingsForMonth, null)}`);
                  setFormError(`Expense (${formatCurrency(transactionAmountNum)}) would make cumulative savings for ${monthName} negative.`);
                  return;
             }
         }
 
         setFormIsSubmitting(true);
-        const newTransactionData = { type: formType, amount: transactionAmountNum, description: formDescription.trim(), category: formCategory.trim(), emoji: formSelectedEmoji, date: formDate, recurrence: 'once' }; // recurrence is 'once'
+        const newTransactionData = { type: formType, amount: transactionAmountNum, description: formDescription.trim(), category: formCategory.trim(), emoji: formSelectedEmoji, date: formDate, recurrence: 'once' };
         try {
             await axios.post('/api/transactions', newTransactionData, { headers: { Authorization: `Bearer ${token}` } });
             toast.success("Past transaction added successfully!");
-            setFormType('expense'); setFormAmount(''); setFormDescription(''); setFormCategory(''); setFormSelectedEmoji(''); setFormDate(getLastDayOfPreviousMonth()); setFormFrequency('once'); setFormShowEmojiPicker(false);
+            setFormType('expense'); setFormAmount(''); setFormDescription(''); setFormCategory(''); setFormSelectedEmoji('');
+            setFormDate(lastDayPrevMonthStatic);
+            setFormFrequency('once'); setFormShowEmojiPicker(false);
             window.dispatchEvent(new CustomEvent('transactions-updated'));
         } catch (err) {
             const message = err.response?.data?.message || "Failed to add transaction.";
@@ -245,6 +298,19 @@ function OldTransactionsPage() {
         if (monthlySavingsFormIsSubmitting || loadingSavings) { if (loadingSavings) toast.info("Financial data is loading, please wait..."); return; }
 
         if (!monthlySavingsFormMonth) { toast.error("Please select a month."); setMonthlySavingsFormError("Month is required."); return; }
+
+        if (monthlySavingsFormMonth > maxMonthForMonthlySavingsForm) {
+             toast.error(`Month must be a past month. Max allowed month is ${formatMonthYearDisplay(maxMonthForMonthlySavingsForm + '-01')}.`);
+             setMonthlySavingsFormError(`Month must be a past month.`);
+             return;
+        }
+        const currentMonthYearKey = new Date().toISOString().substring(0, 7);
+        if (monthlySavingsFormMonth >= currentMonthYearKey) {
+            toast.error("Please select a month from a previous month only.");
+            setMonthlySavingsFormError("Month must be from a previous month.");
+            return;
+        }
+
         if (monthlySavingsFormAmount.trim() === '' || isNaN(parseFloat(monthlySavingsFormAmount))) {
             toast.error("Please enter a valid amount.");
             setMonthlySavingsFormError("Valid amount is required.");
@@ -252,31 +318,27 @@ function OldTransactionsPage() {
         }
         const savingsAmountNum = parseFloat(monthlySavingsFormAmount);
 
-        // Check 1: Are there any individual transactions for this month?
         const hasIndividualTransactions = oldTransactions.some(
             tx => (tx.type === 'income' || tx.type === 'expense') && formatMonthYearKey(tx.date) === monthlySavingsFormMonth
         );
         if (hasIndividualTransactions) {
-            const monthName = formatMonthYearDisplay(monthlySavingsFormMonth + "-01T00:00:00Z");
+            const monthName = formatMonthYearDisplay(monthlySavingsFormMonth + "-01");
             toast.error(`Cannot add monthly total. Individual transactions exist for ${monthName}.`);
             setMonthlySavingsFormError(`Individual transactions exist for ${monthName}. Delete them first.`);
             return;
         }
 
-        // Check 2: Does a monthly total already exist? (Should be caught by backend too)
         const hasExistingMonthlyTotal = oldTransactions.some(
             tx => tx.type === 'monthly_savings' && formatMonthYearKey(tx.date) === monthlySavingsFormMonth
         );
         if (hasExistingMonthlyTotal) {
-            const monthName = formatMonthYearDisplay(monthlySavingsFormMonth + "-01T00:00:00Z");
+            const monthName = formatMonthYearDisplay(monthlySavingsFormMonth + "-01");
             toast.error(`A monthly total already exists for ${monthName}.`);
             setMonthlySavingsFormError(`A monthly total already exists for ${monthName}.`);
             return;
         }
 
-        // Check 3: Cumulative savings validation (especially for negative monthly savings)
         const sortedMonthKeysFromData = Object.keys(monthlyFinancialData).sort();
-        // Find key for month *before* monthlySavingsFormMonth
         let cumulativeSavingsUpToPreviousMonth = 0;
         let previousMonthKeyFound = null;
         for (let i = sortedMonthKeysFromData.length - 1; i >= 0; i--) {
@@ -285,16 +347,16 @@ function OldTransactionsPage() {
                 break;
             }
         }
-        if (previousMonthKeyFound) {
-            cumulativeSavingsUpToPreviousMonth = monthlyFinancialData[previousMonthKeyFound]?.cumulativeSavingsUpToMonth || 0;
+        if (previousMonthKeyFound && monthlyFinancialData[previousMonthKeyFound]) {
+            cumulativeSavingsUpToPreviousMonth = monthlyFinancialData[previousMonthKeyFound].cumulativeSavingsUpToMonth || 0;
         }
-        
+
         const projectedCumulativeForThisMonth = cumulativeSavingsUpToPreviousMonth + savingsAmountNum;
 
         if (projectedCumulativeForThisMonth < 0) {
-            const monthName = formatMonthYearDisplay(monthlySavingsFormMonth + "-01T00:00:00Z");
-            toast.error(`This total saving would make cumulative savings for ${monthName} negative (${formatCurrency(projectedCumulativeForThisMonth)}).`);
-            setMonthlySavingsFormError(`Cumulative savings would become ${formatCurrency(projectedCumulativeForThisMonth)}.`);
+            const monthName = formatMonthYearDisplay(monthlySavingsFormMonth + "-01");
+            toast.error(`This total saving would make cumulative savings for ${monthName} negative (${formatCurrency(projectedCumulativeForThisMonth, null)}).`);
+            setMonthlySavingsFormError(`Cumulative savings would become ${formatCurrency(projectedCumulativeForThisMonth, null)}.`);
             return;
         }
 
@@ -303,7 +365,7 @@ function OldTransactionsPage() {
         try {
             await axios.post('/api/transactions/monthly-savings', payload, { headers: { Authorization: `Bearer ${token}` } });
             toast.success("Monthly total savings added successfully!");
-            setMonthlySavingsFormMonth(formatMonthYearKey(getLastDayOfPreviousMonth()));
+            setMonthlySavingsFormMonth(lastDayPrevMonthStatic.substring(0,7));
             setMonthlySavingsFormAmount('');
             window.dispatchEvent(new CustomEvent('transactions-updated'));
         } catch (err) {
@@ -312,7 +374,6 @@ function OldTransactionsPage() {
         } finally { setMonthlySavingsFormIsSubmitting(false); }
     };
 
-
     const handleEditClick = (transaction) => {
         setEditingTransactionId(transaction._id);
         setEditFormData({
@@ -320,7 +381,7 @@ function OldTransactionsPage() {
             category: transaction.category,
             emoji: transaction.emoji || '',
             amount: transaction.amount.toString(),
-            type: transaction.type // Store original type
+            type: transaction.type
         });
         setShowEditEmojiPicker(null);
     };
@@ -336,19 +397,18 @@ function OldTransactionsPage() {
         if (!originalTx) return { projectedMonthNetSavings: null, projectedCumulativeAfterMonth: null, isValidAmount: false };
 
         const originalAmount = parseFloat(originalTx.amount) || 0;
-        const txType = originalTx.type; // Use originalTx.type which is set on edit click
+        const txType = originalTx.type;
         const newAmountInput = editFormData.amount.trim() === '' ? '0' : editFormData.amount;
         let newAmount = parseFloat(newAmountInput);
 
-        if (isNaN(newAmount) || ( (txType === 'income' || txType === 'expense') && newAmount < 0 ) ){ // Income/Expense can't be negative, monthly_savings can.
+        if (isNaN(newAmount) || ( (txType === 'income' || txType === 'expense') && newAmount < 0 ) ){
              return { projectedMonthNetSavings: null, projectedCumulativeAfterMonth: null, isValidAmount: false };
         }
-        if (txType === 'income' || txType === 'expense') { // Enforce positive for these types
-            if (newAmount <= 0 && newAmountInput.trim() !== '') { // Allow typing '0' but mark invalid if not empty
+        if (txType === 'income' || txType === 'expense') {
+            if (newAmount <= 0 && newAmountInput.trim() !== '') {
                  return { projectedMonthNetSavings: null, projectedCumulativeAfterMonth: null, isValidAmount: false };
             }
         }
-
 
         const txMonthKey = formatMonthYearKey(originalTx.date);
         const monthDataForTx = monthlyFinancialData[txMonthKey] || { netSavings: 0, cumulativeSavingsUpToMonth: 0 };
@@ -356,29 +416,24 @@ function OldTransactionsPage() {
 
         const sortedMonthKeysFromData = Object.keys(monthlyFinancialData).sort();
         const currentMonthIndex = sortedMonthKeysFromData.indexOf(txMonthKey);
-        const cumulativeSavingsUpToPreviousMonth = currentMonthIndex > 0
-            ? (monthlyFinancialData[sortedMonthKeysFromData[currentMonthIndex - 1]]?.cumulativeSavingsUpToMonth || 0)
+        const cumulativeSavingsUpToPreviousMonth = currentMonthIndex > 0 && monthlyFinancialData[sortedMonthKeysFromData[currentMonthIndex - 1]]
+            ? (monthlyFinancialData[sortedMonthKeysFromData[currentMonthIndex - 1]].cumulativeSavingsUpToMonth || 0)
             : 0;
 
         let projectedNetSavingsForTxMonth;
-
         if (txType === 'monthly_savings') {
-            projectedNetSavingsForTxMonth = newAmount; // The new amount IS the net savings
-        } else { // income or expense
-            // If we are editing an income/expense, and a monthly_savings exists for this month,
-            // this scenario should ideally not happen or be blocked.
-            // For calculation: change from original amount reflects on current net savings
-            const amountDifference = newAmount - originalAmount;
+            projectedNetSavingsForTxMonth = newAmount;
+        } else {
+            const amountDifferenceIndividual = newAmount - originalAmount;
             if (txType === 'income') {
-                projectedNetSavingsForTxMonth = currentNetSavingsForTxMonth + amountDifference;
+                projectedNetSavingsForTxMonth = currentNetSavingsForTxMonth + amountDifferenceIndividual;
             } else { // expense
-                projectedNetSavingsForTxMonth = currentNetSavingsForTxMonth - amountDifference;
+                projectedNetSavingsForTxMonth = currentNetSavingsForTxMonth - amountDifferenceIndividual;
             }
         }
-        
-        const projectedCumulativeAfterMonth = cumulativeSavingsUpToPreviousMonth + projectedNetSavingsForTxMonth;
 
-        const isValidForProjection = (txType === 'monthly_savings' && !isNaN(newAmount)) || 
+        const projectedCumulativeAfterMonth = cumulativeSavingsUpToPreviousMonth + projectedNetSavingsForTxMonth;
+        const isValidForProjection = (txType === 'monthly_savings' && !isNaN(newAmount)) ||
                                      ((txType === 'income' || txType === 'expense') && newAmount > 0 && !isNaN(newAmount));
 
         return {
@@ -414,11 +469,15 @@ function OldTransactionsPage() {
 
         if (loadingSavings) { toast.info("Financial data is loading, please wait to save."); return; }
 
-        // Use projections for validation, which should now be accurate due to backend changes
-        if (projections.projectedCumulativeAfterMonth < 0 && projections.isValidAmount) {
+        if (!projections.isValidAmount) {
+            toast.error("Invalid amount entered for projection.");
+            return;
+        }
+
+        if (projections.projectedCumulativeAfterMonth < 0) {
             const txMonthForDisplay = formatMonthYearDisplay(originalTransaction.date);
             toast.error(
-                `Cannot save. This change would make cumulative savings up to ${txMonthForDisplay} negative (${formatCurrency(projections.projectedCumulativeAfterMonth)}).`
+                `Cannot save. This change would make cumulative savings up to ${txMonthForDisplay} negative (${formatCurrency(projections.projectedCumulativeAfterMonth,null)}).`
             );
             return;
         }
@@ -429,7 +488,6 @@ function OldTransactionsPage() {
             updatePayload.category = editFormData.category.trim();
             updatePayload.emoji = editFormData.emoji;
         }
-        // For monthly_savings, backend will set desc/cat/emoji
 
         try {
             await axios.put(`/api/transactions/${transactionId}`, updatePayload, { headers: { Authorization: `Bearer ${token}` } });
@@ -450,53 +508,32 @@ function OldTransactionsPage() {
         if (!txToDelete) { toast.error("Transaction not found for deletion."); return; }
         if (loadingSavings) { toast.info("Financial data is loading, please wait to delete."); return; }
 
-        // Calculate projected cumulative after deletion
         const txMonthKey = formatMonthYearKey(txToDelete.date);
-        const monthData = monthlyFinancialData[txMonthKey] || { netSavings: 0, cumulativeSavingsUpToMonth: 0 };
-        
+        const monthDataForTx = monthlyFinancialData[txMonthKey] || { netSavings: 0, cumulativeSavingsUpToMonth: 0 };
+
         const sortedMonthKeysFromData = Object.keys(monthlyFinancialData).sort();
         const currentMonthIndex = sortedMonthKeysFromData.indexOf(txMonthKey);
-        const cumulativeSavingsUpToPreviousMonth = currentMonthIndex > 0
-            ? (monthlyFinancialData[sortedMonthKeysFromData[currentMonthIndex - 1]]?.cumulativeSavingsUpToMonth || 0)
+        const cumulativeSavingsUpToPreviousMonth = currentMonthIndex > 0 && monthlyFinancialData[sortedMonthKeysFromData[currentMonthIndex - 1]]
+            ? (monthlyFinancialData[sortedMonthKeysFromData[currentMonthIndex - 1]].cumulativeSavingsUpToMonth || 0)
             : 0;
 
         let projectedNetSavingsForTxMonthAfterDelete;
         if (txToDelete.type === 'monthly_savings') {
-            projectedNetSavingsForTxMonthAfterDelete = 0; // Deleting summary means net savings for month is 0 (as no other txns should exist)
+            projectedNetSavingsForTxMonthAfterDelete = 0;
         } else if (txToDelete.type === 'income') {
-            projectedNetSavingsForTxMonthAfterDelete = monthData.netSavings - txToDelete.amount;
+            projectedNetSavingsForTxMonthAfterDelete = monthDataForTx.netSavings - txToDelete.amount;
         } else { // expense
-            projectedNetSavingsForTxMonthAfterDelete = monthData.netSavings + txToDelete.amount;
+            projectedNetSavingsForTxMonthAfterDelete = monthDataForTx.netSavings + txToDelete.amount;
         }
         const projectedCumulativeAfterMonthAfterDelete = cumulativeSavingsUpToPreviousMonth + projectedNetSavingsForTxMonthAfterDelete;
 
-        // Check subsequent months as well due to ripple effect (Backend handles the definitive check)
-        // For client-side, this is a good first-pass check.
         if (projectedCumulativeAfterMonthAfterDelete < 0) {
-             // Check if any *subsequent* month's cumulative also goes negative if this one doesn't
-            let tempCumulative = projectedCumulativeAfterMonthAfterDelete;
-            let subsequentNegative = false;
-            const txMonthDate = new Date(txToDelete.date);
-            
-            for (let i = currentMonthIndex + 1; i < sortedMonthKeysFromData.length; i++) {
-                const nextMonthKey = sortedMonthKeysFromData[i];
-                const nextMonthData = monthlyFinancialData[nextMonthKey];
-                if (nextMonthData) {
-                     // Adjust the net savings of subsequent months based on the change
-                    // This is simplified; the backend re-evaluates properly.
-                    // This check should mainly focus on the immediate month of deletion.
-                    // If deleting makes THIS month's cumulative negative, that's the primary concern.
-                }
-            }
-            // The backend will perform the more rigorous check across all months.
-            // This client-side check is a strong indicator.
              const txMonthForDisplay = formatMonthYearDisplay(txToDelete.date);
              toast.error(
-                 `Cannot delete. This would make cumulative savings up to ${txMonthForDisplay} negative (${formatCurrency(projectedCumulativeAfterMonthAfterDelete)}).`
+                 `Cannot delete. This would make cumulative savings up to ${txMonthForDisplay} negative (${formatCurrency(projectedCumulativeAfterMonthAfterDelete,null)}).`
              );
              return;
         }
-
 
         if (!window.confirm(`Are you sure you want to delete this ${txToDelete.type === 'monthly_savings' ? 'monthly total' : txToDelete.type} of ${formatCurrency(txToDelete.amount, txToDelete.type)}? This action cannot be undone.`)) { return; }
 
@@ -521,8 +558,7 @@ function OldTransactionsPage() {
         const tableRows = [];
         doc.setFontSize(18);
         doc.text(`Old Transactions (Before Current Month) for ${username}`, 14, 22);
-        
-        // Create a flat list of transactions, sorted by date for the PDF
+
         const flatSortedTransactions = [...oldTransactions].sort((a,b) => new Date(a.date) - new Date(b.date));
 
         flatSortedTransactions.forEach(tx => {
@@ -551,9 +587,10 @@ function OldTransactionsPage() {
         toast.success("PDF of old transactions downloaded!");
     };
 
+
     const currentToken = localStorage.getItem('authToken');
 
-    if (!currentToken && error && !loading) { // If not logged in and there's a relevant error (e.g. "please log in")
+    if (!currentToken && error && !loading) {
         return (
             <div className={styles.container}>
                 <h2>Old Transactions Management</h2>
@@ -564,7 +601,7 @@ function OldTransactionsPage() {
     if (loading || loadingSavings) {
         return <div className={styles.container}><p>Loading data...</p></div>;
     }
-    
+
 
     return (
         <div className={styles.container}>
@@ -577,7 +614,6 @@ function OldTransactionsPage() {
                 </div>
             </div>
 
-            {/* Section for Adding Monthly Total Savings */}
             <section className={`${styles.sectionBox} ${styles.addMonthlySavingsSection}`}>
                 <h3 className={styles.sectionTitle}><FaCalculator style={{ marginRight: '8px' }} /> Add Monthly Total Savings</h3>
                 {!currentToken && <p className={styles.loginPrompt}>Please log in to add monthly savings.</p>}
@@ -619,7 +655,6 @@ function OldTransactionsPage() {
                 )}
             </section>
 
-            {/* Section for Adding Individual Past Transaction */}
             <section className={`${styles.sectionBox} ${styles.addOldTransactionSection}`}>
                 <h3 className={styles.sectionTitle}>Add an Individual Past Transaction</h3>
                 {!currentToken && <p className={styles.loginPrompt}>Please log in to add transactions.</p>}
@@ -645,7 +680,16 @@ function OldTransactionsPage() {
                         </div>
                         <div className={styles.formGroup}>
                             <label htmlFor="form-date">Date (Past Months Only):</label>
-                            <input type="date" id="form-date" value={formDate} onChange={(e) => setFormDate(e.target.value)} required className={styles.formInput} max={maxDateForForm} disabled={formIsSubmitting || loadingSavings} />
+                            <input
+                                type="date"
+                                id="form-date"
+                                value={formDate}
+                                onChange={(e) => setFormDate(e.target.value)}
+                                required
+                                className={styles.formInput}
+                                max={maxDateForForm}
+                                disabled={formIsSubmitting || loadingSavings}
+                            />
                         </div>
                         <div className={styles.formGroup}>
                             <label htmlFor="form-amount">Amount (Positive):</label>
@@ -659,7 +703,7 @@ function OldTransactionsPage() {
                             <label htmlFor="form-category">Category:</label>
                             <input type="text" id="form-category" value={formCategory} onChange={(e) => setFormCategory(e.target.value)} placeholder="e.g., Utilities" required className={styles.formInput} disabled={formIsSubmitting || loadingSavings} />
                         </div>
-                        <input type="hidden" id="form-frequency" value={formFrequency} /> {/* Frequency is always 'once' */}
+                        <input type="hidden" id="form-frequency" value={formFrequency} />
 
                         <button type="submit" className={styles.submitButtonWide} disabled={formIsSubmitting || loadingSavings}>
                             {formIsSubmitting ? 'Adding...' : (loadingSavings ? 'Loading Data...' : 'Add Individual Past Transaction')}
@@ -714,8 +758,8 @@ function OldTransactionsPage() {
                                                     </div>
                                                 ) : (
                                                     <span className={styles.transactionDetailsOld}>
-                                                        {transaction.type === 'monthly_savings' 
-                                                          ? transaction.description // e.g. "Total Savings for January 2023"
+                                                        {transaction.type === 'monthly_savings'
+                                                          ? transaction.description
                                                           : `${transaction.description} (${transaction.category})`
                                                         }
                                                     </span>
