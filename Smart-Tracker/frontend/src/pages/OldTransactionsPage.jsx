@@ -692,7 +692,7 @@ function OldTransactionsPage() {
                             />
                         </div>
                         <div className={styles.formGroup}>
-                            <label htmlFor="form-amount">Amount (Positive):</label>
+                            <label htmlFor="form-amount">Amount:</label>
                             <input type="number" id="form-amount" value={formAmount} onChange={(e) => setFormAmount(e.target.value)} placeholder="0.00" required step="0.01" min="0.01" className={styles.formInput} disabled={formIsSubmitting || loadingSavings} />
                         </div>
                         <div className={styles.formGroup}>
