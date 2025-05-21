@@ -1082,4 +1082,87 @@
   is also implicitly removed as that entire media query block is gone.
 */
 
+/* Dashboard.module.css */
+
+/* ... (all your existing styles) ... */
+
+/* NEW: Styles for the Income Details Row */
+.incomeDetailsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Two equal columns */
+  gap: 1.5rem; /* Same gap as mainArea */
+  margin-bottom: 1.5rem; /* Space below this new row */
+}
+
+
+
+.incomeCategoryChartSection {
+  /* Inherits .sectionBox styles */
+  /* Add specific overrides if .sectionBox isn't enough */
+  align-items: center; /* Center chart horizontally if needed */
+}
+
+/* Adjust chart container height for the new income pie chart */
+.incomeCategoryChartSection .chartContainer {
+  height: 300px; /* Or adjust as preferred */
+  /* Other .chartContainer styles like width, display:flex etc. will be inherited */
+}
+
+/* Responsive Adjustments for Income Details Row */
+@media (max-width: 992px) { /* Or your preferred breakpoint for stacking */
+  .incomeDetailsRow {
+    grid-template-columns: 1fr; /* Stack columns on smaller screens */
+  }
+}
+
+/* Ensure non-critical error banner has a higher z-index if it overlaps emoji picker */
+.nonCriticalError {
+  position: relative; /* Or a specific z-index if needed */
+  z-index: 5; /* Lower than emoji picker's z-index (usually 1000+) but above normal content */
+}
+
+/* Make sure emoji picker is on top */
+.emojiPickerContainer {
+  position: absolute;
+  z-index: 1050; /* High z-index to be on top of other elements */
+  /* Add other styles like background, border, shadow as per your theme */
+  background-color: var(--box-bg-light, #fff);
+  border: 1px solid var(--border-light, #ccc);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  border-radius: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  .emojiPickerContainer {
+    background-color: var(--box-bg-dark, #2d3748);
+    border-color: var(--border-dark, #4a5568);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  }
+}
+
+
+/* Existing chart container style (ensure it's generic enough or adjust) */
+.chartContainer {
+  width: 100%;
+  /* height: 400px; -- Height is now set specifically in .incomeCategoryChartSection .chartContainer and original .chartSection */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+
+/* Placeholder content if you want to style it for the income pie chart specifically */
+.incomeCategoryChartSection .placeholderContent {
+  min-height: 200px; /* Adjust if needed */
+}
+
+/*
+  If you have specific height set on .chartContainer globally,
+  you might need to override it for each chart instance or make the global one more flexible.
+  The example above sets height for .incomeCategoryChartSection .chartContainer specifically.
+  The existing .chartSection for "Current Month Financial Overview" also has height: 300px in its JSX,
+  so the global .chartContainer height: 400px might not be strictly necessary if individual charts define their height.
+*/
+
+/* Your other CSS rules */
 /* --- End of file --- */

@@ -7,12 +7,15 @@ import styles from './Dashboard.module.css';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import Picker from 'emoji-picker-react';
 import axios from 'axios';
-import { FaBullseye, FaPiggyBank, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaBullseye, FaPiggyBank } from 'react-icons/fa'; // Removed FaEdit, FaTrash as they are not directly used in Dashboard render
 
-// -- Inline Icon Components Placeholder --
-// const BalanceIcon = ({ className }) => <img src="/path/to/balance-icon.svg" alt="Balance" className={className || styles.summaryIcon} />;
-// const IncomeIcon = ({ className }) => <img src="/path/to/income-icon.svg" alt="Income" className={`${className || styles.summaryIcon} ${styles.incomeIconColor}`} />;
-// const ExpenseIcon = ({ className }) => <img src="/path/to/expense-icon.svg" alt="Expense" className={`${className || styles.summaryIcon} ${styles.expenseIconColor}`} />;
+// Define a color palette for the income category pie chart
+const INCOME_CATEGORY_COLORS = [
+  '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A230ED',
+  '#FF5733', '#33FF57', '#3357FF', '#FF33A8', '#A833FF',
+  '#FF6666', '#66FF66', '#6666FF', '#FFFF66', '#FF66FF',
+];
+
 
 const formatCurrency = (value) => {
 const numValue = parseFloat(value);
@@ -32,6 +35,7 @@ return 'Invalid Date';
 const utcDate = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 return utcDate.toLocaleDateString('en-US', { timeZone: 'UTC', ...options });
 };
+
 
 function Dashboard() {
 console.log("--- Dashboard Component Render Start ---");
@@ -70,6 +74,11 @@ const [currentMonthExpenseTotalForDisplay, setCurrentMonthExpenseTotalForDisplay
 const [recentGoals, setRecentGoals] = useState([]);
 const [loadingGoals, setLoadingGoals] = useState(true);
 
+// New state for current month's income transactions (for list and pie chart)
+const [currentMonthIncomeTransactions, setCurrentMonthIncomeTransactions] = useState([]);
+const [loadingCurrentMonthIncome, setLoadingCurrentMonthIncome] = useState(true);
+
+
 const fetchDashboardData = useCallback(async () => {
 setLoading(true);
 try {
@@ -81,6 +90,7 @@ headers: { 'Authorization': `Bearer ${token}` },
 const data = response.data;
 setTotalIncome(data.totalIncome || 0);
 setTotalExpense(data.totalExpense || 0);
+// Assuming data.recentTransactions includes all types for the "Recent Transactions" section
 setTransactions(data.recentTransactions || []);
 } catch (err) {
 console.error("Error fetching dashboard data:", err.response?.data || err);
@@ -122,7 +132,7 @@ const monthlySavings = parseFloat(item.savings) || 0;
 cumulativeTotal += monthlySavings;
 return { ...item, savings: monthlySavings, cumulativeSavings: cumulativeTotal };
 });
-setMonthlySavingsData(processedData); // This data will be used for the bar chart
+setMonthlySavingsData(processedData);
 setCurrentCumulativeSavings(cumulativeTotal);
 } catch (err) {
 console.error("Error fetching financial summary/savings data:", err.response?.data || err);
@@ -178,6 +188,30 @@ setLoadingGoals(false);
 }
 }, []);
 
+// New function to fetch all income transactions for the current month
+const fetchCurrentMonthIncomeData = useCallback(async () => {
+    setLoadingCurrentMonthIncome(true);
+    try {
+        const token = localStorage.getItem('authToken');
+        if (!token) throw new Error("Auth token not found for current month income.");
+        const response = await axios.get('/api/transactions/current-month/income', {
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+        const incomeData = response.data || [];
+        // Sort by date descending to easily get recent ones
+        incomeData.sort((a, b) => new Date(b.date) - new Date(a.date));
+        setCurrentMonthIncomeTransactions(incomeData);
+    } catch (err) {
+        console.error("Error fetching current month income data:", err.response?.data || err);
+        const msg = (err.response?.data?.message || err.message || "Failed to load current month income.").substring(0, 150);
+        setError(prev => prev ? `${prev}\nMonthIncome: ${msg}` : `MonthIncome: ${msg}`);
+        setCurrentMonthIncomeTransactions([]);
+    } finally {
+        setLoadingCurrentMonthIncome(false);
+    }
+}, []);
+
+
 useEffect(() => {
 setError(null);
 const token = localStorage.getItem('authToken');
@@ -186,6 +220,7 @@ fetchDashboardData();
 fetchFinancialSummaryAndSavings();
 fetchLimitsFromAPI();
 fetchRecentGoalsFromAPI();
+fetchCurrentMonthIncomeData(); // Fetch current month income data
 
 const storedCategories = localStorage.getItem('allCategories');
     if (storedCategories) {
@@ -201,7 +236,7 @@ const storedCategories = localStorage.getItem('allCategories');
                 setRegistrationDate(regDate.toISOString().split('T')[0]);
             }
             if(profileResponse.data.username) {
-                setUsername(profileResponse.data.username); // Set username from profile
+                setUsername(profileResponse.data.username);
                 localStorage.setItem('username', profileResponse.data.username);
             }
         } catch (err) {
@@ -212,12 +247,11 @@ const storedCategories = localStorage.getItem('allCategories');
     fetchUserProfile();
 } else {
     setError("Please log in to view the dashboard.");
-    setLoading(false); setLoadingLimits(false); setLoadingFinancialSummary(false); setLoadingGoals(false);
-    setTotalIncome(0); setTotalExpense(0); setTransactions([]); setLimits([]); setMonthlySavingsData([]); setCurrentCumulativeSavings(0); setRecentGoals([]);
+    setLoading(false); setLoadingLimits(false); setLoadingFinancialSummary(false); setLoadingGoals(false); setLoadingCurrentMonthIncome(false);
+    setTotalIncome(0); setTotalExpense(0); setTransactions([]); setLimits([]); setMonthlySavingsData([]); setCurrentCumulativeSavings(0); setRecentGoals([]); setCurrentMonthIncomeTransactions([]);
 }
-
-
-}, [fetchDashboardData, fetchFinancialSummaryAndSavings, fetchLimitsFromAPI, fetchRecentGoalsFromAPI, fetchAllCategoriesFromAPI]);
+// Added fetchCurrentMonthIncomeData to dependencies
+}, [fetchDashboardData, fetchFinancialSummaryAndSavings, fetchLimitsFromAPI, fetchRecentGoalsFromAPI, fetchAllCategoriesFromAPI, fetchCurrentMonthIncomeData]);
 
 useEffect(() => {
 setCurrentMonthIncomeTotalForDisplay(totalIncome);
@@ -233,13 +267,15 @@ fetchDashboardData();
 fetchFinancialSummaryAndSavings();
 fetchLimitsFromAPI();
 fetchRecentGoalsFromAPI();
+fetchCurrentMonthIncomeData(); // Re-fetch current month income on update
 }
 };
 window.addEventListener('transactions-updated', handleDataUpdate);
 return () => {
 window.removeEventListener('transactions-updated', handleDataUpdate);
 };
-}, [fetchDashboardData, fetchFinancialSummaryAndSavings, fetchLimitsFromAPI, fetchRecentGoalsFromAPI]);
+// Added fetchCurrentMonthIncomeData to dependencies
+}, [fetchDashboardData, fetchFinancialSummaryAndSavings, fetchLimitsFromAPI, fetchRecentGoalsFromAPI, fetchCurrentMonthIncomeData]);
 
 useEffect(() => {
 if (type === 'expense' && category.trim() !== '' && limits.length > 0) {
@@ -252,6 +288,28 @@ setCategoryLimitWarning(`Limit for "${relevantLimit.category}" is nearly or alre
 }, [category, type, limits]);
 
 const currentMonthBalanceForDisplay = useMemo(() => totalIncome - totalExpense, [totalIncome, totalExpense]);
+
+// Data for "Recent Income Transactions" list
+const recentIncomeForDisplay = useMemo(() => {
+    return currentMonthIncomeTransactions.slice(0, 5); // Already sorted by date descending from fetch
+}, [currentMonthIncomeTransactions]);
+
+// Data for "Income Breakdown by Category" pie chart
+const incomeByCategoryPieData = useMemo(() => {
+    if (!currentMonthIncomeTransactions || currentMonthIncomeTransactions.length === 0) {
+        return [];
+    }
+    const categoryMap = currentMonthIncomeTransactions.reduce((acc, tx) => {
+        const cat = tx.category || 'Uncategorized'; // Handle undefined/empty categories
+        acc[cat] = (acc[cat] || 0) + (parseFloat(tx.amount) || 0);
+        return acc;
+    }, {});
+
+    return Object.entries(categoryMap)
+                 .map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }))
+                 .filter(item => item.value > 0); // Ensure only categories with value are shown
+}, [currentMonthIncomeTransactions]);
+
 
 const handleAddTransaction = async (event) => {
 event.preventDefault();
@@ -337,13 +395,17 @@ try {
 }
 };
 
+// handleDeleteTransaction is not directly used by any UI element in Dashboard.js after recent changes.
+// If there's no "delete" button on the dashboard itself for transactions, this can be removed.
+// However, if it's intended for future use or if other components rely on Dashboard exporting it, keep it.
+// For now, I'll comment it out as it's not actively used by the Dashboard's rendered output.
+/*
 const handleDeleteTransaction = async (transactionId) => {
 if (!window.confirm("Are you sure you want to delete this transaction?")) return;
 setError(null);
 try {
 const token = localStorage.getItem('authToken');
 if (!token) throw new Error("Authentication token not found for delete.");
-// Using axios for consistency
 await axios.delete(`/api/transactions/${transactionId}`, {
 headers: { 'Authorization': `Bearer ${token}` }
 });
@@ -356,6 +418,7 @@ setError(prev => prev ? `${prev}\nDelete: ${deleteErrorMsg}` : `Delete: ${delete
 toast.error(deleteErrorMsg);
 }
 };
+*/
 
 const pieChartDataForRender = useMemo(() => {
 const data = [];
@@ -372,31 +435,29 @@ return data;
 }, [totalIncome, totalExpense, currentMonthBalanceForDisplay]);
 
 const colorMapping = {
-'Income': '#34D399',      // Green
-'Expenses': '#F87171',    // Red
-'Balance': '#7091E6'     // Light Blue (Your primary accent light)
+'Income': '#34D399',
+'Expenses': '#F87171',
+'Balance': '#7091E6'
 };
 
 const filteredPieData = pieChartDataForRender.filter(item => item.value > 0);
 const hasChartData = filteredPieData.length > 0;
 
-// Prepare data for the Monthly Savings Bar Chart
 const savingsChartData = useMemo(() => {
     if (!monthlySavingsData || monthlySavingsData.length === 0) {
         return [];
     }
-    // Show up to the last 12 months of savings data
     const dataSlice = monthlySavingsData.slice(-12);
     return dataSlice.map(item => ({
-        // The 'month' from backend is expected to be a string like "YYYY-MM-01"
         name: formatDate(item.month, { month: 'short', year: '2-digit' }),
         Savings: parseFloat(item.savings?.toFixed(2) || 0),
     }));
 }, [monthlySavingsData]);
 
 
-const pageIsLoading = loading || loadingLimits || loadingFinancialSummary || loadingGoals;
-const isPageLoading = pageIsLoading; // Alias for clarity in one spot below
+// Updated pageIsLoading check
+const pageIsLoading = loading || loadingLimits || loadingFinancialSummary || loadingGoals || loadingCurrentMonthIncome;
+const isPageLoading = pageIsLoading; 
 
 if (pageIsLoading && !localStorage.getItem('authToken')) {
 return <div className={styles.dashboardPageContent}><p className={styles.loadingMessage}>Checking authentication...</p></div>;
@@ -415,7 +476,7 @@ Please <Link to="/login">log in</Link> to view your dashboard.
 </div>
 );
 }
-const showMajorError = error && !loading && !loadingFinancialSummary && !loadingLimits && !loadingGoals && transactions.length === 0 && limits.length === 0 && recentGoals.length === 0;
+const showMajorError = error && !loading && !loadingFinancialSummary && !loadingLimits && !loadingGoals && !loadingCurrentMonthIncome && transactions.length === 0 && limits.length === 0 && recentGoals.length === 0 && currentMonthIncomeTransactions.length === 0;
 if (showMajorError ) {
 return (
 <div className={styles.dashboardPageContent}>
@@ -423,7 +484,7 @@ return (
 <div className={styles.pageErrorBanner}>
 Failed to load essential dashboard components. Please try refreshing.
 <br/>
-<small>Details: {error.split('\n').map((e,i)=> <span key={i}>{e.replace(/(Dashboard: |Profile: |Limits: |Monthly Savings: |Goals: |Auth: |Submit: )/g, '')}<br/></span>)}</small>
+<small>Details: {error.split('\n').map((e,i)=> <span key={i}>{e.replace(/(Dashboard: |Profile: |Limits: |Monthly Savings: |Goals: |Auth: |Submit: |MonthIncome: )/g, '')}<br/></span>)}</small>
 </div>
 </div>
 );
@@ -433,10 +494,9 @@ return (
 <div className={styles.dashboardPageContent}>
 <h1 className={styles.pageTitle}>Welcome back, {username}!</h1>
 
-
 {error && !showMajorError && (
      <div className={`${styles.pageErrorBanner} ${styles.nonCriticalError}`}>
-        Some data might be unavailable: {error.split('\n').map((e,i)=> <span key={i}>{e.replace(/(Dashboard: |Profile: |Limits: |Monthly Savings: |Goals: |Submit: |Auth: |Delete: )/g, '')}<br/></span>)}
+        Some data might be unavailable: {error.split('\n').map((e,i)=> <span key={i}>{e.replace(/(Dashboard: |Profile: |Limits: |Monthly Savings: |Goals: |Submit: |Auth: |Delete: |MonthIncome: )/g, '')}<br/></span>)}
      </div>
    )}
    {!localStorage.getItem('authToken') && !error && !isPageLoading && (
@@ -473,17 +533,17 @@ return (
     </div>
   </section>
 
-  {/* Main Content Area Grid */}
+  {/* Main Content Area Grid (Existing Recent Transactions and Financial Overview) */}
   <div className={styles.mainArea}>
     <section className={`${styles.sectionBox} ${styles.transactionsSection}`}>
       <div className={styles.sectionHeader}>
         <h2 className={styles.sectionTitle}>Recent Transactions (Current Month)</h2>
         <Link to="/transactions" className={styles.seeAllButton}>See All</Link>
       </div>
-       {loading && transactions.length === 0 ? <div className={styles.placeholderContent}>Loading transactions...</div> : 
+       {(loading && transactions.length === 0 && !error) ? <div className={styles.placeholderContent}>Loading transactions...</div> : 
         transactions.length > 0 ? (
          <div className={styles.transactionList}>
-           {transactions.slice(0,5).map((tx) => ( // Displaying latest 5 transactions
+           {transactions.slice(0,5).map((tx) => (
              <div key={tx._id} className={`${styles.transactionItem} ${tx.type === 'income' ? styles.incomeBorder : styles.expenseBorder}`}>
                <span className={styles.transactionDate}>{formatDate(tx.date, { month: 'short', day: 'numeric' })}</span>
                <span className={styles.transactionDesc}>
@@ -502,7 +562,7 @@ return (
     <section className={`${styles.sectionBox} ${styles.chartSection}`}>
        <h2 className={styles.sectionTitle}>Current Month Financial Overview</h2>
         <div className={styles.chartContainer}>
-         {(loading && !hasChartData) ? <div className={styles.placeholderContent}>Loading chart data...</div> :
+         {((loading || loadingFinancialSummary) && !hasChartData && !error) ? <div className={styles.placeholderContent}>Loading chart data...</div> :
           hasChartData ? (
            <ResponsiveContainer width="100%" height={300}>
              <PieChart>
@@ -515,7 +575,7 @@ return (
                     fill="#8884d8" 
                     dataKey="value" 
                     nameKey="name" 
-                    label={({ name, value }) => `${name}: $${value}`}
+                    label={({ name, value }) => `${name}: ${formatCurrency(value)}`}
                 >
                  {filteredPieData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={colorMapping[entry.name] || '#8884d8'} />
@@ -525,7 +585,7 @@ return (
                <Legend />
              </PieChart>
            </ResponsiveContainer>
-          ) : ( <div className={styles.placeholderContent} style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}> No income or expense data for the current month. </div> )}
+          ) : ( <div className={styles.placeholderContent} style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}> No income or expense data for the current month. </div> )}
        </div>
    </section>
   </div>
@@ -610,7 +670,7 @@ return (
             <h2 className={styles.sectionTitle}>Spending Limits</h2>
             <Link to="/limits" className={`${styles.seeAllButton} ${styles.limitsSeeAll}`}>Manage Limits</Link>
         </div>
-        {loadingLimits ? (
+        {loadingLimits && limits.length === 0 && !error ? (
           <div className={styles.placeholderContent}>Loading limits...</div>
         ) : limits.length > 0 ? (
           <>
@@ -658,7 +718,7 @@ return (
             <h2 className={styles.sectionTitle}><FaBullseye style={{marginRight: '8px'}}/>Active Goals</h2>
             <Link to="/goals" className={styles.seeAllButton}>Manage Goals</Link>
         </div>
-        {loadingGoals ? (<div className={styles.placeholderContent}>Loading goals...</div>)
+        {loadingGoals && recentGoals.length === 0 && !error ? (<div className={styles.placeholderContent}>Loading goals...</div>)
         : recentGoals.length > 0 ? (
             <div className={styles.goalListDashboard}>
                 {recentGoals.map(goal => (
@@ -687,18 +747,17 @@ return (
         ) : ( <div className={styles.placeholderContent}> No active goals. <Link to="/goals">Set a Goal!</Link> </div>)}
     </section>
 
-    {/* --- Monthly Savings Bar Chart Section (Moved here) --- */}
-    <section className={`${styles.sectionBox} ${styles.savingsChartSection}`}> {/* Ensure it uses sectionBox */}
+    <section className={`${styles.sectionBox} ${styles.savingsChartSection}`}>
         <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Monthly Savings Trend</h2> {/* Shortened title for smaller space */}
+            <h2 className={styles.sectionTitle}>Monthly Savings Trend</h2>
             <Link to="/savings" className={styles.seeAllButton}>Full Report</Link>
         </div>
         <div className={styles.chartContainer}>
-            {loadingFinancialSummary && savingsChartData.length === 0 ? (
+            {loadingFinancialSummary && savingsChartData.length === 0 && !error ? (
                 <div className={styles.placeholderContent}>Loading savings...</div>
             ) : savingsChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={250}> {/* Adjusted height for bottom row */}
-                    <BarChart data={savingsChartData} margin={{ top: 20, right: 20, left: -20, bottom: 5 }}> {/* Adjusted margins */}
+                <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={savingsChartData} margin={{ top: 20, right: 20, left: -20, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                         <XAxis dataKey="name" stroke="#666" fontSize="10px" />
                         <YAxis stroke="#666" tickFormatter={(value) => formatCurrency(value).replace('$', '')} fontSize="10px" width={70} />
@@ -718,9 +777,78 @@ return (
             )}
         </div>
     </section>
-    {/* --- End Monthly Savings Bar Chart Section --- */}
-   </div>
-</div>
+   </div> {/* End of bottomRowContainer */}
+
+
+    {/* --- New Income Details Row - MOVED TO THE END --- */}
+    <div className={styles.incomeDetailsRow}>
+        <section className={`${styles.sectionBox} ${styles.recentIncomeSection}`}>
+            <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Recent Income (Current Month)</h2>
+                <Link to="/income" className={styles.seeAllButton}>See All Income</Link>
+            </div>
+            {loadingCurrentMonthIncome && recentIncomeForDisplay.length === 0 && !error ? (
+                <div className={styles.placeholderContent}>Loading recent income...</div>
+            ) : recentIncomeForDisplay.length > 0 ? (
+                <div className={styles.transactionList}>
+                    {recentIncomeForDisplay.map((tx) => (
+                        <div key={tx._id} className={`${styles.transactionItem} ${styles.incomeBorder}`}>
+                            <span className={styles.transactionDate}>{formatDate(tx.date, { month: 'short', day: 'numeric' })}</span>
+                            <span className={styles.transactionDesc}>
+                                {tx.emoji && <span className={styles.transactionEmoji}>{tx.emoji}</span>}
+                                {tx.description} ({tx.category})
+                            </span>
+                            <span className={`${styles.transactionAmount} ${styles.income}`}>
+                                + {formatCurrency(tx.amount)}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className={styles.placeholderContent}>No income transactions this month.</div>
+            )}
+        </section>
+
+        <section className={`${styles.sectionBox} ${styles.incomeCategoryChartSection}`}>
+            <h2 className={styles.sectionTitle}>Monthly Income Breakdown</h2>
+            <div className={styles.chartContainer} style={{ height: '300px' }}>
+                {loadingCurrentMonthIncome && incomeByCategoryPieData.length === 0 && !error ? (
+                    <div className={styles.placeholderContent}>Loading income chart...</div>
+                ) : incomeByCategoryPieData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie
+                                data={incomeByCategoryPieData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={60} 
+                                outerRadius={100}
+                                fill="#8884d8"
+                                paddingAngle={2}
+                                dataKey="value"
+                                nameKey="name"
+                                labelLine={false}
+                                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            >
+                                {incomeByCategoryPieData.map((entry, index) => (
+                                    <Cell key={`cell-income-cat-${index}`} fill={INCOME_CATEGORY_COLORS[index % INCOME_CATEGORY_COLORS.length]} />
+                                ))}
+                            </Pie>
+                            <RechartsTooltip formatter={(value, name) => [formatCurrency(value), name]} />
+                            <Legend layout="vertical" verticalAlign="middle" align="right" wrapperStyle={{fontSize: '12px', paddingLeft: '10px'}}/>
+                        </PieChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <div className={styles.placeholderContent} style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        No income data to display breakdown.
+                    </div>
+                )}
+            </div>
+        </section>
+    </div>
+    {/* --- End New Income Details Row --- */}
+
+</div> 
 );
 }
 
