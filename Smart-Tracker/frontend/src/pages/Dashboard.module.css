@@ -1091,7 +1091,6 @@
   display: grid;
   grid-template-columns: 1fr 1fr; /* Two equal columns */
   gap: 1.5rem; /* Same gap as mainArea */
-  margin-bottom: 1.5rem; /* Space below this new row */
 }
 
 
@@ -1165,8 +1164,6 @@
   display: grid;
   grid-template-columns: 1fr 1fr; /* Two equal columns */
   gap: 1.5rem; /* Same gap as other rows */
-  margin-top: 1.5rem; /* Space above this new row */
-  margin-bottom: 1.5rem; /* Space at the very bottom of the page content */
 }
 
 
