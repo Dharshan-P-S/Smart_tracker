@@ -942,7 +942,7 @@ return (
         <section className={`${styles.sectionBox} ${styles.recentExpenseSection}`}>
             <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>Recent Expenses (Current Month)</h2>
-                <Link to="/expenses" className={styles.seeAllButton}>See All Expenses</Link>
+                <Link to="/expense" className={styles.seeAllButton}>See All Expenses</Link>
             </div>
             {loadingCurrentMonthExpenses && recentExpensesForDisplay.length === 0 && !error ? (
                 <div className={styles.placeholderContent}>Loading recent expenses...</div>
