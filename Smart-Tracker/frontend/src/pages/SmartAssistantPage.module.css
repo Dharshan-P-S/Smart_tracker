@@ -1,0 +1,222 @@
+/* frontend/src/pages/SmartAssistantPage.module.css */
+.pageContainer {
+  padding: 20px;
+  max-width: 750px; /* Slightly wider for chat */
+  margin: 20px auto;
+  background-color: var(--box-bg-light, #ffffff);
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-light, #e0e0e0);
+  display: flex;
+  flex-direction: column;
+}
+
+.pageTitle {
+  text-align: center;
+  color: var(--text-primary-light, #2c3e50);
+  margin-bottom: 10px;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.pageDescription {
+  text-align: center;
+  color: var(--text-secondary-light, #7f8c8d);
+  margin-bottom: 25px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.chatArea {
+  border: 1px solid var(--border-medium-light, #d1d8dd);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  height: 500px; /* Adjust as needed, or use calc(100vh - X) */
+  background-color: var(--bg-light, #f7f9fa);
+  overflow: hidden; /* Important for border-radius on children */
+}
+
+.messageList {
+  flex-grow: 1;
+  padding: 15px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message {
+  padding: 10px 15px;
+  border-radius: 18px;
+  max-width: 80%;
+  word-wrap: break-word;
+  line-height: 1.5;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.messageText {
+  margin: 0;
+  white-space: pre-wrap; /* Allows line breaks from assistant messages */
+  font-size: 0.9rem;
+}
+
+.message.user {
+  background-color: var(--primary-color-light, #3498db); /* Brighter blue */
+  color: white;
+  align-self: flex-end;
+  border-bottom-right-radius: 5px;
+}
+
+.message.assistant {
+  background-color: var(--assistant-bubble-bg-light, #ecf0f1); /* Light grey */
+  color: var(--text-primary-light, #34495e);
+  align-self: flex-start;
+  border-bottom-left-radius: 5px;
+}
+
+.message.assistant.errorMessageBubble {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.message.assistant.errorMessageBubble .messageText { /* More specific if needed */
+  color: #721c24;
+}
+
+
+.inputForm {
+  display: flex;
+  padding: 12px 15px;
+  border-top: 1px solid var(--border-medium-light, #d1d8dd);
+  background-color: var(--bg-medium-light, #e9ecef); /* Slightly different bg for input */
+}
+
+.chatInput {
+  flex-grow: 1;
+  padding: 12px 18px;
+  border: 1px solid var(--border-medium-light, #bdc3c7);
+  border-radius: 25px; /* More rounded */
+  margin-right: 10px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.chatInput:focus {
+  border-color: var(--primary-color-light, #3498db);
+  box-shadow: 0 0 0 2px var(--primary-color-transparent-light, rgba(52, 152, 219, 0.25));
+}
+
+.sendButton {
+  padding: 12px 22px;
+  background-color: var(--primary-color-light, #2980b9); /* Darker shade of blue */
+  color: white;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.sendButton:hover:not(:disabled) {
+  background-color: var(--primary-color-darker-light, #1f638b);
+}
+
+.sendButton:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
+}
+
+.rawDataDetails {
+  margin-top: 10px;
+  font-size: 0.75rem;
+  background-color: var(--raw-data-bg-light, #e0e0e0);
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid var(--raw-data-border-light, #c0c0c0);
+  color: #333;
+}
+.rawDataDetails summary {
+  cursor: pointer;
+  font-weight: bold;
+  color: var(--text-secondary-light, #555);
+  margin-bottom: 5px;
+}
+.rawDataDetails pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 150px;
+  overflow-y: auto;
+  background-color: var(--bg-light, #f9f9f9);
+  padding: 5px;
+  border-radius: 3px;
+}
+
+
+/* Dark Mode Adjustments */
+@media (prefers-color-scheme: dark) {
+  .pageContainer {
+    background-color: var(--box-bg-dark, #2c3e50);
+    border-color: var(--border-dark, #4a6572);
+  }
+  .pageTitle { color: var(--text-primary-dark, #ecf0f1); }
+  .pageDescription { color: var(--text-secondary-dark, #bdc3c7); }
+
+  .chatArea {
+    border-color: var(--border-medium-dark, #34495e);
+    background-color: var(--bg-dark, #222f3e);
+  }
+  .message.user {
+    background-color: var(--primary-color-dark, #3498db); /* Keep it vibrant or adjust */
+  }
+  .message.assistant {
+    background-color: var(--assistant-bubble-bg-dark, #3e5062);
+    color: var(--text-primary-dark, #ecf0f1);
+  }
+  .message.assistant.errorMessageBubble {
+    background-color: #522626; color: #ffb3b3; border-color: #6e3434;
+  }
+   .message.assistant.errorMessageBubble .messageText { color: #ffb3b3; }
+
+  .inputForm {
+    border-top-color: var(--border-medium-dark, #34495e);
+    background-color: var(--bg-medium-dark, #2c3a47);
+  }
+  .chatInput {
+    background-color: var(--input-bg-dark, #3b4c5c);
+    color: var(--text-primary-dark, #ecf0f1);
+    border-color: var(--border-medium-dark, #4a6572);
+  }
+  .chatInput:focus {
+    border-color: var(--primary-color-dark, #3498db);
+    box-shadow: 0 0 0 2px var(--primary-color-transparent-dark, rgba(52, 152, 219, 0.3));
+  }
+  .sendButton {
+    background-color: var(--primary-color-dark, #3498db);
+  }
+  .sendButton:hover:not(:disabled) {
+    background-color: var(--primary-color-darker-dark, #2980b9);
+  }
+   .sendButton:disabled { background-color: #566573; }
+
+  .rawDataDetails {
+    background-color: var(--raw-data-bg-dark, #3a3a3a);
+    border-color: var(--raw-data-border-dark, #555);
+    color: #ccc;
+  }
+  .rawDataDetails summary { color: var(--text-secondary-dark, #bbb); }
+  .rawDataDetails pre { background-color: var(--bg-dark, #2c2c2c); }
+}
+
+/* Ensure you have CSS variables defined in your :root or global styles, e.g.:
+:root {
+  --primary-color-light: #3498db;
+  --text-primary-light: #2c3e50;
+  --box-bg-light: #ffffff;
+  --border-light: #e0e0e0;
+  // etc.
+}
+*/

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'; // Import useState and useEffect
+// App.js
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -13,17 +14,19 @@ import LimitsPage from './pages/LimitsPage';
 import OldTransactionsPage from './pages/OldTransactionsPage';
 import SavingsPage from './pages/SavingsPage';
 import ProfilePage from './pages/ProfilePage';
-import GoalsPage from './pages/Goalspage'; // Adjust path as needed
+import GoalsPage from './pages/Goalspage';
+// --- IMPORT THE NEW PAGE ---
+import SmartAssistantPage from './pages/SmartAssistantPage'; // Adjust path if you placed it elsewhere
+
 import ProtectedRoute from './routing/ProtectedRoute';
 import Layout from './components/Layout';
 import './App.css';
 
 function App() {
-  // State to hold the current theme for ToastContainer
-  const [toastTheme, setToastTheme] = useState('light'); // Default to light
+  const [toastTheme, setToastTheme] = useState('light');
 
   useEffect(() => {
-    // Function to check and set the theme
+    // ... (your existing useEffect for theme handling)
     const checkTheme = () => {
       if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
         setToastTheme('dark');
@@ -32,23 +35,19 @@ function App() {
       }
     };
 
-    // Check theme on initial load
     checkTheme();
 
-    // Listen for changes in the system's color scheme preference
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = (e) => {
       setToastTheme(e.matches ? 'dark' : 'light');
     };
 
-    // Add listener - newer browsers
     if (mediaQuery.addEventListener) {
       mediaQuery.addEventListener('change', handleChange);
-    } else if (mediaQuery.addListener) { // Deprecated but for older browser compatibility
+    } else if (mediaQuery.addListener) {
       mediaQuery.addListener(handleChange);
     }
 
-    // Cleanup listener on component unmount
     return () => {
       if (mediaQuery.removeEventListener) {
         mediaQuery.removeEventListener('change', handleChange);
@@ -56,7 +55,7 @@ function App() {
         mediaQuery.removeListener(handleChange);
       }
     };
-  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
+  }, []);
 
   return (
     <Router>
@@ -74,27 +73,31 @@ function App() {
             <Route path="/savings" element={<SavingsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/goals" element={<GoalsPage />} />
+            {/* --- ADDED SMART ASSISTANT PAGE ROUTE --- */}
+            <Route path="/smart-assistant" element={<SmartAssistantPage />} />
           </Route>
         </Route>
 
-        <Route path="/transactions" element={<TransactionsPage />} />
+        <Route element={<ProtectedRoute />}> {/* Assuming TransactionsPage is also protected but might not use Layout */}
+          <Route path="/transactions" element={<TransactionsPage />} />
+        </Route>
 
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
 
       <ToastContainer
-          position="top-right"
-          autoClose={5000}
-          hideProgressBar={false}
-          newestOnTop={true}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme={toastTheme} // Use the dynamic theme state here
-        />
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme={toastTheme}
+      />
     </Router>
   );
 }
