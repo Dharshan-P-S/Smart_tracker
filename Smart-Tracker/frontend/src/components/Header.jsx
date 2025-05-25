@@ -5,7 +5,6 @@ import { FaBan } from 'react-icons/fa';
 import styles from './Header.module.css';
 
 // --- Icon Components ---
-// ... (ProfileIcon, MenuIcon, CloseIcon, DashboardIcon, IncomeIcon, etc. - keep all your existing icons)
 
 const ProfileIcon = ({ className }) => (
 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`${styles.navIcon} ${className || ''}`}>
@@ -79,12 +78,23 @@ const GoalsIcon = ({ className }) => (
 </svg>
 );
 
-// --- NEW: Smart Assistant Icon (Sparkles) ---
+// --- Smart Assistant Icon (Updated) ---
 const SmartAssistantIcon = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`${styles.navIcon} ${className || ''}`}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L1.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L24 5.25l-.813 2.846a4.5 4.5 0 0 0-3.09 3.09L18.25 12ZM18.25 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09L12 18.75l.813-2.846a4.5 4.5 0 0 0 3.09-3.09L18.25 12Z" />
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    // Adjust viewBox based on the path data's coordinate system.
+    // The provided path uses coordinates up to 384.
+    // A common square viewBox would be "0 0 384 384" or "0 0 448 448" if there's padding.
+    // Let's try a viewBox that encompasses the coordinates.
+    // If the icon appears too small or large, this is the first thing to adjust.
+    viewBox="0 0 384 384" // Adjusted viewBox
+    fill="currentColor" // Set fill to currentColor
+    className={`${styles.navIcon} ${className || ''}`}
+  >
+    <path d="M320,64 L320,320 L64,320 L64,64 L320,64 Z M171.749388,128 L146.817842,128 L99.4840387,256 L121.976629,256 L130.913039,230.977 L187.575039,230.977 L196.319607,256 L220.167172,256 L171.749388,128 Z M260.093778,128 L237.691519,128 L237.691519,256 L260.093778,256 L260.093778,128 Z M159.094727,149.47526 L181.409039,213.333 L137.135039,213.333 L159.094727,149.47526 Z M341.333333,256 L384,256 L384,298.666667 L341.333333,298.666667 L341.333333,256 Z M85.3333333,341.333333 L128,341.333333 L128,384 L85.3333333,384 L85.3333333,341.333333 Z M170.666667,341.333333 L213.333333,341.333333 L213.333333,384 L170.666667,384 L170.666667,341.333333 Z M85.3333333,0 L128,0 L128,42.6666667 L85.3333333,42.6666667 L85.3333333,0 Z M256,341.333333 L298.666667,341.333333 L298.666667,384 L256,384 L256,341.333333 Z M170.666667,0 L213.333333,0 L213.333333,42.6666667 L170.666667,42.6666667 L170.666667,0 Z M256,0 L298.666667,0 L298.666667,42.6666667 L256,42.6666667 L256,0 Z M341.333333,170.666667 L384,170.666667 L384,213.333333 L341.333333,213.333333 L341.333333,170.666667 Z M0,256 L42.6666667,256 L42.6666667,298.666667 L0,298.666667 L0,256 Z M341.333333,85.3333333 L384,85.3333333 L384,128 L341.333333,128 L341.333333,85.3333333 Z M0,170.666667 L42.6666667,170.666667 L42.6666667,213.333333 L0,213.333333 L0,170.666667 Z M0,85.3333333 L42.6666667,85.3333333 L42.6666667,128 L0,128 L0,85.3333333 Z" id="Combined-Shape" />
   </svg>
 );
+
 
 const LogoutIcon = ({ className }) => (
 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`${styles.navIcon} ${className || ''}`}>
@@ -98,7 +108,10 @@ function Header() {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    // Assuming 'token' is for general auth, and 'authToken' might be specific
+    // Using 'authToken' if that's what SmartAssistantPage and others rely on
+    localStorage.removeItem('authToken'); // Or 'token' if that's your primary auth token
+    localStorage.removeItem('username'); // Also clear username on logout
     setIsMenuOpen(false);
     navigate('/login');
   };
@@ -152,7 +165,6 @@ function Header() {
           <Link to="/savings" className={styles.navLink} onClick={closeMenu}>
             <SavingsIcon /> <span>Savings</span>
           </Link>
-          {/* --- NEW: AI Assistant Link --- */}
           <Link to="/smart-assistant" className={styles.navLink} onClick={closeMenu}>
             <SmartAssistantIcon /> <span>AI Assistant</span>
           </Link>
