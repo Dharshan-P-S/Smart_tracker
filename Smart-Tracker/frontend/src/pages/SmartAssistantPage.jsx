@@ -351,7 +351,7 @@ const SmartAssistantPage = () => {
     <div className={styles.pageContainer}>
       <h2 className={styles.pageTitle}>Smart Assistant</h2>
       <p className={styles.pageDescription}>
-        I can help you manage your finances. Try "Spent $20 for snacks on groceries today" or "Set a goal of $500 for Vacation by December".
+        I can help you manage your finances. Try "Spent $20 for snacks today for tea and biscuits" or "Set a goal of $500 for Vacation by December".
       </p>
 
       <div className={styles.chatArea}>
