@@ -152,9 +152,9 @@ function Header() {
           <Link to="/savings" className={styles.navLink} onClick={closeMenu}>
             <SavingsIcon /> <span>Savings</span>
           </Link>
-          {/* --- NEW: Smart Assistant Link --- */}
+          {/* --- NEW: AI Assistant Link --- */}
           <Link to="/smart-assistant" className={styles.navLink} onClick={closeMenu}>
-            <SmartAssistantIcon /> <span>Smart Assistant</span>
+            <SmartAssistantIcon /> <span>AI Assistant</span>
           </Link>
           <Link to="/profile" className={styles.navLink} onClick={closeMenu}>
             <ProfileIcon /> <span>Profile</span>

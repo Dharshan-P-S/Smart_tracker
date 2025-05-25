@@ -83,7 +83,7 @@ const parseWitDateTimeToQueryParams = (dateTimeEntity) => {
 const SmartAssistantPage = () => {
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState([
-    { id: generateId(), sender: 'assistant', text: "Hello! How can I assist you? Try 'add $100 income', 'set goal Vacation $500 by Dec', 'add $20 to Vacation goal', 'show my expenses', 'how much for food?', or 'my income last month'." }
+    { id: generateId(), sender: 'assistant', text: "Hello! How can I assist you? Try 'Earned $500 from Freelance on last week for Page designing', 'Set a goal for Vacation $500 by the December', 'Add $20 to Vacation goal', 'Show my expenses', 'How much for food?', or 'My income last month'." }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
@@ -628,7 +628,7 @@ const SmartAssistantPage = () => {
 
   return (
     <div className={styles.pageContainer}>
-      <h2 className={styles.pageTitle}>Smart Assistant</h2>
+      <h2 className={styles.pageTitle}>AI Assistant</h2>
       <p className={styles.pageDescription}>
         I can help manage finances. Try "add $20 expense for food today", "show expenses last month", "how much for groceries this year?", or "my income from salary this month".
       </p>
