@@ -1,5 +1,5 @@
 // frontend/src/pages/SmartAssistantPage.js
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios'; // For backend API calls
 import { toast } from 'react-toastify';
 import { sendToWit } from '../utils/witClient';
@@ -23,17 +23,161 @@ const capitalizeFirstLetter = (string) => {
   return string.charAt(0).toUpperCase() + string.slice(1);
 };
 
+const formatCurrency = (value) => {
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return '$0.00';
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(numValue);
+};
+
+const parseWitDateTimeToQueryParams = (dateTimeEntity) => {
+    if (!dateTimeEntity || !dateTimeEntity.values || dateTimeEntity.values.length === 0) {
+        return { periodKeyword: 'current_month', description: "the current month" };
+    }
+
+    const value = dateTimeEntity.values[0];
+    const toYMD = (dateStr) => new Date(dateStr).toISOString().split('T')[0];
+
+    let queryParams = {};
+    let description = "";
+
+    if (value.to && value.from) {
+        const fromDate = new Date(value.from);
+        const toDate = new Date(value.to); 
+
+        queryParams.startDate = toYMD(value.from);
+        queryParams.endDate = toYMD(value.to); 
+
+        let toDateForDisplay = new Date(toDate.getTime());
+        if ((value.grain === 'month' || value.grain === 'day' || value.grain === 'year') &&
+            toDate.getUTCDate() === 1 && toDate.getUTCHours() === 0 &&
+            toDate.getUTCMinutes() === 0 && toDate.getUTCSeconds() === 0) {
+            toDateForDisplay = new Date(toDate.getTime() - (24 * 60 * 60 * 1000));
+        }
+
+        const fromStr = formatDateForDisplay(value.from);
+        const toStr = formatDateForDisplay(toDateForDisplay);
+
+        if (value.grain === 'day' && fromDate.toISOString().split('T')[0] === toDateForDisplay.toISOString().split('T')[0]) {
+            description = `for ${fromStr}`;
+        } else if (value.grain === 'month' && fromDate.getUTCDate() === 1 && (new Date(value.to).getTime() - new Date(value.from).getTime() <= 32 * 24 * 60 * 60 * 1000) ) {
+            description = `for ${fromDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })}`;
+        } else if (value.grain === 'year' && fromDate.getUTCDate() === 1 && fromDate.getUTCMonth() === 0 && (new Date(value.to).getTime() - new Date(value.from).getTime() <= 367 * 24 * 60 * 60 * 1000) ) {
+            description = `for ${fromDate.getUTCFullYear()}`;
+        } else {
+            description = `from ${fromStr} to ${toStr}`;
+        }
+
+    } else if (value.value) { 
+        queryParams.startDate = toYMD(value.value);
+        queryParams.endDate = toYMD(value.value);
+        description = `for ${formatDateForDisplay(value.value)}`;
+    } else {
+        queryParams.periodKeyword = 'current_month';
+        description = "the current month";
+    }
+
+    return { ...queryParams, description };
+};
+
+
 const SmartAssistantPage = () => {
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState([
-    { id: generateId(), sender: 'assistant', text: "Hello! How can I assist you with your finances today? Try 'add $100 income from salary for monthly paycheck on this month' or 'Set a goal for Vacation $1200 by the December'." }
+    { id: generateId(), sender: 'assistant', text: "Hello! How can I assist you? Try 'add $100 income', 'set goal Vacation $500 by Dec', 'add $20 to Vacation goal', 'show my expenses', 'how much for food?', or 'my income last month'." }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
 
+  const [goals, setGoals] = useState([]);
+  const [goalsLoading, setGoalsLoading] = useState(true);
+  const [currentUserCumulativeSavings, setCurrentUserCumulativeSavings] = useState(0);
+  const [loadingCumulativeSavings, setLoadingCumulativeSavings] = useState(true);
+  const [fetchError, setFetchError] = useState('');
+
+
   const messagesEndRef = useRef(null);
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(scrollToBottom, [messages]);
+
+    const fetchGoals = useCallback(async () => {
+        setGoalsLoading(true);
+        setFetchError('');
+        try {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                setFetchError('Please log in to manage goals.');
+                setGoals([]);
+                return;
+            }
+            const response = await axios.get('/api/goals', { headers: { Authorization: `Bearer ${token}` } });
+            setGoals(response.data || []);
+        } catch (err) {
+            console.error('Error fetching goals for assistant:', err);
+            setFetchError(err.response?.data?.message || 'Failed to load goals.');
+            setGoals([]);
+        } finally {
+            setGoalsLoading(false);
+        }
+    }, []);
+
+    const fetchUserCumulativeSavings = useCallback(async () => {
+        setLoadingCumulativeSavings(true);
+        setFetchError('');
+        try {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                setFetchError('Please log in to view savings data.');
+                setCurrentUserCumulativeSavings(0);
+                return;
+            }
+            const { data: monthlySavingsRaw } = await axios.get('/api/transactions/savings/monthly', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            if (monthlySavingsRaw && monthlySavingsRaw.length > 0) {
+                let cumulativeTotal = 0;
+                monthlySavingsRaw.forEach(item => {
+                    cumulativeTotal += (item.savings || 0);
+                });
+                setCurrentUserCumulativeSavings(cumulativeTotal);
+            } else {
+                setCurrentUserCumulativeSavings(0);
+            }
+        } catch (err) {
+            console.error('Error fetching cumulative savings for assistant:', err);
+            setFetchError(err.response?.data?.message || 'Failed to load savings data.');
+            setCurrentUserCumulativeSavings(0);
+        } finally {
+            setLoadingCumulativeSavings(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        const token = localStorage.getItem('authToken');
+        if (token) {
+            fetchGoals();
+            fetchUserCumulativeSavings();
+        } else {
+            setGoalsLoading(false);
+            setLoadingCumulativeSavings(false);
+        }
+        const handleDataUpdate = () => {
+            if (localStorage.getItem('authToken')) {
+                fetchGoals();
+                fetchUserCumulativeSavings();
+            }
+        };
+        window.addEventListener('transactions-updated', handleDataUpdate);
+        window.addEventListener('goals-updated', handleDataUpdate);
+        window.addEventListener('limits-updated', handleDataUpdate);
+
+        return () => {
+            window.removeEventListener('transactions-updated', handleDataUpdate);
+            window.removeEventListener('goals-updated', handleDataUpdate);
+            window.removeEventListener('limits-updated', handleDataUpdate);
+        };
+    }, [fetchGoals, fetchUserCumulativeSavings]);
+
 
   const addMessage = (sender, text, actionDetails = null, isError = false, rawData = null) => {
     setMessages(prev => [...prev, { id: generateId(), sender, text, actionDetails, isError, rawData }]);
@@ -41,58 +185,241 @@ const SmartAssistantPage = () => {
 
   const handleInputChange = (e) => setInputValue(e.target.value);
 
-  const executeAddTransaction = async (transactionData) => {
-    const transactionType = capitalizeFirstLetter(transactionData.type);
-    try {
-      const response = await axios.post('/api/transactions', transactionData);
-      toast.success(`${transactionType} "${transactionData.description}" of $${transactionData.amount.toFixed(2)} added!`);
-      addMessage('assistant', `Great! I've added the ${transactionData.type}: $${transactionData.amount.toFixed(2)} for ${transactionData.description}.`);
-      return response.data;
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || `Failed to add ${transactionData.type}.`;
-      toast.error(`Error: ${errorMessage}`);
-      addMessage('assistant', `Sorry, I couldn't add the ${transactionData.type}. ${errorMessage}`, null, true);
-      throw error;
-    }
-  };
+    const executeAddTransaction = async (transactionData) => {
+        const transactionType = capitalizeFirstLetter(transactionData.type);
+        try {
+        const response = await axios.post('/api/transactions', transactionData);
+        toast.success(`${transactionType} "${transactionData.description}" of ${formatCurrency(transactionData.amount)} added!`);
+        addMessage('assistant', `Great! I've added the ${transactionData.type}: ${formatCurrency(transactionData.amount)} for ${transactionData.description}.`);
+        window.dispatchEvent(new CustomEvent('transactions-updated'));
+        fetchUserCumulativeSavings();
+        return response.data;
+        } catch (error) {
+        const errorMessage = error.response?.data?.message || error.message || `Failed to add ${transactionData.type}.`;
+        toast.error(`Error: ${errorMessage}`);
+        addMessage('assistant', `Sorry, I couldn't add the ${transactionData.type}. ${errorMessage}`, null, true);
+        throw error;
+        }
+    };
 
-  const executeAddGoal = async (goalData) => {
-    try {
-      const response = await axios.post('/api/goals', goalData);
-      toast.success(`Goal "${goalData.description}" set successfully!`);
-      addMessage('assistant', `Okay, I've set a new goal: ${goalData.description} for $${goalData.targetAmount.toFixed(2)} by ${formatDateForDisplay(goalData.targetDate)}.`);
-      return response.data;
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to set goal.';
-      toast.error(`Error: ${errorMessage}`);
-      addMessage('assistant', `Sorry, I couldn't set the goal. ${errorMessage}`, null, true);
-      throw error;
-    }
-  };
-  const executeSetLimit = async (limitData) => {
-    try {
-      const response = await axios.post('/api/limits', limitData);
-      toast.success(`Limit for "${limitData.category}" set to $${limitData.amount.toFixed(2)} successfully!`);
-      addMessage('assistant', `Alright, I've set a spending limit for ${limitData.category} at $${limitData.amount.toFixed(2)}.`);
-      return response.data;
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to set limit.';
-      toast.error(`Error: ${errorMessage}`);
-      addMessage('assistant', `Sorry, I couldn't set the limit. ${errorMessage}`, null, true);
-      throw error;
-    }
-  };
+    const executeAddGoal = async (goalData) => {
+        try {
+        const response = await axios.post('/api/goals', goalData);
+        toast.success(`Goal "${goalData.description}" set successfully!`);
+        addMessage('assistant', `Okay, I've set a new goal: ${goalData.description} for ${formatCurrency(goalData.targetAmount)} by ${formatDateForDisplay(goalData.targetDate)}.`);
+        fetchGoals();
+        window.dispatchEvent(new CustomEvent('goals-updated'));
+        return response.data;
+        } catch (error) {
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to set goal.';
+        toast.error(`Error: ${errorMessage}`);
+        addMessage('assistant', `Sorry, I couldn't set the goal. ${errorMessage}`, null, true);
+        throw error;
+        }
+    };
+
+    const executeSetLimit = async (limitData) => {
+        try {
+        const response = await axios.post('/api/limits', limitData);
+        toast.success(`Limit for "${limitData.category}" set to ${formatCurrency(limitData.amount)} successfully!`);
+        addMessage('assistant', `Alright, I've set a spending limit for ${limitData.category} at ${formatCurrency(limitData.amount)}.`);
+        window.dispatchEvent(new CustomEvent('limits-updated'));
+        return response.data;
+        } catch (error) {
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to set limit.';
+        toast.error(`Error: ${errorMessage}`);
+        addMessage('assistant', `Sorry, I couldn't set the limit. ${errorMessage}`, null, true);
+        throw error;
+        }
+    };
+
+    const executeContributeToGoal = async (goalId, amount, goalDescription) => {
+        try {
+            const token = localStorage.getItem('authToken');
+            await axios.post(`/api/goals/${goalId}/contribute`, { amount }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            toast.success(`Contribution of ${formatCurrency(amount)} to "${goalDescription}" successful!`);
+            addMessage('assistant', `Successfully added ${formatCurrency(amount)} to your "${goalDescription}" goal!`);
+            fetchGoals();
+            fetchUserCumulativeSavings();
+            window.dispatchEvent(new CustomEvent('transactions-updated'));
+            window.dispatchEvent(new CustomEvent('goals-updated'));
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to contribute to goal.';
+            toast.error(`Error: ${errorMessage}`);
+            addMessage('assistant', `Sorry, I couldn't contribute to the goal "${goalDescription}". ${errorMessage}`, null, true);
+            throw error;
+        }
+    };
+
+    const executeGetExpenseDetails = async (dateTimeEntity) => {
+        setIsLoading(true);
+        try {
+            const token = localStorage.getItem('authToken');
+            const { description: initialPeriodDescription, ...apiParams } = parseWitDateTimeToQueryParams(dateTimeEntity);
+            
+            const response = await axios.get('/api/transactions/expenses/summary', {
+                headers: { Authorization: `Bearer ${token}` },
+                params: apiParams,
+            });
+
+            const data = response.data;
+            const finalPeriodDescription = data.period || initialPeriodDescription;
+
+            if (data.totalExpenses > 0) {
+                let summaryText = `Okay, here's your expense summary ${finalPeriodDescription}:\n- Total Spent: ${formatCurrency(data.totalExpenses)}\n- Number of Transactions: ${data.count}`;
+                if (data.breakdown && data.breakdown.length > 0) {
+                    summaryText += "\n\nTop Categories (up to 3):";
+                    data.breakdown.slice(0, 3).forEach(item => {
+                        summaryText += `\n- ${capitalizeFirstLetter(item.category)}: ${formatCurrency(item.total)} (${item.percentage ? item.percentage.toFixed(1) + '%' : 'N/A'})`;
+                    });
+                } else if (data.transactions && data.transactions.length > 0) {
+                    summaryText += "\n\nRecent Expenses (up to 3):";
+                     data.transactions.slice(0,3).forEach(tx => {
+                        summaryText += `\n- ${formatDateForDisplay(tx.date)}: ${tx.description} (${formatCurrency(tx.amount)})`;
+                     });
+                }
+                addMessage('assistant', summaryText);
+            } else {
+                addMessage('assistant', data.message || `No expenses found ${finalPeriodDescription}.`);
+            }
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch expense summary.';
+            toast.error(`Error: ${errorMessage}`);
+            addMessage('assistant', `Sorry, I couldn't fetch the expense summary. ${errorMessage}`, null, true);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const executeGetExpenseByCategory = async (categoryName, dateTimeEntity) => {
+        setIsLoading(true);
+        try {
+            const token = localStorage.getItem('authToken');
+            const { description: initialPeriodDescription, ...apiParams } = parseWitDateTimeToQueryParams(dateTimeEntity);
+            
+            apiParams.category = categoryName;
+
+            const response = await axios.get('/api/transactions/expenses/summary', {
+                headers: { Authorization: `Bearer ${token}` },
+                params: apiParams,
+            });
+            const data = response.data;
+            const finalPeriodDescription = data.period || initialPeriodDescription;
+
+            if (data.totalExpenses > 0) {
+                let summaryText = `For "${capitalizeFirstLetter(data.category || categoryName)}" ${finalPeriodDescription}:\n- Total Spent: ${formatCurrency(data.totalExpenses)}\n- Number of Transactions: ${data.count}`;
+                if (data.averageMonthly) {
+                    summaryText += `\n- Average Monthly Spending: ${formatCurrency(data.averageMonthly)}`;
+                }
+                if (data.transactions && data.transactions.length > 0) {
+                    summaryText += `\n\nRecent Expenses in this category (up to 3):`;
+                     data.transactions.slice(0,3).forEach(tx => {
+                        summaryText += `\n- ${formatDateForDisplay(tx.date)}: ${tx.description} (${formatCurrency(tx.amount)})`;
+                     });
+                }
+                addMessage('assistant', summaryText);
+            } else {
+                addMessage('assistant', data.message || `No expenses found for "${capitalizeFirstLetter(categoryName)}" ${finalPeriodDescription}.`);
+            }
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch category expense summary.';
+            toast.error(`Error: ${errorMessage}`);
+            addMessage('assistant', `Sorry, I couldn't fetch the summary for "${capitalizeFirstLetter(categoryName)}". ${errorMessage}`, null, true);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const executeGetIncomeDetails = async (dateTimeEntity) => {
+        setIsLoading(true);
+        try {
+            const token = localStorage.getItem('authToken');
+            const { description: initialPeriodDescription, ...apiParams } = parseWitDateTimeToQueryParams(dateTimeEntity);
+            
+            const response = await axios.get('/api/transactions/income/summary', {
+                headers: { Authorization: `Bearer ${token}` },
+                params: apiParams,
+            });
+
+            const data = response.data;
+            const finalPeriodDescription = data.period || initialPeriodDescription;
+
+            if (data.totalIncome > 0) { 
+                let summaryText = `Okay, here's your income summary ${finalPeriodDescription}:\n- Total Received: ${formatCurrency(data.totalIncome)}\n- Number of Transactions: ${data.count}`;
+                if (data.breakdown && data.breakdown.length > 0) {
+                    summaryText += "\n\nTop Sources (up to 3):";
+                    data.breakdown.slice(0, 3).forEach(item => {
+                        summaryText += `\n- ${capitalizeFirstLetter(item.category)}: ${formatCurrency(item.total)} (${item.percentage ? item.percentage.toFixed(1) + '%' : 'N/A'})`;
+                    });
+                } else if (data.transactions && data.transactions.length > 0) {
+                    summaryText += "\n\nRecent Income (up to 3):";
+                     data.transactions.slice(0,3).forEach(tx => {
+                        summaryText += `\n- ${formatDateForDisplay(tx.date)}: ${tx.description} (${formatCurrency(tx.amount)})`;
+                     });
+                }
+                addMessage('assistant', summaryText);
+            } else {
+                addMessage('assistant', data.message || `No income found ${finalPeriodDescription}.`);
+            }
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch income summary.';
+            toast.error(`Error: ${errorMessage}`);
+            addMessage('assistant', `Sorry, I couldn't fetch the income summary. ${errorMessage}`, null, true);
+        } finally {
+            setIsLoading(false);
+        }
+      };
+    
+      const executeGetIncomeByCategory = async (categoryName, dateTimeEntity) => {
+        setIsLoading(true);
+        try {
+            const token = localStorage.getItem('authToken');
+            const { description: initialPeriodDescription, ...apiParams } = parseWitDateTimeToQueryParams(dateTimeEntity);
+            
+            apiParams.category = categoryName;
+    
+            const response = await axios.get('/api/transactions/income/summary', {
+                headers: { Authorization: `Bearer ${token}` },
+                params: apiParams,
+            });
+            const data = response.data;
+            const finalPeriodDescription = data.period || initialPeriodDescription;
+    
+            if (data.totalIncome > 0) { 
+                let summaryText = `For income source "${capitalizeFirstLetter(data.category || categoryName)}" ${finalPeriodDescription}:\n- Total Received: ${formatCurrency(data.totalIncome)}\n- Number of Transactions: ${data.count}`;
+                if (data.averageMonthly) { 
+                    summaryText += `\n- Average Monthly Received: ${formatCurrency(data.averageMonthly)}`;
+                }
+                if (data.transactions && data.transactions.length > 0) {
+                    summaryText += `\n\nRecent Income from this source (up to 3):`;
+                     data.transactions.slice(0,3).forEach(tx => {
+                        summaryText += `\n- ${formatDateForDisplay(tx.date)}: ${tx.description} (${formatCurrency(tx.amount)})`;
+                     });
+                }
+                addMessage('assistant', summaryText);
+            } else {
+                addMessage('assistant', data.message || `No income found from source "${capitalizeFirstLetter(categoryName)}" ${finalPeriodDescription}.`);
+            }
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch income summary by source.';
+            toast.error(`Error: ${errorMessage}`);
+            addMessage('assistant', `Sorry, I couldn't fetch the income summary for "${capitalizeFirstLetter(categoryName)}". ${errorMessage}`, null, true);
+        } finally {
+            setIsLoading(false);
+        }
+      };
+
 
   const processWitResponseAndTakeAction = (witData, originalQuery) => {
-    if (!witData) {
-      addMessage('assistant', "Sorry, I didn't receive a valid response from the AI. Please try again.", null, true);
-      return;
+    if (!localStorage.getItem('authToken')) {
+        addMessage('assistant', "You need to be logged in to perform financial actions. Please log in first.", null, true);
+        return;
     }
+    if (!witData) { addMessage('assistant', "Sorry, I didn't receive a valid response from the AI. Please try again.", null, true); return; }
     if (process.env.NODE_ENV === 'development') console.log("Raw Wit.ai Response:", witData);
-    if (!witData.intents || witData.intents.length === 0) {
-      addMessage('assistant', "I'm not quite sure what you mean. Could you try rephrasing?", null, false, witData);
-      return;
-    }
+    if (!witData.intents || witData.intents.length === 0) { addMessage('assistant', "I'm not quite sure what you mean. Could you try rephrasing?", null, false, witData); return; }
 
     const intent = witData.intents[0];
     const entities = witData.entities;
@@ -100,151 +427,144 @@ const SmartAssistantPage = () => {
     let confirmationMessage = "";
     const confidenceThreshold = 0.7;
 
-    if (intent.confidence < confidenceThreshold) {
-        addMessage('assistant', `I think you might mean "${intent.name}", but I'm not very confident. Could you clarify? (Confidence: ${(intent.confidence*100).toFixed(1)}%)`, null, false, witData);
-        return;
-    }
+    if (intent.confidence < confidenceThreshold) { addMessage('assistant', `I think you might mean "${intent.name}", but I'm not very confident. Could you clarify? (Confidence: ${(intent.confidence*100).toFixed(1)}%)`, null, false, witData); return; }
 
-    // --- ADD EXPENSE INTENT ---
     if (intent.name === 'add_expense') {
       const amountEntity = entities['wit$amount_of_money:amount_of_money']?.[0];
       const categoryEntity = entities['category:category']?.[0];
-      const descriptionEntity = entities['description:description']?.[0]; // Updated entity name
+      const descriptionEntity = entities['description:description']?.[0];
       const dateEntity = entities['wit$datetime:datetime']?.[0];
 
       if (!amountEntity || !categoryEntity) {
         addMessage('assistant', "To add an expense, I need at least an amount and a category. For example, 'add $10 for coffee'.");
         return;
       }
-
       const amount = parseFloat(amountEntity.value);
-      const rawCategoryFromWit = categoryEntity.value; // Known to exist due to check above
+      const rawCategoryFromWit = categoryEntity.value;
       const transactionCategory = capitalizeFirstLetter(rawCategoryFromWit);
-      const dateValue = dateEntity?.value || new Date().toISOString();
+      const dateValue = dateEntity?.values?.[0]?.value || dateEntity?.value || new Date().toISOString();
       const providedDescriptionFromWit = descriptionEntity?.value;
-
-      let finalUserFacingDescription;
-
-      if (providedDescriptionFromWit) {
-        finalUserFacingDescription = capitalizeFirstLetter(providedDescriptionFromWit);
-      } else {
-        // No specific 'description:description' entity, fallback to 'category:category' value for the description.
-        finalUserFacingDescription = transactionCategory; // which is capitalizeFirstLetter(rawCategoryFromWit)
-      }
-
-      const expenseData = { 
-        type: 'expense', 
-        amount, 
-        category: transactionCategory, 
-        description: finalUserFacingDescription.trim(), 
-        date: new Date(dateValue).toISOString().split('T')[0] 
-      };
+      let finalUserFacingDescription = providedDescriptionFromWit ? capitalizeFirstLetter(providedDescriptionFromWit) : transactionCategory;
       
-      actionDetailsForConfirmation = {
-        type: 'confirm_action',
-        intent: 'add_expense',
-        data: expenseData,
-        confirmationId: generateId(), originalQuery,
-      };
-      confirmationMessage = `Sure! Add an expense:\n- Amount: $${amount.toFixed(2)}\n- Category: ${transactionCategory}\n- Description: ${finalUserFacingDescription.trim()}\n- Date: ${formatDateForDisplay(dateValue)}\n\nIs this correct? (yes/no)`;
+      const expenseData = { type: 'expense', amount, category: transactionCategory, description: finalUserFacingDescription.trim(), date: new Date(dateValue).toISOString().split('T')[0] };
+      actionDetailsForConfirmation = { type: 'confirm_action', intent: 'add_expense', data: expenseData, confirmationId: generateId(), originalQuery };
+      confirmationMessage = `Sure! Add an expense:\n- Amount: ${formatCurrency(amount)}\n- Category: ${transactionCategory}\n- Description: ${finalUserFacingDescription.trim()}\n- Date: ${formatDateForDisplay(dateValue)}\n\nIs this correct? (yes/no)`;
     }
-    // --- ADD INCOME INTENT ---
     else if (intent.name === 'add_income') {
       const amountEntity = entities['wit$amount_of_money:amount_of_money']?.[0];
       const categoryEntity = entities['category:category']?.[0];
-      const descriptionEntity = entities['description:description']?.[0]; // Updated entity name
+      const descriptionEntity = entities['description:description']?.[0];
       const dateEntity = entities['wit$datetime:datetime']?.[0];
 
       if (!amountEntity) {
         addMessage('assistant', "To add income, I need at least an amount. For example, 'add $1000 income'.");
         return;
       }
-
       const amount = parseFloat(amountEntity.value);
       const rawCategoryFromWit = categoryEntity?.value;
-      const transactionCategory = capitalizeFirstLetter(rawCategoryFromWit || 'Income'); 
-      const dateValue = dateEntity?.value || new Date().toISOString();
+      const transactionCategory = capitalizeFirstLetter(rawCategoryFromWit || 'Income');
+      const dateValue = dateEntity?.values?.[0]?.value || dateEntity?.value || new Date().toISOString();
       const providedDescriptionFromWit = descriptionEntity?.value;
+      let finalUserFacingDescription = providedDescriptionFromWit ? capitalizeFirstLetter(providedDescriptionFromWit) : (rawCategoryFromWit ? capitalizeFirstLetter(rawCategoryFromWit) : 'Income');
 
-      let finalUserFacingDescription;
-
-      if (providedDescriptionFromWit) {
-        finalUserFacingDescription = capitalizeFirstLetter(providedDescriptionFromWit);
-      } else if (rawCategoryFromWit) {
-        finalUserFacingDescription = capitalizeFirstLetter(rawCategoryFromWit);
-      } else {
-        finalUserFacingDescription = 'Income'; 
-      }
-      
-      const incomeData = { 
-          type: 'income', 
-          amount, 
-          category: transactionCategory,
-          description: finalUserFacingDescription.trim(), 
-          date: new Date(dateValue).toISOString().split('T')[0] 
-      };
-
-      actionDetailsForConfirmation = {
-        type: 'confirm_action',
-        intent: 'add_income',
-        data: incomeData,
-        confirmationId: generateId(), originalQuery,
-      };
-      confirmationMessage = `Great! Add income:\n- Amount: $${amount.toFixed(2)}\n- Category: ${transactionCategory}\n- Source/Description: ${finalUserFacingDescription.trim()}\n- Date: ${formatDateForDisplay(dateValue)}\n\nIs this correct? (yes/no)`;
+      const incomeData = { type: 'income', amount, category: transactionCategory, description: finalUserFacingDescription.trim(), date: new Date(dateValue).toISOString().split('T')[0] };
+      actionDetailsForConfirmation = { type: 'confirm_action', intent: 'add_income', data: incomeData, confirmationId: generateId(), originalQuery };
+      confirmationMessage = `Great! Add income:\n- Amount: ${formatCurrency(amount)}\n- Category: ${transactionCategory}\n- Source/Description: ${finalUserFacingDescription.trim()}\n- Date: ${formatDateForDisplay(dateValue)}\n\nIs this correct? (yes/no)`;
     }
-    // --- ADD GOAL INTENT ---
     else if (intent.name === 'add_goal') {
         const categoryAsGoalDescEntity = entities['category:category']?.[0];
         const amountEntity = entities['wit$amount_of_money:amount_of_money']?.[0];
         const dateEntity = entities['wit$datetime:datetime']?.[0];
 
         if (!categoryAsGoalDescEntity || !amountEntity || !dateEntity) {
-            addMessage('assistant', "To set a goal, I need its purpose (as a category), a target amount, and a target date. For example, 'Set goal for Vacation $1200 by next year'.");
+            addMessage('assistant', "To set a goal, I need its purpose (e.g., Vacation), a target amount, and a target date. For example, 'Set goal for Vacation $1200 by next year'.");
+            return;
+        }
+        const goalDescription = capitalizeFirstLetter(categoryAsGoalDescEntity.value);
+        const targetAmount = parseFloat(amountEntity.value);
+        const targetDateValue = dateEntity?.values?.[0]?.value || dateEntity?.value;
+        if (!targetDateValue) {
+            addMessage('assistant', "I couldn't understand the target date for the goal. Please try specifying a clear date like 'by December' or 'by next year'.");
+            return;
+        }
+        const targetDate = new Date(targetDateValue).toISOString().split('T')[0];
+
+        if (goals.some(g => g.description.toLowerCase() === goalDescription.toLowerCase())) {
+            addMessage('assistant', `A goal named "${goalDescription}" already exists. Please choose a different name or manage the existing one.`);
             return;
         }
 
-        const rawGoalPurpose = categoryAsGoalDescEntity.value;
-        const goalPurposeFromCategory = capitalizeFirstLetter(rawGoalPurpose);
-        const targetAmount = parseFloat(amountEntity.value);
-        const targetDate = new Date(dateEntity.value).toISOString().split('T')[0];
-
-        actionDetailsForConfirmation = {
-            type: 'confirm_action',
-            intent: 'add_goal',
-            data: {
-                description: goalPurposeFromCategory,
-                targetAmount,
-                targetDate
-            },
-            confirmationId: generateId(),
-            originalQuery,
-        };
-        confirmationMessage = `Okay, let's set a new goal:\n- For: ${goalPurposeFromCategory}\n- Target Amount: $${targetAmount.toFixed(2)}\n- Target Date: ${formatDateForDisplay(targetDate)}\n\nIs this correct? (yes/no)`;
+        actionDetailsForConfirmation = { type: 'confirm_action', intent: 'add_goal', data: { description: goalDescription, targetAmount, targetDate }, confirmationId: generateId(), originalQuery };
+        confirmationMessage = `Okay, let's set a new goal:\n- For: ${goalDescription}\n- Target Amount: ${formatCurrency(targetAmount)}\n- Target Date: ${formatDateForDisplay(targetDate)}\n\nIs this correct? (yes/no)`;
     }
-    // --- SET LIMIT INTENT ---
+    else if (intent.name === 'add_to_goal') {
+        const amountEntity = entities['wit$amount_of_money:amount_of_money']?.[0];
+        const goalDescriptionEntity = entities['category:category']?.[0];
+
+        if (!amountEntity || !goalDescriptionEntity) { addMessage('assistant', "To add to a goal, I need the amount and the goal's name."); return; }
+        if (goalsLoading || loadingCumulativeSavings) { addMessage('assistant', "I'm still loading your financial data. Please try again in a moment."); return; }
+        if (fetchError) { addMessage('assistant', `There was an issue fetching your data: ${fetchError}...`, null, true); return; }
+
+        const amountToContribute = parseFloat(amountEntity.value);
+        const goalDescriptionQuery = capitalizeFirstLetter(goalDescriptionEntity.value.trim());
+        const foundGoal = goals.find(g => g.description.toLowerCase() === goalDescriptionQuery.toLowerCase());
+
+        if (!foundGoal) { addMessage('assistant', `I couldn't find an active goal named "${goalDescriptionQuery}".`); return; }
+        if (foundGoal.status !== 'active') { addMessage('assistant', `The goal "${foundGoal.description}" is not active (status: ${foundGoal.status}).`); return; }
+        const remainingNeeded = foundGoal.targetAmount - foundGoal.savedAmount;
+        if (remainingNeeded <= 0) { addMessage('assistant', `The goal "${foundGoal.description}" is already fully funded!`); return; }
+        if (amountToContribute <=0) { addMessage('assistant', "Contribution amount must be positive."); return; }
+        if (amountToContribute > currentUserCumulativeSavings) { addMessage('assistant', `You're trying to contribute ${formatCurrency(amountToContribute)}, but your total available savings is ${formatCurrency(currentUserCumulativeSavings)}.`); return; }
+        
+        let contributionWarning = amountToContribute > remainingNeeded ? `\nNote: You're adding ${formatCurrency(amountToContribute)}, but only ${formatCurrency(remainingNeeded)} is needed. It will be capped.` : "";
+        actionDetailsForConfirmation = { type: 'confirm_action', intent: 'add_to_goal', data: { goalId: foundGoal._id, amount: amountToContribute, goalDescription: foundGoal.description }, confirmationId: generateId(), originalQuery };
+        confirmationMessage = `Okay, add ${formatCurrency(amountToContribute)} to your "${foundGoal.description}" goal?${contributionWarning}\n(Saved: ${formatCurrency(foundGoal.savedAmount)}, Target: ${formatCurrency(foundGoal.targetAmount)})\n\nIs this correct? (yes/no)`;
+    }
     else if (intent.name === 'set_limit') {
         const categoryEntity = entities['category:category']?.[0];
         const amountEntity = entities['wit$amount_of_money:amount_of_money']?.[0];
+        if (!categoryEntity || !amountEntity) { addMessage('assistant', "To set a limit, I need a category and an amount."); return; }
+        const category = capitalizeFirstLetter(categoryEntity.value);
+        const amount = parseFloat(amountEntity.value);
+        actionDetailsForConfirmation = { type: 'confirm_action', intent: 'set_limit', data: { category, amount }, confirmationId: generateId(), originalQuery };
+        confirmationMessage = `Alright, set a spending limit:\n- Category: ${category}\n- Amount: ${formatCurrency(amount)}\n\nIs this correct? (yes/no)`;
+    }
+    else if (intent.name === 'get_expense_details') {
+        const dateTimeEntity = entities['wit$datetime:datetime']?.[0];
+        executeGetExpenseDetails(dateTimeEntity);
+        return; 
+    }
+    else if (intent.name === 'get_expense_by_category') {
+        const categoryEntity = entities['category:category']?.[0];
+        const dateTimeEntity = entities['wit$datetime:datetime']?.[0];
 
-        if (!categoryEntity || !amountEntity) {
-            addMessage('assistant', "To set a limit, I need a category and an amount. E.g., 'Set $100 limit for groceries'.");
+        if (!categoryEntity) {
+            addMessage('assistant', "Please specify a category to get the expense summary. For example, 'how much did I spend on food?'.");
             return;
         }
-        const rawCategory = categoryEntity.value;
-        const category = capitalizeFirstLetter(rawCategory);
-        const amount = parseFloat(amountEntity.value);
-
-        actionDetailsForConfirmation = {
-            type: 'confirm_action',
-            intent: 'set_limit',
-            data: { category, amount },
-            confirmationId: generateId(), originalQuery,
-        };
-        confirmationMessage = `Alright, set a spending limit:\n- Category: ${category}\n- Amount: $${amount.toFixed(2)}\n\nIs this correct? (yes/no)`;
+        const categoryName = capitalizeFirstLetter(categoryEntity.value);
+        executeGetExpenseByCategory(categoryName, dateTimeEntity);
+        return;
     }
-    // --- UNHANDLED/UNKNOWN INTENT ---
+    else if (intent.name === 'get_income_details') {
+        const dateTimeEntity = entities['wit$datetime:datetime']?.[0];
+        executeGetIncomeDetails(dateTimeEntity);
+        return; 
+    }
+    else if (intent.name === 'get_income_by_category') {
+        const categoryEntity = entities['category:category']?.[0]; 
+        const dateTimeEntity = entities['wit$datetime:datetime']?.[0];
+
+        if (!categoryEntity) {
+            addMessage('assistant', "Please specify an income source to get the summary. For example, 'how much income from salary?'.");
+            return;
+        }
+        const sourceName = capitalizeFirstLetter(categoryEntity.value);
+        executeGetIncomeByCategory(sourceName, dateTimeEntity);
+        return;
+    }
     else {
-      addMessage('assistant', `I understood the intent as "${intent.name}", but I'm not programmed to perform that action yet. (Confidence: ${(intent.confidence*100).toFixed(1)}%)`, null, false, witData);
+      addMessage('assistant', `I understood the intent as "${intent.name}" (${(intent.confidence*100).toFixed(1)}%), but I'm not programmed for that yet.`, null, false, witData);
       return;
     }
 
@@ -262,56 +582,10 @@ const SmartAssistantPage = () => {
 
     addMessage('user', query);
     setInputValue('');
-    setIsLoading(true);
 
     if (pendingAction) {
-      // This 'get_description' block is now less likely to be hit for expense/income,
-      // but kept for potential other uses or if a description prompt is re-introduced.
-      if (pendingAction.type === 'get_description') {
-        let userProvidedDescription = capitalizeFirstLetter(query);
-        const baseData = pendingAction.data;
-        let finalDescriptionForConfirmation = "";
-        let dataForConfirmation = { ...baseData };
-
-        if (pendingAction.intent === 'add_expense') {
-            if (lowerQuery === 'none' || lowerQuery === 'skip') {
-                finalDescriptionForConfirmation = baseData.category; 
-            } else {
-                if (baseData.category.toLowerCase() !== userProvidedDescription.toLowerCase()) {
-                    finalDescriptionForConfirmation = `${baseData.category}: ${userProvidedDescription}`;
-                } else {
-                    finalDescriptionForConfirmation = userProvidedDescription;
-                }
-            }
-            dataForConfirmation.description = finalDescriptionForConfirmation.trim();
-            const confirmText = `Sure! Add an expense:\n- Amount: $${dataForConfirmation.amount.toFixed(2)}\n- Category: ${dataForConfirmation.category}\n- Description: ${dataForConfirmation.description}\n- Date: ${formatDateForDisplay(dataForConfirmation.date)}\n\nIs this correct? (yes/no)`;
-            
-            setPendingAction({
-                type: 'confirm_action', intent: 'add_expense', data: dataForConfirmation,
-                confirmationId: generateId(), originalQuery: pendingAction.originalQuery
-            });
-            addMessage('assistant', confirmText);
-
-        } else if (pendingAction.intent === 'add_income') {
-            if (lowerQuery === 'none' || lowerQuery === 'skip') {
-                finalDescriptionForConfirmation = baseData.category; 
-            } else {
-                if (baseData.category !== 'Income' && baseData.category.toLowerCase() !== userProvidedDescription.toLowerCase()) {
-                    finalDescriptionForConfirmation = `${baseData.category}: ${userProvidedDescription}`;
-                } else {
-                    finalDescriptionForConfirmation = userProvidedDescription;
-                }
-            }
-            dataForConfirmation.description = finalDescriptionForConfirmation.trim();
-            const confirmText = `Great! Add income:\n- Amount: $${dataForConfirmation.amount.toFixed(2)}\n- Category: ${dataForConfirmation.category}\n- Source/Description: ${dataForConfirmation.description}\n- Date: ${formatDateForDisplay(dataForConfirmation.date)}\n\nIs this correct? (yes/no)`;
-
-            setPendingAction({
-                type: 'confirm_action', intent: 'add_income', data: dataForConfirmation,
-                confirmationId: generateId(), originalQuery: pendingAction.originalQuery
-            });
-            addMessage('assistant', confirmText);
-        }
-      } else if (pendingAction.type === 'confirm_action') {
+        setIsLoading(true); 
+      if (pendingAction.type === 'confirm_action') {
         if (lowerQuery === 'yes' || lowerQuery === 'y') {
           try {
             if (pendingAction.intent === 'add_expense' || pendingAction.intent === 'add_income') {
@@ -320,19 +594,25 @@ const SmartAssistantPage = () => {
               await executeAddGoal(pendingAction.data);
             } else if (pendingAction.intent === 'set_limit') {
               await executeSetLimit(pendingAction.data);
+            } else if (pendingAction.intent === 'add_to_goal') {
+              await executeContributeToGoal(pendingAction.data.goalId, pendingAction.data.amount, pendingAction.data.goalDescription);
             } else {
               addMessage('assistant', `Action for "${pendingAction.intent}" confirmed, but execution isn't fully implemented.`);
             }
-          } catch (apiError) { /* API errors are handled within execute functions by adding a message */ }
-          finally { setPendingAction(null); }
+          } catch (apiError) { /* Handled in execute functions */ }
+          finally { setPendingAction(null); setIsLoading(false); }
         } else if (lowerQuery === 'no' || lowerQuery === 'n') {
           addMessage('assistant', 'Okay, I won\'t do that. What would you like to do instead?');
           setPendingAction(null);
+          setIsLoading(false);
         } else {
           addMessage('assistant', "Please respond with 'yes' or 'no' to confirm or cancel.");
+          setIsLoading(false); 
         }
+      } else {
+         setPendingAction(null);
+         setIsLoading(false);
       }
-      setIsLoading(false);
       return;
     }
 
@@ -342,16 +622,15 @@ const SmartAssistantPage = () => {
     } catch (error) {
       toast.error(error.message || 'An error occurred with the AI assistant.');
       addMessage('assistant', `Sorry, I encountered an error: ${error.message}`, null, true);
-    } finally {
-      setIsLoading(false);
-    }
+      setIsLoading(false); 
+    } 
   };
 
   return (
     <div className={styles.pageContainer}>
       <h2 className={styles.pageTitle}>Smart Assistant</h2>
       <p className={styles.pageDescription}>
-        I can help you manage your finances. Try "Spent $20 for snacks today for tea and biscuits" or "Set a goal of $500 for Vacation by December".
+        I can help manage finances. Try "add $20 expense for food today", "show expenses last month", "how much for groceries this year?", or "my income from salary this month".
       </p>
 
       <div className={styles.chatArea}>
@@ -367,8 +646,8 @@ const SmartAssistantPage = () => {
               )}
             </div>
           ))}
-          {isLoading && !pendingAction && <div className={`${styles.message} ${styles.assistant}`}><p className={styles.messageText}><i>Thinking...</i></p></div>}
-          {isLoading && pendingAction && <div className={`${styles.message} ${styles.assistant}`}><p className={styles.messageText}><i>Processing your confirmation...</i></p></div>}
+          {isLoading && <div className={`${styles.message} ${styles.assistant}`}><p className={styles.messageText}><i>{pendingAction ? "Processing..." : "Thinking..."}</i></p></div>}
+          {(goalsLoading || loadingCumulativeSavings) && !isLoading && <div className={`${styles.message} ${styles.assistant}`}><p className={styles.messageText}><i>Loading your financial data...</i></p></div>}
           <div ref={messagesEndRef} />
         </div>
         <form onSubmit={handleSendMessage} className={styles.inputForm}>
@@ -377,15 +656,14 @@ const SmartAssistantPage = () => {
             value={inputValue}
             onChange={handleInputChange}
             placeholder={
-                pendingAction ? 
-                    (pendingAction.type === 'get_description' ? "Enter description (or 'none')..." : "Type 'yes' or 'no'...") 
-                    : "Ask or tell me something..."
+                pendingAction ? "Type 'yes' or 'no'..."
+                : (goalsLoading || loadingCumulativeSavings) ? "Loading data..." : "Ask or tell me something..."
             }
             className={styles.chatInput}
-            disabled={isLoading}
+            disabled={isLoading || goalsLoading || loadingCumulativeSavings}
             autoFocus
           />
-          <button type="submit" className={styles.sendButton} disabled={isLoading || !inputValue.trim()}>
+          <button type="submit" className={styles.sendButton} disabled={isLoading || goalsLoading || loadingCumulativeSavings || !inputValue.trim()}>
             Send
           </button>
         </form>

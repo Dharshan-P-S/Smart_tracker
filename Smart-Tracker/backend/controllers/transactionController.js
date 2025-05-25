@@ -238,6 +238,298 @@ const addMonthlySavings = async (req, res) => {
 };
 
 
+const getExpenseSummary = async (req, res) => {
+    try {
+        const userId = await getPlaceholderUserId();
+        const { startDate: queryStartDate, endDate: queryEndDate, category, periodKeyword } = req.query;
+
+        let dateFilter = {};
+        let effectiveStartDate, effectiveEndDate; // To store the actual dates used for filtering
+        let periodDescription = "for the requested period";
+
+        if (queryStartDate) { // A specific date or date range was provided
+            let sDate = new Date(queryStartDate); // Assume YYYY-MM-DD
+            let eDate = queryEndDate ? new Date(queryEndDate) : new Date(queryStartDate); // If no endDate, assume single day query
+
+            if (isNaN(sDate.getTime()) || isNaN(eDate.getTime())) {
+                return res.status(400).json({ message: "Invalid startDate or endDate format." });
+            }
+
+            // Check if the provided startDate and endDate (or just startDate if endDate is missing) represent a single day
+            // AND no periodKeyword is present (as periodKeyword would take precedence for broader ranges like "this_year")
+            const isSingleDayQuery = queryStartDate && (!queryEndDate || queryStartDate === queryEndDate) && !periodKeyword;
+
+            if (isSingleDayQuery) {
+                // User asked for a specific day, so expand to the full month of that day
+                ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(sDate));
+                periodDescription = `for ${sDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })} (showing full month)`;
+            } else {
+                // It's a range or a keyword-driven range, use the provided/calculated dates
+                // For ranges from Wit.ai where queryEndDate might be exclusive (e.g., 2024-05-01 for April)
+                sDate.setUTCHours(0, 0, 0, 0);
+                // If queryEndDate is intended as exclusive, the $lt operator is better.
+                // If the frontend always sends queryEndDate as the start of the day *after* the period,
+                // then eDate should be used with $lt.
+                effectiveStartDate = sDate;
+                effectiveEndDate = eDate; // This eDate will be used with $lt if it's an exclusive end.
+
+                const formatDateDesc = (dateVal) => dateVal.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+                
+                // Adjust description for display
+                if (effectiveStartDate.toISOString().split('T')[0] === new Date(effectiveEndDate.getTime() - 1).toISOString().split('T')[0]) {
+                     // Single day range (after all processing if it wasn't expanded)
+                     periodDescription = `for ${formatDateDesc(effectiveStartDate)}`;
+                } else {
+                    // For display, show the day before the exclusive end date
+                    const displayEndDate = new Date(effectiveEndDate.getTime() - (24*60*60*1000));
+                    if (effectiveStartDate.getUTCFullYear() === displayEndDate.getUTCFullYear() && effectiveStartDate.getUTCMonth() === displayEndDate.getUTCMonth() && effectiveStartDate.getUTCDate() === 1 && displayEndDate.getUTCDate() >= 28) {
+                        periodDescription = `for ${effectiveStartDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })}`;
+                    } else {
+                        periodDescription = `from ${formatDateDesc(effectiveStartDate)} to ${formatDateDesc(displayEndDate)}`;
+                    }
+                }
+                 // If the query was for a specific month (e.g., endDate is start of next month)
+                if (queryEndDate && new Date(queryEndDate).getUTCDate() === 1 && new Date(queryStartDate).getUTCDate() === 1 && (new Date(queryEndDate).getUTCMonth() - new Date(queryStartDate).getUTCMonth() === 1 || (new Date(queryEndDate).getUTCMonth() === 0 && new Date(queryStartDate).getUTCMonth() === 11))) {
+                    periodDescription = `for ${new Date(queryStartDate).toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })}`;
+                }
+            }
+            // Set the date filter: $gte for start, $lt for end (if end is exclusive) or $lte (if end is inclusive EOD)
+            // If we expanded to a month, effectiveEndDate is already inclusive EOD from getMonthBoundaries.
+            if (isSingleDayQuery) {
+                 dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } };
+            } else {
+                // For ranges coming from Wit.AI where endDate is often exclusive
+                dateFilter = { date: { $gte: effectiveStartDate, $lt: effectiveEndDate } };
+            }
+
+
+        } else if (periodKeyword) {
+            const now = new Date();
+            if (periodKeyword === 'current_month') {
+                ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(now));
+                periodDescription = `for the current month (${now.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })})`;
+            } else if (periodKeyword === 'last_month') {
+                const lastMonthDate = new Date(now.getUTCFullYear(), now.getUTCMonth() - 1, 1);
+                ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(lastMonthDate));
+                periodDescription = `for last month (${lastMonthDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })})`;
+            } else if (periodKeyword === 'this_year') {
+                effectiveStartDate = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+                effectiveEndDate = new Date(Date.UTC(now.getUTCFullYear(), 11, 31, 23, 59, 59, 999));
+                periodDescription = `for this year (${now.getUTCFullYear()})`;
+            }
+            // Add more keyword handlers as needed
+
+            if (effectiveStartDate && effectiveEndDate) {
+                dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } }; // Inclusive for keywords
+            } else {
+                // Default to current month if keyword is unrecognized
+                ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(now));
+                dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } };
+                periodDescription = `for the current month (default)`;
+            }
+        } else {
+             // Default to current month if no date info provided at all
+            const now = new Date();
+            ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(now));
+            dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } };
+            periodDescription = `for the current month (default)`;
+        }
+        
+
+        const matchConditions = {
+            user: userId,
+            type: 'expense',
+            ...dateFilter,
+        };
+
+        if (category) {
+            matchConditions.category = { $regex: new RegExp(`^${category}$`, 'i') };
+        }
+
+        const expenses = await Transaction.find(matchConditions).sort({ date: -1 }).lean();
+
+        // ... (rest of the response generation logic: totalExpenses, count, breakdown, sampleTransactions)
+        if (expenses.length === 0) {
+            return res.status(200).json({
+                period: periodDescription,
+                category: category ? capitalizeFirstLetter(category) : "All",
+                totalExpenses: 0,
+                count: 0,
+                message: `No expenses found ${category ? `for category "${capitalizeFirstLetter(category)}"` : ""} ${periodDescription}.`
+            });
+        }
+
+        const totalExpenses = expenses.reduce((sum, tx) => sum + tx.amount, 0);
+        const count = expenses.length;
+
+        let breakdown = [];
+        if (!category && expenses.length > 0) {
+            const categoryMap = new Map();
+            expenses.forEach(tx => {
+                const cat = capitalizeFirstLetter(tx.category);
+                categoryMap.set(cat, (categoryMap.get(cat) || 0) + tx.amount);
+            });
+            breakdown = Array.from(categoryMap.entries())
+                .map(([catName, catTotal]) => ({
+                    category: catName,
+                    total: catTotal,
+                    percentage: totalExpenses > 0 ? (catTotal / totalExpenses) * 100 : 0,
+                }))
+                .sort((a, b) => b.total - a.total);
+        }
+        
+        const sampleTransactions = expenses.slice(0, 5).map(tx => ({
+            _id: tx._id,
+            date: tx.date,
+            description: tx.description,
+            category: tx.category,
+            amount: tx.amount,
+            emoji: tx.emoji
+        }));
+
+        res.status(200).json({
+            period: periodDescription,
+            category: category ? capitalizeFirstLetter(category) : "All Categories",
+            totalExpenses,
+            count,
+            breakdown: breakdown.length > 0 ? breakdown : undefined,
+            transactions: sampleTransactions.length > 0 ? sampleTransactions : undefined,
+        });
+
+    } catch (error) {
+        console.error('Error fetching expense summary:', error);
+        if (error.message.includes("No users found")) {
+            return res.status(500).json({ message: error.message });
+        }
+        res.status(500).json({ message: 'Server error while fetching expense summary.' });
+    }
+};
+
+// Helper function to capitalize first letter
+const capitalizeFirstLetter = (string) => {
+    if (!string) return '';
+    return string.charAt(0).toUpperCase() + string.slice(1);
+};
+
+const getIncomeSummary = async (req, res) => {
+    try {
+        const userId = await getPlaceholderUserId();
+        const { startDate: queryStartDate, endDate: queryEndDate, category, periodKeyword } = req.query;
+
+        let dateFilter = {};
+        let effectiveStartDate, effectiveEndDate;
+        let periodDescription = "for the requested period";
+
+        if (queryStartDate) {
+            let sDate = new Date(queryStartDate);
+            let eDate = queryEndDate ? new Date(queryEndDate) : new Date(queryStartDate);
+
+            if (isNaN(sDate.getTime()) || isNaN(eDate.getTime())) {
+                return res.status(400).json({ message: "Invalid startDate or endDate format." });
+            }
+
+            const isSingleDayQuery = queryStartDate && (!queryEndDate || queryStartDate === queryEndDate) && !periodKeyword;
+
+            if (isSingleDayQuery) {
+                ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(sDate));
+                periodDescription = `for ${sDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })} (showing full month)`;
+                dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } };
+            } else {
+                sDate.setUTCHours(0, 0, 0, 0);
+                effectiveStartDate = sDate;
+                effectiveEndDate = eDate; // Will be used with $lt if exclusive
+                dateFilter = { date: { $gte: effectiveStartDate, $lt: effectiveEndDate } };
+                
+                const formatDateDesc = (dateVal) => dateVal.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+                const displayEndDate = new Date(effectiveEndDate.getTime() - (24*60*60*1000));
+                 if (effectiveStartDate.getUTCFullYear() === displayEndDate.getUTCFullYear() && effectiveStartDate.getUTCMonth() === displayEndDate.getUTCMonth() && effectiveStartDate.getUTCDate() === 1 && displayEndDate.getUTCDate() >= 28) {
+                     periodDescription = `for ${effectiveStartDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })}`;
+                 } else if (effectiveStartDate.toISOString().split('T')[0] === displayEndDate.toISOString().split('T')[0]) {
+                     periodDescription = `for ${formatDateDesc(effectiveStartDate)}`;
+                 }
+                 else {
+                    periodDescription = `from ${formatDateDesc(effectiveStartDate)} to ${formatDateDesc(displayEndDate)}`;
+                 }
+            }
+        } else if (periodKeyword) {
+            const now = new Date();
+            if (periodKeyword === 'current_month') { /* ... */ ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(now)); periodDescription = `for the current month (${now.toLocaleString('default',{month:'long', year:'numeric',timeZone:'UTC'})})`;}
+            else if (periodKeyword === 'last_month') { /* ... */ const lm = new Date(now.getUTCFullYear(),now.getUTCMonth()-1,1); ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(lm)); periodDescription = `for last month (${lm.toLocaleString('default',{month:'long',year:'numeric',timeZone:'UTC'})})`;}
+            else if (periodKeyword === 'this_year') { /* ... */ effectiveStartDate = new Date(Date.UTC(now.getUTCFullYear(),0,1)); effectiveEndDate = new Date(Date.UTC(now.getUTCFullYear(),11,31,23,59,59,999)); periodDescription = `for this year (${now.getUTCFullYear()})`;}
+            
+            if (effectiveStartDate && effectiveEndDate) {
+                dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } };
+            } else { /* ... default to current month ... */ }
+        } else {
+            const now = new Date();
+            ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(now));
+            dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } };
+            periodDescription = `for the current month (default)`;
+        }
+
+        const matchConditions = {
+            user: userId,
+            type: 'income', // <<<< CHANGED TO 'income'
+            ...dateFilter,
+        };
+
+        if (category) {
+            matchConditions.category = { $regex: new RegExp(`^${category}$`, 'i') };
+        }
+
+        const incomeTransactions = await Transaction.find(matchConditions).sort({ date: -1 }).lean();
+
+        if (incomeTransactions.length === 0) {
+            return res.status(200).json({
+                period: periodDescription,
+                category: category ? capitalizeFirstLetter(category) : "All Sources", // Changed "All" to "All Sources"
+                totalIncome: 0, // <<<< CHANGED
+                count: 0,
+                message: `No income found ${category ? `from source "${capitalizeFirstLetter(category)}"` : ""} ${periodDescription}.`
+            });
+        }
+
+        const totalIncome = incomeTransactions.reduce((sum, tx) => sum + tx.amount, 0); // <<<< CHANGED
+        const count = incomeTransactions.length;
+
+        let breakdown = [];
+        if (!category && incomeTransactions.length > 0) {
+            const categoryMap = new Map();
+            incomeTransactions.forEach(tx => {
+                const cat = capitalizeFirstLetter(tx.category);
+                categoryMap.set(cat, (categoryMap.get(cat) || 0) + tx.amount);
+            });
+            breakdown = Array.from(categoryMap.entries())
+                .map(([catName, catTotal]) => ({
+                    category: catName, // For income, "category" is more like "source"
+                    total: catTotal,
+                    percentage: totalIncome > 0 ? (catTotal / totalIncome) * 100 : 0,
+                }))
+                .sort((a, b) => b.total - a.total);
+        }
+        
+        const sampleTransactions = incomeTransactions.slice(0, 5).map(tx => ({
+            _id: tx._id, date: tx.date, description: tx.description,
+            category: tx.category, amount: tx.amount, emoji: tx.emoji
+        }));
+
+        res.status(200).json({
+            period: periodDescription,
+            category: category ? capitalizeFirstLetter(category) : "All Sources",
+            totalIncome, // <<<< CHANGED
+            count,
+            breakdown: breakdown.length > 0 ? breakdown : undefined,
+            transactions: sampleTransactions.length > 0 ? sampleTransactions : undefined,
+        });
+
+    } catch (error) {
+        console.error('Error fetching income summary:', error);
+        if (error.message.includes("No users found")) return res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Server error while fetching income summary.' });
+    }
+};
+
+
 // @desc    Get dashboard data (totals, recent transactions)
 // @route   GET /api/dashboard
 const getDashboardData = async (req, res) => {
@@ -623,4 +915,6 @@ module.exports = {
     getCurrentMonthIncome,
     getCurrentMonthExpense,
     getMonthlySavings,
+    getExpenseSummary,
+    getIncomeSummary,
 };

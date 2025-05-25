@@ -2,7 +2,7 @@
 const express = require('express');
 const {
     addTransaction,
-    addMonthlySavings, // Import new controller
+    addMonthlySavings,
     getDashboardData,
     getAllTransactions,
     updateTransaction,
@@ -10,17 +10,24 @@ const {
     getOldTransactions,
     getCurrentMonthIncome,
     getCurrentMonthExpense,
-    getMonthlySavings
+    getMonthlySavings,
+    getExpenseSummary,
+    getIncomeSummary 
 } = require('../controllers/transactionController');
 
 const router = express.Router();
 
 // Temporarily public routes
 router.post('/', addTransaction); 
-router.post('/monthly-savings', addMonthlySavings); // New route for adding monthly total savings
+router.post('/monthly-savings', addMonthlySavings);
 
 router.get('/dashboard', getDashboardData);
 router.get('/all', getAllTransactions);
+
+// --- NEW ROUTE for Expense Summaries ---
+router.get('/expenses/summary', getExpenseSummary); 
+router.get('/income/summary', getIncomeSummary);
+
 router.put('/:id', updateTransaction);
 router.delete('/:id', deleteTransaction);
 router.get('/old', getOldTransactions);
