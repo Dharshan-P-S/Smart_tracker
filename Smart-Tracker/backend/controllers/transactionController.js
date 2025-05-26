@@ -12,12 +12,13 @@ const formatCurrencyLocal = (value) => {
 };
 
 const getPlaceholderUserId = async () => {
-    if (!User) {
-        throw new Error("User model not available.");
-    }
+    // Ensure User model is available - this check is good.
+    // if (!User) { // This check might be redundant if User is always imported.
+    //     throw new Error("User model not available.");
+    // }
     const firstUser = await User.findOne().select('_id').lean();
     if (!firstUser) {
-        throw new Error("No users found in the database to use as a placeholder.");
+        throw new Error("No users found in the database. Please ensure at least one user exists to use as a placeholder.");
     }
     return firstUser._id;
 };
@@ -28,12 +29,17 @@ const getMonthBoundaries = (dateInput) => {
     if (typeof dateInput === 'string' && dateInput.includes('-')) { // "YYYY-MM"
         [year, month] = dateInput.split('-').map(Number);
         month -= 1; // Adjust month to be 0-indexed for Date constructor
-    } else if (dateInput instanceof Date) {
+    } else if (dateInput instanceof Date && !isNaN(dateInput.getTime())) { // Added !isNaN check
         year = dateInput.getUTCFullYear();
         month = dateInput.getUTCMonth();
     } else {
         // console.error("Invalid dateInput for getMonthBoundaries:", dateInput);
-        throw new Error("Invalid dateInput for getMonthBoundaries");
+        // throw new Error("Invalid dateInput for getMonthBoundaries");
+        // Fallback to current month if dateInput is invalid
+        // console.warn("Invalid dateInput for getMonthBoundaries, defaulting to current month:", dateInput);
+        const now = new Date();
+        year = now.getUTCFullYear();
+        month = now.getUTCMonth();
     }
     const startOfMonth = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
     const endOfMonth = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999)); // Last day of month
@@ -83,7 +89,9 @@ const getMonthlySavingsInternal = async (userId, SUT_transactionId = null, SUT_n
     }
     
     const result = [];
-    for (const monthKey in monthlyAggregates) {
+    const sortedMonthKeys = Object.keys(monthlyAggregates).sort(); // Ensure chronological processing
+
+    for (const monthKey of sortedMonthKeys) { // Use sorted keys
         const data = monthlyAggregates[monthKey];
         let savingsForMonth;
         if (data.hasMonthlySummary) {
@@ -97,7 +105,7 @@ const getMonthlySavingsInternal = async (userId, SUT_transactionId = null, SUT_n
         });
     }
     
-    result.sort((a, b) => a.month.localeCompare(b.month));
+    // result.sort((a, b) => a.month.localeCompare(b.month)); // Already sorted by iterating sortedMonthKeys
     return result;
 };
 
@@ -149,10 +157,12 @@ const addTransaction = async (req, res) => {
                 }
             }
             const currentTransactionMonthData = allMonthlyDataRaw.find(m => m.month === transactionMonthKey);
-            const netSavingsOfTransactionMonthBeforeThisTx = currentTransactionMonthData ? currentTransactionMonthData.savings : 0;
-            if ((cumulativeSavingsUpToTransactionMonth + netSavingsOfTransactionMonthBeforeThisTx - parseFloat(amount)) < 0) {
+            const netSavingsOfTransactionMonthBeforeThisTx = currentTransactionMonthData ? (currentTransactionMonthData.savings || 0) : 0; // Handle undefined
+            const projectedCumulativeAfterExpense = cumulativeSavingsUpToTransactionMonth + netSavingsOfTransactionMonthBeforeThisTx - parseFloat(amount);
+
+            if (projectedCumulativeAfterExpense < 0) {
                 return res.status(400).json({
-                    message: `Adding this expense would make cumulative savings negative by the end of ${transactionDate.toLocaleString('default', {month: 'long', year: 'numeric', timeZone: 'UTC'})}.`
+                    message: `Adding this expense would make cumulative savings negative by the end of ${transactionDate.toLocaleString('default', {month: 'long', year: 'numeric', timeZone: 'UTC'})}. Projected cumulative: ${formatCurrencyLocal(projectedCumulativeAfterExpense)}`
                 });
             }
         }
@@ -180,7 +190,7 @@ const addMonthlySavings = async (req, res) => {
         const { monthYear, amount } = req.body;
         const userId = await getPlaceholderUserId();
 
-        if (!monthYear || amount === undefined || amount === null) {
+        if (!monthYear || amount === undefined || amount === null || !/^\d{4}-\d{2}$/.test(monthYear)) { // Added regex for YYYY-MM
             return res.status(400).json({ message: 'Please provide month (YYYY-MM) and amount' });
         }
         if (isNaN(parseFloat(amount))) {
@@ -216,9 +226,9 @@ const addMonthlySavings = async (req, res) => {
             }
         }
 
-        if (parseFloat(amount) < 0 && (cumulativeSavingsUpToPreviousMonth + parseFloat(amount) < 0)) {
+        if ((cumulativeSavingsUpToPreviousMonth + parseFloat(amount)) < 0) { // Check if adding this makes cumulative negative
             return res.status(400).json({ 
-                message: `Adding this negative saving of ${formatCurrencyLocal(parseFloat(amount))} for ${displayMonth} would make cumulative savings up to this month negative (to ${formatCurrencyLocal(cumulativeSavingsUpToPreviousMonth + parseFloat(amount))}). Current cumulative before this month is ${formatCurrencyLocal(cumulativeSavingsUpToPreviousMonth)}.` 
+                message: `Adding this saving of ${formatCurrencyLocal(parseFloat(amount))} for ${displayMonth} would make cumulative savings negative (to ${formatCurrencyLocal(cumulativeSavingsUpToPreviousMonth + parseFloat(amount))}). Current cumulative before this month is ${formatCurrencyLocal(cumulativeSavingsUpToPreviousMonth)}.` 
             });
         }
 
@@ -237,6 +247,12 @@ const addMonthlySavings = async (req, res) => {
     }
 };
 
+// Helper function to capitalize first letter
+const capitalizeFirstLetter = (string) => {
+    if (!string) return '';
+    return string.charAt(0).toUpperCase() + string.slice(1);
+};
+
 
 const getExpenseSummary = async (req, res) => {
     try {
@@ -244,98 +260,86 @@ const getExpenseSummary = async (req, res) => {
         const { startDate: queryStartDate, endDate: queryEndDate, category, periodKeyword } = req.query;
 
         let dateFilter = {};
-        let effectiveStartDate, effectiveEndDate; // To store the actual dates used for filtering
+        let effectiveStartDate, effectiveEndDate; 
         let periodDescription = "for the requested period";
 
-        if (queryStartDate) { // A specific date or date range was provided
-            let sDate = new Date(queryStartDate); // Assume YYYY-MM-DD
-            let eDate = queryEndDate ? new Date(queryEndDate) : new Date(queryStartDate); // If no endDate, assume single day query
+        // MODIFICATION START: Check if any date parameters are provided
+        const hasNoDateParameters = !queryStartDate && !queryEndDate && !periodKeyword;
 
-            if (isNaN(sDate.getTime()) || isNaN(eDate.getTime())) {
-                return res.status(400).json({ message: "Invalid startDate or endDate format." });
-            }
+        if (hasNoDateParameters) {
+            // If NO date parameters, it's an "all time" query for total expenses
+            dateFilter = {}; // No date filter
+            periodDescription = "of all time";
+        } else {
+            // Original logic for handling date parameters (including single-day to month expansion)
+            if (queryStartDate) { 
+                let sDate = new Date(queryStartDate); 
+                let eDate = queryEndDate ? new Date(queryEndDate) : new Date(queryStartDate);
 
-            // Check if the provided startDate and endDate (or just startDate if endDate is missing) represent a single day
-            // AND no periodKeyword is present (as periodKeyword would take precedence for broader ranges like "this_year")
-            const isSingleDayQuery = queryStartDate && (!queryEndDate || queryStartDate === queryEndDate) && !periodKeyword;
+                if (isNaN(sDate.getTime()) || isNaN(eDate.getTime())) {
+                    return res.status(400).json({ message: "Invalid startDate or endDate format." });
+                }
 
-            if (isSingleDayQuery) {
-                // User asked for a specific day, so expand to the full month of that day
-                ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(sDate));
-                periodDescription = `for ${sDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })} (showing full month)`;
-            } else {
-                // It's a range or a keyword-driven range, use the provided/calculated dates
-                // For ranges from Wit.ai where queryEndDate might be exclusive (e.g., 2024-05-01 for April)
-                sDate.setUTCHours(0, 0, 0, 0);
-                // If queryEndDate is intended as exclusive, the $lt operator is better.
-                // If the frontend always sends queryEndDate as the start of the day *after* the period,
-                // then eDate should be used with $lt.
-                effectiveStartDate = sDate;
-                effectiveEndDate = eDate; // This eDate will be used with $lt if it's an exclusive end.
+                const isSingleDayQuery = queryStartDate && (!queryEndDate || queryStartDate === queryEndDate) && !periodKeyword;
 
-                const formatDateDesc = (dateVal) => dateVal.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
-                
-                // Adjust description for display
-                if (effectiveStartDate.toISOString().split('T')[0] === new Date(effectiveEndDate.getTime() - 1).toISOString().split('T')[0]) {
-                     // Single day range (after all processing if it wasn't expanded)
-                     periodDescription = `for ${formatDateDesc(effectiveStartDate)}`;
+                if (isSingleDayQuery) {
+                    ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(sDate));
+                    periodDescription = `for ${sDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })} (showing full month)`;
+                    dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } };
                 } else {
-                    // For display, show the day before the exclusive end date
+                    sDate.setUTCHours(0, 0, 0, 0);
+                    effectiveStartDate = sDate;
+                    effectiveEndDate = eDate; 
+                    dateFilter = { date: { $gte: effectiveStartDate, $lt: effectiveEndDate } };
+
+                    const formatDateDesc = (dateVal) => dateVal.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
                     const displayEndDate = new Date(effectiveEndDate.getTime() - (24*60*60*1000));
-                    if (effectiveStartDate.getUTCFullYear() === displayEndDate.getUTCFullYear() && effectiveStartDate.getUTCMonth() === displayEndDate.getUTCMonth() && effectiveStartDate.getUTCDate() === 1 && displayEndDate.getUTCDate() >= 28) {
-                        periodDescription = `for ${effectiveStartDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })}`;
+
+                    if (effectiveStartDate.toISOString().split('T')[0] === displayEndDate.toISOString().split('T')[0]) {
+                         periodDescription = `for ${formatDateDesc(effectiveStartDate)}`;
                     } else {
-                        periodDescription = `from ${formatDateDesc(effectiveStartDate)} to ${formatDateDesc(displayEndDate)}`;
+                        const isFullMonth = effectiveStartDate.getUTCDate() === 1 &&
+                                        effectiveEndDate.getUTCDate() === 1 &&
+                                        (
+                                            (effectiveEndDate.getUTCMonth() === effectiveStartDate.getUTCMonth() + 1 && effectiveEndDate.getUTCFullYear() === effectiveStartDate.getUTCFullYear()) ||
+                                            (effectiveStartDate.getUTCMonth() === 11 && effectiveEndDate.getUTCMonth() === 0 && effectiveEndDate.getUTCFullYear() === effectiveStartDate.getUTCFullYear() + 1)
+                                        );
+                        if (isFullMonth) {
+                            periodDescription = `for ${effectiveStartDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })}`;
+                        } else {
+                            periodDescription = `from ${formatDateDesc(effectiveStartDate)} to ${formatDateDesc(displayEndDate)}`;
+                        }
                     }
                 }
-                 // If the query was for a specific month (e.g., endDate is start of next month)
-                if (queryEndDate && new Date(queryEndDate).getUTCDate() === 1 && new Date(queryStartDate).getUTCDate() === 1 && (new Date(queryEndDate).getUTCMonth() - new Date(queryStartDate).getUTCMonth() === 1 || (new Date(queryEndDate).getUTCMonth() === 0 && new Date(queryStartDate).getUTCMonth() === 11))) {
-                    periodDescription = `for ${new Date(queryStartDate).toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })}`;
+            } else if (periodKeyword) {
+                const now = new Date();
+                if (periodKeyword === 'current_month') {
+                    ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(now));
+                    periodDescription = `for the current month (${now.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })})`;
+                } else if (periodKeyword === 'last_month') {
+                    const lastMonthDate = new Date(now.getUTCFullYear(), now.getUTCMonth() - 1, 1);
+                    ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(lastMonthDate));
+                    periodDescription = `for last month (${lastMonthDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })})`;
+                } else if (periodKeyword === 'this_year') {
+                    effectiveStartDate = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+                    effectiveEndDate = new Date(Date.UTC(now.getUTCFullYear(), 11, 31, 23, 59, 59, 999));
+                    periodDescription = `for this year (${now.getUTCFullYear()})`;
+                } else {
+                    ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(now));
+                    periodDescription = `for the current month (defaulted from unrecognized period: ${periodKeyword})`;
                 }
-            }
-            // Set the date filter: $gte for start, $lt for end (if end is exclusive) or $lte (if end is inclusive EOD)
-            // If we expanded to a month, effectiveEndDate is already inclusive EOD from getMonthBoundaries.
-            if (isSingleDayQuery) {
-                 dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } };
-            } else {
-                // For ranges coming from Wit.AI where endDate is often exclusive
-                dateFilter = { date: { $gte: effectiveStartDate, $lt: effectiveEndDate } };
-            }
-
-
-        } else if (periodKeyword) {
-            const now = new Date();
-            if (periodKeyword === 'current_month') {
-                ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(now));
-                periodDescription = `for the current month (${now.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })})`;
-            } else if (periodKeyword === 'last_month') {
-                const lastMonthDate = new Date(now.getUTCFullYear(), now.getUTCMonth() - 1, 1);
-                ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(lastMonthDate));
-                periodDescription = `for last month (${lastMonthDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })})`;
-            } else if (periodKeyword === 'this_year') {
-                effectiveStartDate = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
-                effectiveEndDate = new Date(Date.UTC(now.getUTCFullYear(), 11, 31, 23, 59, 59, 999));
-                periodDescription = `for this year (${now.getUTCFullYear()})`;
-            }
-            // Add more keyword handlers as needed
-
-            if (effectiveStartDate && effectiveEndDate) {
-                dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } }; // Inclusive for keywords
-            } else {
-                // Default to current month if keyword is unrecognized
+                if (effectiveStartDate && effectiveEndDate) {
+                    dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } }; 
+                }
+            } else { 
+                 const now = new Date();
                 ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(now));
                 dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } };
                 periodDescription = `for the current month (default)`;
             }
-        } else {
-             // Default to current month if no date info provided at all
-            const now = new Date();
-            ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(now));
-            dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } };
-            periodDescription = `for the current month (default)`;
         }
+        // MODIFICATION END
         
-
         const matchConditions = {
             user: userId,
             type: 'expense',
@@ -348,11 +352,10 @@ const getExpenseSummary = async (req, res) => {
 
         const expenses = await Transaction.find(matchConditions).sort({ date: -1 }).lean();
 
-        // ... (rest of the response generation logic: totalExpenses, count, breakdown, sampleTransactions)
         if (expenses.length === 0) {
             return res.status(200).json({
                 period: periodDescription,
-                category: category ? capitalizeFirstLetter(category) : "All",
+                category: category ? capitalizeFirstLetter(category) : "All Categories",
                 totalExpenses: 0,
                 count: 0,
                 message: `No expenses found ${category ? `for category "${capitalizeFirstLetter(category)}"` : ""} ${periodDescription}.`
@@ -363,7 +366,7 @@ const getExpenseSummary = async (req, res) => {
         const count = expenses.length;
 
         let breakdown = [];
-        if (!category && expenses.length > 0) {
+        if (!category && expenses.length > 0 && totalExpenses > 0) {
             const categoryMap = new Map();
             expenses.forEach(tx => {
                 const cat = capitalizeFirstLetter(tx.category);
@@ -373,7 +376,7 @@ const getExpenseSummary = async (req, res) => {
                 .map(([catName, catTotal]) => ({
                     category: catName,
                     total: catTotal,
-                    percentage: totalExpenses > 0 ? (catTotal / totalExpenses) * 100 : 0,
+                    percentage: (catTotal / totalExpenses) * 100,
                 }))
                 .sort((a, b) => b.total - a.total);
         }
@@ -405,11 +408,6 @@ const getExpenseSummary = async (req, res) => {
     }
 };
 
-// Helper function to capitalize first letter
-const capitalizeFirstLetter = (string) => {
-    if (!string) return '';
-    return string.charAt(0).toUpperCase() + string.slice(1);
-};
 
 const getIncomeSummary = async (req, res) => {
     try {
@@ -420,56 +418,86 @@ const getIncomeSummary = async (req, res) => {
         let effectiveStartDate, effectiveEndDate;
         let periodDescription = "for the requested period";
 
-        if (queryStartDate) {
-            let sDate = new Date(queryStartDate);
-            let eDate = queryEndDate ? new Date(queryEndDate) : new Date(queryStartDate);
+        // MODIFICATION START: Check if any date parameters are provided
+        const hasNoDateParameters = !queryStartDate && !queryEndDate && !periodKeyword;
 
-            if (isNaN(sDate.getTime()) || isNaN(eDate.getTime())) {
-                return res.status(400).json({ message: "Invalid startDate or endDate format." });
-            }
-
-            const isSingleDayQuery = queryStartDate && (!queryEndDate || queryStartDate === queryEndDate) && !periodKeyword;
-
-            if (isSingleDayQuery) {
-                ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(sDate));
-                periodDescription = `for ${sDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })} (showing full month)`;
-                dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } };
-            } else {
-                sDate.setUTCHours(0, 0, 0, 0);
-                effectiveStartDate = sDate;
-                effectiveEndDate = eDate; // Will be used with $lt if exclusive
-                dateFilter = { date: { $gte: effectiveStartDate, $lt: effectiveEndDate } };
-                
-                const formatDateDesc = (dateVal) => dateVal.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
-                const displayEndDate = new Date(effectiveEndDate.getTime() - (24*60*60*1000));
-                 if (effectiveStartDate.getUTCFullYear() === displayEndDate.getUTCFullYear() && effectiveStartDate.getUTCMonth() === displayEndDate.getUTCMonth() && effectiveStartDate.getUTCDate() === 1 && displayEndDate.getUTCDate() >= 28) {
-                     periodDescription = `for ${effectiveStartDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })}`;
-                 } else if (effectiveStartDate.toISOString().split('T')[0] === displayEndDate.toISOString().split('T')[0]) {
-                     periodDescription = `for ${formatDateDesc(effectiveStartDate)}`;
-                 }
-                 else {
-                    periodDescription = `from ${formatDateDesc(effectiveStartDate)} to ${formatDateDesc(displayEndDate)}`;
-                 }
-            }
-        } else if (periodKeyword) {
-            const now = new Date();
-            if (periodKeyword === 'current_month') { /* ... */ ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(now)); periodDescription = `for the current month (${now.toLocaleString('default',{month:'long', year:'numeric',timeZone:'UTC'})})`;}
-            else if (periodKeyword === 'last_month') { /* ... */ const lm = new Date(now.getUTCFullYear(),now.getUTCMonth()-1,1); ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(lm)); periodDescription = `for last month (${lm.toLocaleString('default',{month:'long',year:'numeric',timeZone:'UTC'})})`;}
-            else if (periodKeyword === 'this_year') { /* ... */ effectiveStartDate = new Date(Date.UTC(now.getUTCFullYear(),0,1)); effectiveEndDate = new Date(Date.UTC(now.getUTCFullYear(),11,31,23,59,59,999)); periodDescription = `for this year (${now.getUTCFullYear()})`;}
-            
-            if (effectiveStartDate && effectiveEndDate) {
-                dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } };
-            } else { /* ... default to current month ... */ }
+        if (hasNoDateParameters) {
+            // If NO date parameters, it's an "all time" query for total income
+            dateFilter = {}; // No date filter
+            periodDescription = "of all time";
         } else {
-            const now = new Date();
-            ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(now));
-            dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } };
-            periodDescription = `for the current month (default)`;
+            // Original logic for handling date parameters
+            if (queryStartDate) {
+                let sDate = new Date(queryStartDate);
+                let eDate = queryEndDate ? new Date(queryEndDate) : new Date(queryStartDate);
+
+                if (isNaN(sDate.getTime()) || isNaN(eDate.getTime())) {
+                    return res.status(400).json({ message: "Invalid startDate or endDate format." });
+                }
+
+                const isSingleDayQuery = queryStartDate && (!queryEndDate || queryStartDate === queryEndDate) && !periodKeyword;
+
+                if (isSingleDayQuery) {
+                    ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(sDate));
+                    periodDescription = `for ${sDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })} (showing full month)`;
+                    dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } };
+                } else {
+                    sDate.setUTCHours(0, 0, 0, 0);
+                    effectiveStartDate = sDate;
+                    effectiveEndDate = eDate;
+                    dateFilter = { date: { $gte: effectiveStartDate, $lt: effectiveEndDate } }; 
+                    
+                    const formatDateDesc = (dateVal) => dateVal.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+                    const displayEndDate = new Date(effectiveEndDate.getTime() - (24*60*60*1000));
+
+                    if (effectiveStartDate.toISOString().split('T')[0] === displayEndDate.toISOString().split('T')[0]) {
+                        periodDescription = `for ${formatDateDesc(effectiveStartDate)}`;
+                    } else {
+                        const isFullMonth = effectiveStartDate.getUTCDate() === 1 &&
+                                        effectiveEndDate.getUTCDate() === 1 &&
+                                        (
+                                            (effectiveEndDate.getUTCMonth() === effectiveStartDate.getUTCMonth() + 1 && effectiveEndDate.getUTCFullYear() === effectiveStartDate.getUTCFullYear()) ||
+                                            (effectiveStartDate.getUTCMonth() === 11 && effectiveEndDate.getUTCMonth() === 0 && effectiveEndDate.getUTCFullYear() === effectiveStartDate.getUTCFullYear() + 1)
+                                        );
+                        if (isFullMonth) {
+                            periodDescription = `for ${effectiveStartDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })}`;
+                        } else {
+                            periodDescription = `from ${formatDateDesc(effectiveStartDate)} to ${formatDateDesc(displayEndDate)}`;
+                        }
+                    }
+                }
+            } else if (periodKeyword) {
+                const now = new Date();
+                if (periodKeyword === 'current_month') {
+                    ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(now));
+                    periodDescription = `for the current month (${now.toLocaleString('default',{month:'long', year:'numeric',timeZone:'UTC'})})`;
+                } else if (periodKeyword === 'last_month') {
+                    const lm = new Date(now.getUTCFullYear(),now.getUTCMonth()-1,1);
+                    ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(lm));
+                    periodDescription = `for last month (${lm.toLocaleString('default',{month:'long',year:'numeric',timeZone:'UTC'})})`;
+                } else if (periodKeyword === 'this_year') {
+                    effectiveStartDate = new Date(Date.UTC(now.getUTCFullYear(),0,1));
+                    effectiveEndDate = new Date(Date.UTC(now.getUTCFullYear(),11,31,23,59,59,999));
+                    periodDescription = `for this year (${now.getUTCFullYear()})`;
+                } else { 
+                    ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(now));
+                    periodDescription = `for the current month (defaulted from unrecognized period: ${periodKeyword})`;
+                }
+                if (effectiveStartDate && effectiveEndDate) {
+                    dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } };
+                }
+            } else {
+                const now = new Date();
+                ({ startOfMonth: effectiveStartDate, endOfMonth: effectiveEndDate } = getMonthBoundaries(now));
+                dateFilter = { date: { $gte: effectiveStartDate, $lte: effectiveEndDate } };
+                periodDescription = `for the current month (default)`;
+            }
         }
+        // MODIFICATION END
 
         const matchConditions = {
             user: userId,
-            type: 'income', // <<<< CHANGED TO 'income'
+            type: 'income',
             ...dateFilter,
         };
 
@@ -482,18 +510,18 @@ const getIncomeSummary = async (req, res) => {
         if (incomeTransactions.length === 0) {
             return res.status(200).json({
                 period: periodDescription,
-                category: category ? capitalizeFirstLetter(category) : "All Sources", // Changed "All" to "All Sources"
-                totalIncome: 0, // <<<< CHANGED
+                category: category ? capitalizeFirstLetter(category) : "All Sources",
+                totalIncome: 0,
                 count: 0,
                 message: `No income found ${category ? `from source "${capitalizeFirstLetter(category)}"` : ""} ${periodDescription}.`
             });
         }
 
-        const totalIncome = incomeTransactions.reduce((sum, tx) => sum + tx.amount, 0); // <<<< CHANGED
+        const totalIncome = incomeTransactions.reduce((sum, tx) => sum + tx.amount, 0);
         const count = incomeTransactions.length;
 
         let breakdown = [];
-        if (!category && incomeTransactions.length > 0) {
+        if (!category && incomeTransactions.length > 0 && totalIncome > 0) {
             const categoryMap = new Map();
             incomeTransactions.forEach(tx => {
                 const cat = capitalizeFirstLetter(tx.category);
@@ -501,9 +529,9 @@ const getIncomeSummary = async (req, res) => {
             });
             breakdown = Array.from(categoryMap.entries())
                 .map(([catName, catTotal]) => ({
-                    category: catName, // For income, "category" is more like "source"
+                    category: catName,
                     total: catTotal,
-                    percentage: totalIncome > 0 ? (catTotal / totalIncome) * 100 : 0,
+                    percentage: (catTotal / totalIncome) * 100,
                 }))
                 .sort((a, b) => b.total - a.total);
         }
@@ -516,7 +544,7 @@ const getIncomeSummary = async (req, res) => {
         res.status(200).json({
             period: periodDescription,
             category: category ? capitalizeFirstLetter(category) : "All Sources",
-            totalIncome, // <<<< CHANGED
+            totalIncome,
             count,
             breakdown: breakdown.length > 0 ? breakdown : undefined,
             transactions: sampleTransactions.length > 0 ? sampleTransactions : undefined,
@@ -568,8 +596,8 @@ const getDashboardData = async (req, res) => {
             const monthData = totalsAggregation[0];
             if (monthData.hasMonthlySummaryFlag === 1) {
                 balance = monthData.monthlySummary;
-                if (balance >= 0) { totalIncome = balance; totalExpense = 0; }
-                else { totalIncome = 0; totalExpense = -balance; }
+                totalIncome = balance >= 0 ? balance : 0;
+                totalExpense = balance < 0 ? -balance : 0;
             } else {
                 totalIncome = monthData.totalIncome;
                 totalExpense = monthData.totalExpense;
@@ -616,11 +644,13 @@ const updateTransaction = async (req, res) => {
         }
 
         const originalAmount = transaction.amount;
+        const originalType = transaction.type; 
         const originalCategory = transaction.category;
         const originalDescription = transaction.description;
+        const originalDate = transaction.date; 
         let goalToUpdate = null;
 
-        if (transaction.type === 'income' || transaction.type === 'expense') {
+        if (originalType === 'income' || originalType === 'expense') {
             if (description !== undefined && (typeof description !== 'string' || !description.trim())) {
                 return res.status(400).json({ message: 'Description cannot be empty.' });
             }
@@ -633,24 +663,27 @@ const updateTransaction = async (req, res) => {
                     return res.status(400).json({ message: 'Amount must be a positive number for income/expense.' });
                 }
             }
-        } else if (transaction.type === 'monthly_savings') {
+        } else if (originalType === 'monthly_savings') {
             if (newAmountStr !== undefined && isNaN(parseFloat(newAmountStr))) {
                 return res.status(400).json({ message: 'Amount must be a number for monthly savings.' });
+            }
+             if (description !== undefined || category !== undefined) { 
+                return res.status(400).json({ message: 'Description and category for monthly savings are derived and cannot be set directly.'});
             }
         }
         
         const newAmount = newAmountStr !== undefined ? parseFloat(newAmountStr) : originalAmount;
         const updatedCategory = category !== undefined ? category.trim() : originalCategory;
 
-        if (updatedCategory === 'Goal Savings' && transaction.type === 'expense') {
+        if (updatedCategory === 'Goal Savings' && originalType === 'expense') {
             const currentDescriptionForGoalParsing = description !== undefined ? description.trim() : originalDescription;
             const descParts = currentDescriptionForGoalParsing.split('Saving for: ');
             if (descParts.length > 1) {
                 const goalDescriptionQuery = descParts[1].trim();
                 goalToUpdate = await Goal.findOne({ description: goalDescriptionQuery, user: userId, status: { $in: ['active', 'achieved'] } });
                 if (goalToUpdate) {
-                    const amountDifference = newAmount - originalAmount;
-                    const proposedNewGoalSavedAmount = goalToUpdate.savedAmount - amountDifference;
+                    const changeInContribution = newAmount - originalAmount; 
+                    const proposedNewGoalSavedAmount = goalToUpdate.savedAmount + changeInContribution; 
                     if (proposedNewGoalSavedAmount < 0) {
                         return res.status(400).json({ 
                             message: `Editing this expense to ${formatCurrencyLocal(newAmount)} would make the goal's effective saved amount negative.`
@@ -663,25 +696,19 @@ const updateTransaction = async (req, res) => {
         }
         
         if (newAmountStr !== undefined && newAmount !== originalAmount) {
-            const allMonthlyDataRaw = await getMonthlySavingsInternal(userId, transactionId, newAmount);
+            const allMonthlyDataRaw = await getMonthlySavingsInternal(userId, transactionId, newAmount, false); 
             let finalCumulative = 0;
             let cumulativeBreached = false;
             let breachMonth = "";
-            allMonthlyDataRaw.sort((a,b) => a.month.localeCompare(b.month));
+            
             for (const monthData of allMonthlyDataRaw) {
                 finalCumulative += monthData.savings;
                 if (finalCumulative < 0) {
-                    const transactionDate = new Date(transaction.date); // Ensure transaction.date is valid
-                    if (isNaN(transactionDate.getTime())) {
-                        console.error(`[updateTransaction] Invalid date on transaction ${transaction._id} during cumulative check.`);
-                        // Handle appropriately, maybe skip or error
-                    } else {
-                        const transactionMonthKey = `${transactionDate.getUTCFullYear()}-${(transactionDate.getUTCMonth() + 1).toString().padStart(2, '0')}`;
-                        if (monthData.month >= transactionMonthKey) {
-                            cumulativeBreached = true;
-                            breachMonth = monthData.month;
-                            break;
-                        }
+                    const transactionMonthKey = `${new Date(originalDate).getUTCFullYear()}-${(new Date(originalDate).getUTCMonth() + 1).toString().padStart(2, '0')}`;
+                    if (monthData.month >= transactionMonthKey) {
+                        cumulativeBreached = true;
+                        breachMonth = monthData.month;
+                        break;
                     }
                 }
             }
@@ -693,30 +720,30 @@ const updateTransaction = async (req, res) => {
             }
         }
 
-        if (transaction.type === 'income' || transaction.type === 'expense') {
+        if (originalType === 'income' || originalType === 'expense') {
             if (description !== undefined) transaction.description = description.trim();
             if (category !== undefined) transaction.category = category.trim();
             if (emoji !== undefined) transaction.emoji = emoji === null ? '' : emoji;
         }
         if (newAmountStr !== undefined) transaction.amount = newAmount;
         
-        if (transaction.type === 'monthly_savings') {
-            const monthDate = new Date(transaction.date);
+        if (originalType === 'monthly_savings') { 
+            const monthDate = new Date(transaction.date); 
             const displayMonth = monthDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
             transaction.description = `Total Savings for ${displayMonth}`;
-            transaction.category = 'Monthly Summary';
+            transaction.category = 'Monthly Summary'; 
         }
 
         if (goalToUpdate) {
-            const amountDifferenceFromOriginalExpense = newAmount - originalAmount;
-            goalToUpdate.savedAmount -= amountDifferenceFromOriginalExpense;
+            const changeInContribution = newAmount - originalAmount;
+            goalToUpdate.savedAmount += changeInContribution;
             goalToUpdate.savedAmount = Math.max(0, goalToUpdate.savedAmount);
             goalToUpdate.savedAmount = Math.min(goalToUpdate.savedAmount, goalToUpdate.targetAmount);
             if (goalToUpdate.status === 'achieved' && goalToUpdate.savedAmount < goalToUpdate.targetAmount) {
                 goalToUpdate.status = 'active';
             } else if (goalToUpdate.status === 'active' && goalToUpdate.savedAmount >= goalToUpdate.targetAmount) {
                 goalToUpdate.status = 'achieved';
-                goalToUpdate.savedAmount = goalToUpdate.targetAmount;
+                goalToUpdate.savedAmount = goalToUpdate.targetAmount; 
             }
             await goalToUpdate.save();
         }
@@ -749,36 +776,35 @@ const deleteTransaction = async (req, res) => {
 
         let goalToUpdate = null;
         const amountBeingDeleted = transaction.amount;
+        const originalType = transaction.type;
+        const originalCategory = transaction.category;
+        const originalDescription = transaction.description;
+        const originalDate = transaction.date; 
 
-        if (transaction.category === 'Goal Savings' && transaction.type === 'expense') {
-            const descParts = transaction.description.split('Saving for: ');
+        if (originalCategory === 'Goal Savings' && originalType === 'expense') {
+            const descParts = originalDescription.split('Saving for: ');
             if (descParts.length > 1) {
                 const goalDescriptionQuery = descParts[1].trim();
-                goalToUpdate = await Goal.findOne({ description: goalDescriptionQuery, user: userId /* , status: { $in: ['active', 'achieved'] } // Consider broader search for goal if it might be archived */});
+                goalToUpdate = await Goal.findOne({ description: goalDescriptionQuery, user: userId });
                 if (!goalToUpdate) {
-                     console.warn(`[deleteTransaction] Goal Savings expense deleted, but could not find matching goal for description: "${transaction.description}"`);
+                     console.warn(`[deleteTransaction] Goal Savings expense deleted, but could not find matching goal for description: "${originalDescription}"`);
                 }
             }
         }
         
-        const allMonthlyDataRaw = await getMonthlySavingsInternal(userId, transactionId, 0, true);
+        const allMonthlyDataRaw = await getMonthlySavingsInternal(userId, transactionId, 0, true); 
         let finalCumulative = 0;
         let cumulativeBreached = false;
         let breachMonth = "";
-        allMonthlyDataRaw.sort((a,b) => a.month.localeCompare(b.month));
+        
         for (const monthData of allMonthlyDataRaw) {
             finalCumulative += monthData.savings;
              if (finalCumulative < 0) {
-                const transactionDate = new Date(transaction.date);
-                if (isNaN(transactionDate.getTime())) {
-                    console.error(`[deleteTransaction] Invalid date on transaction ${transaction._id}`);
-                } else {
-                    const transactionMonthKey = `${transactionDate.getUTCFullYear()}-${(transactionDate.getUTCMonth() + 1).toString().padStart(2, '0')}`;
-                    if (monthData.month >= transactionMonthKey) {
-                        cumulativeBreached = true;
-                        breachMonth = monthData.month;
-                        break;
-                    }
+                const transactionMonthKey = `${new Date(originalDate).getUTCFullYear()}-${(new Date(originalDate).getUTCMonth() + 1).toString().padStart(2, '0')}`;
+                if (monthData.month >= transactionMonthKey) {
+                    cumulativeBreached = true;
+                    breachMonth = monthData.month;
+                    break;
                 }
             }
         }
@@ -789,19 +815,15 @@ const deleteTransaction = async (req, res) => {
             });
         }
 
-        // IMPORTANT: Perform deletion of transaction BEFORE attempting to update goal,
-        // especially if not using DB transactions for atomicity.
         await Transaction.deleteOne({ _id: transactionId, user: userId });
 
         if (goalToUpdate) {
-            // CORRECTED LOGIC: Deleting an expense that was a contribution means the saved amount for the goal DECREASES.
             goalToUpdate.savedAmount -= amountBeingDeleted; 
-            goalToUpdate.savedAmount = Math.max(0, goalToUpdate.savedAmount); // Ensure not negative
+            goalToUpdate.savedAmount = Math.max(0, goalToUpdate.savedAmount); 
 
             if (goalToUpdate.status === 'achieved' && goalToUpdate.savedAmount < goalToUpdate.targetAmount) {
                 goalToUpdate.status = 'active';
             }
-            // No need to check if active becomes achieved here, as deleting an expense won't achieve a goal.
             await goalToUpdate.save();
             console.log(`[deleteTransaction] Goal "${goalToUpdate.description}" updated due to expense deletion. New saved amount: ${goalToUpdate.savedAmount}, Status: ${goalToUpdate.status}`);
         }
