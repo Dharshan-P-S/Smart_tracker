@@ -111,20 +111,27 @@ const SmartAssistantPage = () => {
   const [fetchError, setFetchError] = useState('');
 
   const messagesEndRef = useRef(null);
-  const inputRef = useRef(null); // Ref for the input field
+  const inputRef = useRef(null);
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(scrollToBottom, [messages]);
 
-  // Effect to focus input when it becomes available for a new query
+  // This effect attempts to focus the input field whenever it's deemed "ready"
   useEffect(() => {
-    if (!isLoading && !pendingAction && !goalsLoading && !limitsLoading && !loadingCumulativeSavings) {
-      // Use a timeout to ensure focus happens after any potential DOM updates from state changes
-      const timerId = setTimeout(() => {
-        inputRef.current?.focus();
-      }, 0);
-      return () => clearTimeout(timerId); // Cleanup timeout if dependencies change before it fires
+    const isInputReady = !isLoading && !goalsLoading && !limitsLoading && !loadingCumulativeSavings;
+
+    if (isInputReady && inputRef.current) {
+      const focusTimeout = setTimeout(() => {
+        // Check if the input element still exists and is not the currently focused element
+        // Also, very importantly, check if it's not disabled in the DOM
+        if (inputRef.current && document.activeElement !== inputRef.current && !inputRef.current.disabled) {
+          inputRef.current.focus();
+        }
+      }, 0); // Minimal delay to allow DOM updates to settle
+      return () => clearTimeout(focusTimeout);
     }
-  }, [isLoading, pendingAction, goalsLoading, limitsLoading, loadingCumulativeSavings]);
+  }, [isLoading, goalsLoading, limitsLoading, loadingCumulativeSavings, messages, pendingAction]);
+  // Adding `messages` and `pendingAction` to dependencies ensures this effect re-runs
+  // after an interaction completes or a confirmation state changes.
 
 
     const fetchGoals = useCallback(async () => {
@@ -565,7 +572,7 @@ const SmartAssistantPage = () => {
     const entities = witData.entities;
     let actionDetailsForConfirmation = null;
     let confirmationMessage = "";
-    const confidenceThreshold = 0.7;
+    const confidenceThreshold = 0.6;
 
     if (intent.confidence < confidenceThreshold) {
         addMessage('assistant', `I think you might mean "${intent.name}", but I'm not very confident. Could you clarify? (Confidence: ${(intent.confidence*100).toFixed(1)}%)`, null, false, witData);
@@ -732,7 +739,7 @@ const SmartAssistantPage = () => {
     }
     else if (intent.name === 'get_expense_details' || intent.name === 'get_total_expense') {
         const dateTimeEntity = entities['wit$datetime:datetime']?.[0];
-        executeGetExpenseDetails(dateTimeEntity, isTotalQuery); // This is async
+        executeGetExpenseDetails(dateTimeEntity, isTotalQuery);
         return;
     }
     else if (intent.name === 'get_expense_by_category' || intent.name === 'get_total_expense_by_category') {
@@ -743,12 +750,12 @@ const SmartAssistantPage = () => {
             setIsLoading(false); return;
         }
         const categoryName = capitalizeFirstLetter(categoryEntities[0].value);
-        executeGetExpenseByCategory(categoryName, dateTimeEntity, isTotalQuery); // This is async
+        executeGetExpenseByCategory(categoryName, dateTimeEntity, isTotalQuery);
         return;
     }
     else if (intent.name === 'get_income_details' || intent.name === 'get_total_income') {
         const dateTimeEntity = entities['wit$datetime:datetime']?.[0];
-        executeGetIncomeDetails(dateTimeEntity, isTotalQuery); // This is async
+        executeGetIncomeDetails(dateTimeEntity, isTotalQuery);
         return;
     }
     else if (intent.name === 'get_income_by_category' || intent.name === 'get_total_income_by_category') {
@@ -759,7 +766,7 @@ const SmartAssistantPage = () => {
             setIsLoading(false); return;
         }
         const sourceName = capitalizeFirstLetter(categoryEntities[0].value);
-        executeGetIncomeByCategory(sourceName, dateTimeEntity, isTotalQuery); // This is async
+        executeGetIncomeByCategory(sourceName, dateTimeEntity, isTotalQuery);
         return;
     }
     else if (intent.name === 'get_goal_details') {
@@ -772,7 +779,7 @@ const SmartAssistantPage = () => {
             addMessage('assistant', "I'm still loading your goals data. Please try again in a moment.");
             setIsLoading(false); return;
         }
-        executeGetGoalDetailsByName(goalNameEntities); // This is async
+        executeGetGoalDetailsByName(goalNameEntities);
         return;
     }
     else if (intent.name === 'get_limit_details') {
@@ -785,21 +792,20 @@ const SmartAssistantPage = () => {
             addMessage('assistant', "I'm still loading your limits data. Please try again in a moment.");
             setIsLoading(false); return;
         }
-        executeGetLimitDetailsByCategory(categoryEntities); // This is async
+        executeGetLimitDetailsByCategory(categoryEntities);
         return;
     }
     else {
       addMessage('assistant', `I understood the intent as "${intent.name}" (${(intent.confidence*100).toFixed(1)}%), but I'm not programmed for that specific action yet.`, null, false, witData);
-      setIsLoading(false); // Ensure isLoading is false for unhandled intents
+      setIsLoading(false);
       return;
     }
 
     if (actionDetailsForConfirmation && confirmationMessage) {
       setPendingAction(actionDetailsForConfirmation);
       addMessage('assistant', confirmationMessage, actionDetailsForConfirmation, false, witData);
-      setIsLoading(false); // isLoading becomes false as we are now waiting for user (yes/no)
+      setIsLoading(false);
     }
-    // Removed the implicit setIsLoading(false) here, as each path should handle it or rely on execute* functions.
   };
 
   const handleSendMessage = async (e) => {
@@ -810,15 +816,11 @@ const SmartAssistantPage = () => {
 
     addMessage('user', query);
     setInputValue('');
-    // Attempt to focus immediately, especially useful if it's a 'yes'/'no' or quick interaction
-    // The useEffect will handle more complex async loading scenarios.
-    inputRef.current?.focus();
-
+    // The useEffect hook handles focusing.
 
     if (pendingAction) {
       if (pendingAction.type === 'confirm_action') {
         if (lowerQuery === 'yes' || lowerQuery === 'y') {
-          // setIsLoading(true) will be handled by the respective execute* functions
           try {
             if (pendingAction.intent === 'add_expense' || pendingAction.intent === 'add_income') {
               await executeAddTransaction(pendingAction.data);
@@ -830,54 +832,40 @@ const SmartAssistantPage = () => {
               await executeContributeToGoal(pendingAction.data.goalId, pendingAction.data.amount, pendingAction.data.goalDescription);
             } else {
               addMessage('assistant', `Action for "${pendingAction.intent}" confirmed, but execution isn't fully implemented.`);
-              setIsLoading(false); // Ensure loading is false if no async op
+              setIsLoading(false);
             }
           } catch (apiError) {
             // setIsLoading(false) is handled in execute* functions' finally blocks
           }
           finally {
             setPendingAction(null);
-            // setIsLoading(false) is handled in execute* functions' finally blocks
-            // The useEffect will kick in to focus if conditions are met
           }
         } else if (lowerQuery === 'no' || lowerQuery === 'n') {
           addMessage('assistant', 'Okay, I won\'t do that. What would you like to do instead?');
           setPendingAction(null);
-          setIsLoading(false); // Explicitly set loading false, ready for new input
-                               // The useEffect will attempt to focus.
+          setIsLoading(false);
         } else {
           addMessage('assistant', "Please respond with 'yes' or 'no' to confirm or cancel.");
-          // Input should ideally remain focused from the initial inputRef.current.focus() call
-          // or autoFocus prop if re-rendered.
         }
       } else {
          setPendingAction(null);
-         setIsLoading(false); // Fallback
+         setIsLoading(false);
       }
-      return; // Exit after handling pending action
+      return;
     }
 
-    setIsLoading(true); // Set loading for new Wit.ai query
+    setIsLoading(true);
     try {
       const witResponse = await sendToWit(query);
       processWitResponseAndTakeAction(witResponse, query);
-      // Note: processWitResponseAndTakeAction calls async functions which manage their own isLoading state.
-      // If processWitResponseAndTakeAction itself leads to a state where no further async
-      // operation is running immediately (e.g., set pendingAction, or direct return),
-      // isLoading might need to be managed.
-      // However, execute* functions will set setIsLoading(false) in their finally.
-      // And paths in processWitResponseAndTakeAction that set pendingAction also set setIsLoading(false).
     } catch (error) {
       toast.error(error.message || 'An error occurred with the AI assistant.');
       addMessage('assistant', `Sorry, I encountered an error: ${error.message}`, null, true);
-      setIsLoading(false); // Ensure isLoading is false on error
+      setIsLoading(false);
     }
-    // If processWitResponseAndTakeAction calls an async function (like executeGetExpenseDetails),
-    // that function's finally block will set setIsLoading(false).
-    // If it sets pendingAction, it also sets setIsLoading(false).
-    // If it's an unhandled intent, it sets setIsLoading(false).
-    // So, isLoading should be correctly managed by the sub-functions or paths.
   };
+
+  const isInputDisabled = isLoading || goalsLoading || limitsLoading || loadingCumulativeSavings;
 
   return (
     <div className={styles.pageContainer}>
@@ -919,19 +907,19 @@ const SmartAssistantPage = () => {
         </div>
         <form onSubmit={handleSendMessage} className={styles.inputForm}>
           <input
-            ref={inputRef} // Assign the ref
+            ref={inputRef}
             type="text"
             value={inputValue}
             onChange={handleInputChange}
             placeholder={
                 pendingAction ? "Type 'yes' or 'no'..."
-                : (goalsLoading || loadingCumulativeSavings || limitsLoading) ? "Loading data..." : "Ask or tell me something..."
+                : isInputDisabled ? "Loading data..." : "Ask or tell me something..."
             }
             className={styles.chatInput}
-            disabled={isLoading || goalsLoading || loadingCumulativeSavings || limitsLoading}
-            autoFocus // Good for initial load and when input becomes enabled for 'yes'/'no'
+            disabled={isInputDisabled}
+            autoFocus // Primarily for initial load
           />
-          <button type="submit" className={styles.sendButton} disabled={isLoading || goalsLoading || loadingCumulativeSavings || limitsLoading || !inputValue.trim()}>
+          <button type="submit" className={styles.sendButton} disabled={isInputDisabled || !inputValue.trim()}>
             Send
           </button>
         </form>
