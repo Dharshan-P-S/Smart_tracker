@@ -97,7 +97,7 @@ const parseWitDateTimeToQueryParams = (dateTimeEntity, isTotalQueryHint = false)
 const SmartAssistantPage = () => {
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState([
-    { id: generateId(), sender: 'assistant', text: "Hello! How can I assist you? Try 'Earned $500 from Freelance last week', 'Set goal for Vacation $500 by December', 'Add $20 to Vacation goal', 'Show my expenses', 'Total expenses for food?', 'My total income', 'How much salary last month?', 'What is my goal for New Car?', or 'Limit for Groceries?'" }
+    { id: generateId(), sender: 'assistant', text: "Hello! How can I assist you? Try 'Earned $500 from Freelance last week for logo design', 'Set goal for Vacation $500 by the December', 'Add $20 to Vacation goal', 'Show my expenses', 'Total expenses for food?', 'My total income', 'How much salary last month?', 'What is my goal for New Car?', or 'Limit for Groceries?'" }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
@@ -854,7 +854,7 @@ const SmartAssistantPage = () => {
     <div className={styles.pageContainer}>
       <h2 className={styles.pageTitle}>AI Assistant</h2>
       <p className={styles.pageDescription}>
-        I can help manage finances. Try "add $20 expense for food today", "show total expenses", "how much for groceries this year?", "my total income", or "my income from salary this month".
+        I can help manage finances. Try "Spent $20 for food today for Fried rice", "get total expenses", "what are the expenses for groceries this month?", "my total income", or "my income from salary this month".
       </p>
 
       <div className={styles.chatArea}>
