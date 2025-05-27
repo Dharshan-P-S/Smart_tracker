@@ -1,50 +1,39 @@
+// controllers/limitController.js
 const Limit = require('../models/Limit');
-const Transaction = require('../models/Transaction'); // Needed to calculate current spending
-const User = require('../models/User'); // Need User model for placeholder
-const mongoose = require('mongoose'); // Import mongoose for transaction
+const Transaction = require('../models/Transaction');
+// const User = require('../models/User'); // Likely not needed directly anymore
+const mongoose = require('mongoose');
 
-// --- INSECURE PLACEHOLDER ---
-// Fetches the first user's ID to use in place of authenticated user.
-// DO NOT USE IN PRODUCTION. Authentication should be properly handled.
-const getPlaceholderUserId = async () => {
-    const firstUser = await User.findOne().select('_id');
-    if (!firstUser) {
-        throw new Error("No users found in the database to use as a placeholder.");
-    }
-    return firstUser._id;
-};
-// --- END INSECURE PLACEHOLDER ---
-
-// @desc    Get all limits for the logged-in user (using placeholder)
+// @desc    Get all limits for the logged-in user
 // @route   GET /api/limits
-// @access  Public (Effectively, due to removed middleware)
 exports.getLimits = async (req, res) => {
     try {
-        const placeholderUserId = await getPlaceholderUserId(); // Get placeholder ID
-        const limits = await Limit.find({ user: placeholderUserId }); // Use placeholder ID
+        if (!req.user || !req.user._id) {
+            return res.status(401).json({ message: 'Not authorized, user information missing.' });
+        }
+        const userId = req.user._id;
 
-        // Get start and end of the current month
+        const limits = await Limit.find({ user: userId });
+
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999); // End of the last day
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-        // Calculate current spending for each category within the current month
         const limitsWithSpending = await Promise.all(limits.map(async (limit) => {
             const spendingResult = await Transaction.aggregate([
                 {
                     $match: {
-                        user: placeholderUserId, // Use placeholder ID
+                        user: userId,
                         type: 'expense',
-                        // Case-insensitive category match
                         category: { $regex: new RegExp(`^${limit.category}$`, 'i') },
-                        date: { $gte: startOfMonth, $lte: endOfMonth } // Filter by current month
+                        date: { $gte: startOfMonth, $lte: endOfMonth }
                     }
                 },
                 { $group: { _id: null, totalSpending: { $sum: '$amount' } } }
             ]);
             const currentSpending = spendingResult.length > 0 ? spendingResult[0].totalSpending : 0;
             return {
-                ...limit.toObject(), // Convert Mongoose doc to plain object
+                ...limit.toObject(),
                 currentSpending: currentSpending,
                 remainingAmount: limit.amount - currentSpending,
                 exceeded: currentSpending > limit.amount
@@ -53,19 +42,21 @@ exports.getLimits = async (req, res) => {
 
         res.json(limitsWithSpending);
     } catch (err) {
-        console.error('Error fetching limits:', err.message);
-        res.status(500).send('Server Error');
+        console.error('Error fetching limits:', err.message, err.stack);
+        res.status(500).send('Server Error fetching limits.');
     }
 };
 
-// @desc    Add a new limit for the logged-in user (using placeholder)
+// @desc    Add a new limit for the logged-in user
 // @route   POST /api/limits
-// @access  Public (Effectively)
 exports.addLimit = async (req, res) => {
     const { category, amount } = req.body;
-    let placeholderUserId; // Define here to use in catch block if needed
 
-    // Basic validation
+    if (!req.user || !req.user._id) {
+        return res.status(401).json({ message: 'Not authorized, user information missing.' });
+    }
+    const userId = req.user._id;
+
     if (!category || amount === undefined) {
         return res.status(400).json({ message: 'Category and amount are required' });
     }
@@ -74,217 +65,142 @@ exports.addLimit = async (req, res) => {
     }
 
     try {
-        placeholderUserId = await getPlaceholderUserId(); // Get placeholder ID
-        // Check if limit for this category already exists for the user
-        const existingLimit = await Limit.findOne({ user: placeholderUserId, category }); // Use placeholder ID
+        const existingLimit = await Limit.findOne({ user: userId, category });
         if (existingLimit) {
             return res.status(400).json({ message: `Limit for category '${category}' already exists. You can update it instead.` });
         }
 
         const newLimit = new Limit({
-            user: placeholderUserId, // Use placeholder ID
+            user: userId,
             category,
             amount,
         });
-
         const limit = await newLimit.save();
 
-        // Also return spending info (for current month) for the newly added limit
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-
-         const spendingResult = await Transaction.aggregate([
-             {
-                 $match: {
-                     user: placeholderUserId, // Use placeholder ID
-                     type: 'expense',
-                      // Case-insensitive category match
-                     category: { $regex: new RegExp(`^${limit.category}$`, 'i') },
-                     date: { $gte: startOfMonth, $lte: endOfMonth } // Filter by current month
-                 }
-             },
+        const spendingResult = await Transaction.aggregate([
+            {
+                $match: {
+                    user: userId, type: 'expense',
+                    category: { $regex: new RegExp(`^${limit.category}$`, 'i') },
+                    date: { $gte: startOfMonth, $lte: endOfMonth }
+                }
+            },
             { $group: { _id: null, totalSpending: { $sum: '$amount' } } }
         ]);
         const currentSpending = spendingResult.length > 0 ? spendingResult[0].totalSpending : 0;
 
         res.status(201).json({
-             ...limit.toObject(),
-             currentSpending: currentSpending,
-             remainingAmount: limit.amount - currentSpending,
-             exceeded: currentSpending > limit.amount
+            ...limit.toObject(),
+            currentSpending: currentSpending,
+            remainingAmount: limit.amount - currentSpending,
+            exceeded: currentSpending > limit.amount
         });
 
     } catch (err) {
-        console.error('Error adding limit:', err.message);
-        // Handle potential duplicate key error from the index
+        console.error('Error adding limit:', err.message, err.stack);
         if (err.code === 11000) {
-             return res.status(400).json({ message: `Limit for category '${category}' already exists.` });
+            return res.status(400).json({ message: `Limit for category '${category}' already exists.` });
         }
-        res.status(500).send('Server Error');
+        res.status(500).send('Server Error adding limit.');
     }
 };
 
-// @desc    Update an existing limit (using placeholder)
+// @desc    Update an existing limit
 // @route   PUT /api/limits/:id
-// @access  Public (Effectively)
 exports.updateLimit = async (req, res) => {
     const { category, amount } = req.body;
     const limitId = req.params.id;
-    let placeholderUserId; // Define here to use in catch block if needed
 
-    // Basic validation
-    if (amount === undefined && category === undefined) {
-         return res.status(400).json({ message: 'Provide at least category or amount to update.' });
+    if (!req.user || !req.user._id) {
+        return res.status(401).json({ message: 'Not authorized, user information missing.' });
     }
-     if (amount !== undefined && (typeof amount !== 'number' || amount < 0)) {
+    const userId = req.user._id;
+
+    if (amount === undefined && category === undefined) {
+        return res.status(400).json({ message: 'Provide at least category or amount to update.' });
+    }
+    if (amount !== undefined && (typeof amount !== 'number' || amount < 0)) {
         return res.status(400).json({ message: 'Amount must be a non-negative number' });
     }
-     if (category !== undefined && typeof category !== 'string' || category.trim() === '') {
-         return res.status(400).json({ message: 'Category must be a non-empty string' });
-     }
-
+    if (category !== undefined && (typeof category !== 'string' || category.trim() === '')) {
+        return res.status(400).json({ message: 'Category must be a non-empty string' });
+    }
 
     try {
-        placeholderUserId = await getPlaceholderUserId(); // Get placeholder ID
         let limit = await Limit.findById(limitId);
+        if (!limit) return res.status(404).json({ message: 'Limit not found' });
+        if (limit.user.toString() !== userId.toString()) return res.status(401).json({ message: 'Not authorized to update this limit' });
 
-        if (!limit) {
-            return res.status(404).json({ message: 'Limit not found' });
-        }
-
-        // Ensure the limit belongs to the placeholder user (INSECURE CHECK)
-        if (limit.user.toString() !== placeholderUserId.toString()) {
-             console.warn(`Attempt to update limit ${limitId} not belonging to placeholder user ${placeholderUserId}`);
-            // In a real scenario without auth, you might allow this or block it.
-            // For testing, we'll block it to mimic ownership check.
-            return res.status(401).json({ message: 'Not authorized (placeholder check)' });
-        }
-
-        // Prepare update fields
         const updateFields = {};
         if (category !== undefined) updateFields.category = category.trim();
         if (amount !== undefined) updateFields.amount = amount;
 
-        // --- NEW LOGIC: Handle merging limits if category is changed to an existing one ---
-        // Check if category is being changed AND if the new category already exists for another limit
         if (updateFields.category && updateFields.category !== limit.category) {
             const existingLimitForNewCategory = await Limit.findOne({
-                user: placeholderUserId, // Use placeholder ID
-                category: updateFields.category,
-                _id: { $ne: limitId } // Exclude the current limit being updated
+                user: userId, category: updateFields.category,
+                _id: { $ne: limitId }
             });
-
             if (existingLimitForNewCategory) {
-                // If an existing limit is found for the new category, merge the amounts
-                existingLimitForNewCategory.amount += updateFields.amount !== undefined ? updateFields.amount : limit.amount; // Add the new amount, or the old amount if only category changed
+                existingLimitForNewCategory.amount += updateFields.amount !== undefined ? updateFields.amount : limit.amount;
                 await existingLimitForNewCategory.save();
+                await Limit.findByIdAndDelete(limitId); // Corrected: use findByIdAndDelete
 
-                // Delete the original limit
-                await Limit.findByIdAndDelete(limitId);
-
-                // Return the updated existing limit
-                 // Also return spending info (for current month) for the merged limit
-                 const now = new Date();
-                 const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                 const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-
-                 const spendingResult = await Transaction.aggregate([
-                     {
-                         $match: {
-                             user: placeholderUserId, // Use placeholder ID
-                             type: 'expense',
-                              // Case-insensitive category match
-                             category: { $regex: new RegExp(`^${existingLimitForNewCategory.category}$`, 'i') },
-                             date: { $gte: startOfMonth, $lte: endOfMonth } // Filter by current month
-                         }
-                     },
+                const now = new Date();
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+                const spendingResult = await Transaction.aggregate([
+                    { $match: { user: userId, type: 'expense', category: { $regex: new RegExp(`^${existingLimitForNewCategory.category}$`, 'i') }, date: { $gte: startOfMonth, $lte: endOfMonth } } },
                     { $group: { _id: null, totalSpending: { $sum: '$amount' } } }
                 ]);
                 const currentSpending = spendingResult.length > 0 ? spendingResult[0].totalSpending : 0;
-
-                return res.json({
-                     ...existingLimitForNewCategory.toObject(),
-                     currentSpending: currentSpending,
-                     remainingAmount: existingLimitForNewCategory.amount - currentSpending,
-                     exceeded: currentSpending > existingLimitForNewCategory.amount
-                });
+                return res.json({ ...existingLimitForNewCategory.toObject(), currentSpending: currentSpending, remainingAmount: existingLimitForNewCategory.amount - currentSpending, exceeded: currentSpending > existingLimitForNewCategory.amount });
             }
         }
-        // --- END NEW LOGIC ---
+
+        limit = await Limit.findByIdAndUpdate(limitId, { $set: updateFields }, { new: true, runValidators: true });
+        if (!limit) return res.status(404).json({ message: 'Limit not found after update attempt.' }); // Should not happen if initial findById worked
 
 
-        // If category is NOT being changed to an existing one, proceed with standard update
-        limit = await Limit.findByIdAndUpdate(
-            limitId,
-            { $set: updateFields },
-            { new: true, runValidators: true } // Return updated doc, run schema validators
-        );
-
-         // Also return spending info (for current month) for the updated limit
-         const now = new Date();
-         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-
-         const spendingResult = await Transaction.aggregate([
-             {
-                 $match: {
-                     user: placeholderUserId, // Use placeholder ID
-                     type: 'expense',
-                      // Case-insensitive category match
-                     category: { $regex: new RegExp(`^${limit.category}$`, 'i') },
-                     date: { $gte: startOfMonth, $lte: endOfMonth } // Filter by current month
-                 }
-             },
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        const spendingResult = await Transaction.aggregate([
+            { $match: { user: userId, type: 'expense', category: { $regex: new RegExp(`^${limit.category}$`, 'i') }, date: { $gte: startOfMonth, $lte: endOfMonth } } },
             { $group: { _id: null, totalSpending: { $sum: '$amount' } } }
         ]);
         const currentSpending = spendingResult.length > 0 ? spendingResult[0].totalSpending : 0;
-
-
-        res.json({
-             ...limit.toObject(),
-             currentSpending: currentSpending,
-             remainingAmount: limit.amount - currentSpending,
-             exceeded: currentSpending > limit.amount
-        });
+        res.json({ ...limit.toObject(), currentSpending: currentSpending, remainingAmount: limit.amount - currentSpending, exceeded: currentSpending > limit.amount });
 
     } catch (err) {
-        console.error('Error updating limit:', err.message);
-         // Handle potential duplicate key error from the index if category is changed
+        console.error('Error updating limit:', err.message, err.stack);
         if (err.code === 11000 && category !== undefined) {
-             return res.status(400).json({ message: `A limit for category '${category}' already exists.` });
+            return res.status(400).json({ message: `A limit for category '${category}' already exists.` });
         }
-        res.status(500).send('Server Error');
+        res.status(500).send('Server Error updating limit.');
     }
 };
 
-// @desc    Delete a limit (using placeholder)
+// @desc    Delete a limit
 // @route   DELETE /api/limits/:id
-// @access  Public (Effectively)
 exports.deleteLimit = async (req, res) => {
     const limitId = req.params.id;
+    if (!req.user || !req.user._id) {
+        return res.status(401).json({ message: 'Not authorized, user information missing.' });
+    }
+    const userId = req.user._id;
 
     try {
-        const placeholderUserId = await getPlaceholderUserId(); // Get placeholder ID
-        const limit = await Limit.findById(limitId);
-
+        const limit = await Limit.findOne({ _id: limitId, user: userId }); // Ensure it belongs to the user
         if (!limit) {
-            return res.status(404).json({ message: 'Limit not found' });
+            return res.status(404).json({ message: 'Limit not found or not authorized' });
         }
-
-        // Ensure the limit belongs to the placeholder user (INSECURE CHECK)
-        if (limit.user.toString() !== placeholderUserId.toString()) {
-            console.warn(`Attempt to delete limit ${limitId} not belonging to placeholder user ${placeholderUserId}`);
-             // Block deletion for testing consistency
-            return res.status(401).json({ message: 'Not authorized (placeholder check)' });
-        }
-
-        await Limit.findByIdAndDelete(limitId); // Use findByIdAndDelete
-
+        await Limit.findByIdAndDelete(limitId);
         res.json({ message: 'Limit removed successfully' });
-
     } catch (err) {
-        console.error('Error deleting limit:', err.message);
-        res.status(500).send('Server Error');
+        console.error('Error deleting limit:', err.message, err.stack);
+        res.status(500).send('Server Error deleting limit.');
     }
 };

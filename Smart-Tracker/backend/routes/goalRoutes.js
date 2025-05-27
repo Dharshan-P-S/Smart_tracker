@@ -1,3 +1,4 @@
+// routes/goalRoutes.js
 const express = require('express');
 const router = express.Router();
 const {
@@ -5,11 +6,12 @@ const {
     addGoal,
     updateGoal,
     deleteGoal,
-    contributeToGoal // Import new controller
+    contributeToGoal
 } = require('../controllers/goalController');
-// const { protect } = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware'); // IMPORT PROTECT
 
-// router.use(protect);
+// Apply protect middleware to all goal routes
+router.use(protect); // Protect all routes below this line
 
 router.route('/')
     .get(getGoals)
@@ -19,6 +21,6 @@ router.route('/:id')
     .put(updateGoal)
     .delete(deleteGoal);
 
-router.post('/:id/contribute', contributeToGoal); // New route for contributions
+router.post('/:id/contribute', contributeToGoal);
 
 module.exports = router;

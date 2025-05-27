@@ -1,3 +1,4 @@
+// routes/limitRoutes.js
 const express = require('express');
 const router = express.Router();
 const {
@@ -6,18 +7,17 @@ const {
     updateLimit,
     deleteLimit
 } = require('../controllers/limitController');
-// const { protect } = require('../middleware/authMiddleware'); // REMOVED protection
+const { protect } = require('../middleware/authMiddleware'); // IMPORT PROTECT
 
-// Apply protect middleware to all routes in this file
-// router.use(protect); // REMOVED protection
+// Apply protect middleware to all limit routes
+router.use(protect); // Protect all routes below this line
 
-// Define routes
 router.route('/')
-    .get(getLimits)     // GET /api/limits - Fetches all limits for the user
-    .post(addLimit);    // POST /api/limits - Adds a new limit
+    .get(getLimits)
+    .post(addLimit);
 
 router.route('/:id')
-    .put(updateLimit)   // PUT /api/limits/:id - Updates a specific limit
-    .delete(deleteLimit); // DELETE /api/limits/:id - Deletes a specific limit
+    .put(updateLimit)
+    .delete(deleteLimit);
 
 module.exports = router;
