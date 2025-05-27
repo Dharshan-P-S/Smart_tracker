@@ -1212,6 +1212,79 @@
      color: var(--primary-accent-dark);
    }
 }
+/* ======== CSS ADDITIONS START ======== */
+
+/* New CSS for the consistent row layout */
+.dashboardRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Two equal columns */
+  gap: 1.5rem; /* Consistent gap, matches .mainArea and others */
+  margin-bottom: 1.5rem; /* Space between rows */
+}
+
+/* Responsive adjustments for new rows */
+@media (max-width: 992px) { /* Using a common breakpoint for stacking */
+  .dashboardRow {
+    grid-template-columns: 1fr; /* Stack columns */
+  }
+}
+
+/* Custom Scrollbar Styles */
+/* Apply to the main scrollable container of your dashboard page */
+.dashboardPageContent::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.dashboardPageContent::-webkit-scrollbar-track {
+  background: var(--scrollbar-track-bg, #e0e0e0); /* Lighter track for light mode */
+  border-radius: 10px;
+}
+
+.dashboardPageContent::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-bg, #888); /* Thumb color */
+  border-radius: 10px;
+  border: 2px solid var(--scrollbar-track-bg, #e0e0e0); /* Padding around thumb */
+}
+
+.dashboardPageContent::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-bg, #555); /* Darker on hover */
+}
+
+/* Firefox scrollbar styling */
+.dashboardPageContent {
+  scrollbar-width: auto; /* "auto" or "thin" */
+  scrollbar-color: var(--scrollbar-thumb-bg, #888) var(--scrollbar-track-bg, #e0e0e0); /* thumb and track */
+}
+
+/* Dark Mode Scrollbar Variables & Styles */
+@media (prefers-color-scheme: dark) {
+  .dashboardPageContent::-webkit-scrollbar-track {
+    background: var(--scrollbar-track-bg-dark, #2d3748); /* Darker track for dark mode */
+  }
+
+  .dashboardPageContent::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-bg-dark, #718096); /* Adjusted thumb for dark */
+    border-color: var(--scrollbar-track-bg-dark, #2d3748);
+  }
+
+  .dashboardPageContent::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover-bg-dark, #a0aec0); /* Lighter on hover for dark */
+  }
+
+  .dashboardPageContent {
+    scrollbar-color: var(--scrollbar-thumb-bg-dark, #718096) var(--scrollbar-track-bg-dark, #2d3748);
+  }
+}
+
+/* Ensure sectionBox children can grow if needed, though content usually dictates height */
+.dashboardRow > .sectionBox {
+  display: flex; /* Already present in .sectionBox but re-emphasizing for context */
+  flex-direction: column;
+  /* min-height: 400px; */ /* Example: if you want all boxes to have a minimum uniform height, but usually content-driven is better */
+}
+
+
 /*
   If you have specific height set on .chartContainer globally,
   you might need to override it for each chart instance or make the global one more flexible.
