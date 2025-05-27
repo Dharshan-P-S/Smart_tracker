@@ -7,7 +7,7 @@ const {
     verifyOTP,
     updateEmail // This should now be correctly imported
 } = require('../controllers/userController');
-// const { protect } = require('../middleware/authMiddleware'); // Assuming protect middleware exists
+const { protect } = require('../middleware/authMiddleware'); // Assuming protect middleware exists
 
 const router = express.Router();
 
@@ -21,7 +21,7 @@ router.post('/verify-otp', verifyOTP);
 
 // --- Protected Routes (using placeholder user ID for now) ---
 // In a real app, you would apply 'protect' middleware here, e.g.:
-// router.use(protect);
+router.use(protect);
 
 // GET /api/users/me - Get current user's profile
 router.get('/me', getUserProfile);

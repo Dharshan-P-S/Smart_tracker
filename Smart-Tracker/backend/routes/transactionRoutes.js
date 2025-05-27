@@ -1,5 +1,6 @@
 // routes/transactionRoutes.js
 const express = require('express');
+const { protect } = require('../middleware/authMiddleware'); // <<<< IMPORT PROTECT MIDDLEWARE
 const {
     addTransaction,
     addMonthlySavings,
@@ -12,27 +13,26 @@ const {
     getCurrentMonthExpense,
     getMonthlySavings,
     getExpenseSummary,
-    getIncomeSummary 
+    getIncomeSummary
 } = require('../controllers/transactionController');
 
 const router = express.Router();
 
-// Temporarily public routes
-router.post('/', addTransaction); 
-router.post('/monthly-savings', addMonthlySavings);
+// Apply 'protect' middleware to all routes that need authentication
+router.post('/', protect, addTransaction);
+router.post('/monthly-savings', protect, addMonthlySavings);
 
-router.get('/dashboard', getDashboardData);
-router.get('/all', getAllTransactions);
+router.get('/dashboard', protect, getDashboardData);
+router.get('/all', protect, getAllTransactions); // Consider if "all" should truly be all or all for the user
 
-// --- NEW ROUTE for Expense Summaries ---
-router.get('/expenses/summary', getExpenseSummary); 
-router.get('/income/summary', getIncomeSummary);
+router.get('/expenses/summary', protect, getExpenseSummary);
+router.get('/income/summary', protect, getIncomeSummary);
 
-router.put('/:id', updateTransaction);
-router.delete('/:id', deleteTransaction);
-router.get('/old', getOldTransactions);
-router.get('/current-month/income', getCurrentMonthIncome);
-router.get('/current-month/expense', getCurrentMonthExpense);
-router.get('/savings/monthly', getMonthlySavings);
+router.put('/:id', protect, updateTransaction);
+router.delete('/:id', protect, deleteTransaction);
+router.get('/old', protect, getOldTransactions);
+router.get('/current-month/income', protect, getCurrentMonthIncome);
+router.get('/current-month/expense', protect, getCurrentMonthExpense);
+router.get('/savings/monthly', protect, getMonthlySavings);
 
 module.exports = router;

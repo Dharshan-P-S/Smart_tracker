@@ -2,56 +2,53 @@ const User = require('../models/User');
 const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 
-// --- INSECURE PLACEHOLDER ---
-const getPlaceholderUserId = async () => {
-  if (!User) {
-    throw new Error("User model not available.");
-  }
-  const firstUser = await User.findOne().select('_id').lean();
-  if (!firstUser) {
-    throw new Error("No users found in the database to use as a placeholder.");
-  }
-  return firstUser._id;
-};
-// --- END INSECURE PLACEHOLDER ---
-
+// OTP storage (in-memory, consider a more persistent solution for production)
 const otpStorage = {};
 
 const getUserProfile = async (req, res) => {
-  console.log("Attempting to fetch user profile...");
+  console.log("Attempting to fetch user profile for logged-in user...");
   try {
-    const userId = await getPlaceholderUserId(); // Use placeholder / In real app: req.user.id
-    console.log("Using placeholder User ID for profile:", userId);
+    // req.user is populated by the 'protect' middleware
+    if (!req.user || !req.user._id) {
+      console.error("User not authenticated or user ID missing from request");
+      return res.status(401).json({ message: 'Not authorized, user information missing.' });
+    }
+    const userId = req.user._id; // Use ID from authenticated user
+    console.log("Using authenticated User ID for profile:", userId);
 
+    // Fetch user details. Ensure 'name' is selected if your User model uses 'name'.
     const user = await User.findById(userId).select('name email createdAt profilePicture');
 
     if (user) {
       console.log("User profile fetched successfully:", user.email);
       res.json({
         _id: user._id,
-        name: user.name,
+        name: user.name, // Ensure your user model has 'name'
         email: user.email,
         profilePicture: user.profilePicture,
         createdAt: user.createdAt,
       });
     } else {
-      console.error(`User not found with placeholder ID: ${userId}`);
-      res.status(404).json({ message: 'User not found' });
+      console.error(`User not found with authenticated ID: ${userId}`);
+      // This case implies the token is valid, but the user ID in token doesn't exist in DB.
+      // This could happen if a user was deleted after the token was issued.
+      res.status(404).json({ message: 'User associated with token not found' });
     }
   } catch (error) {
     console.error('Error fetching user profile in Controller:', error);
-    if (error.message.includes("No users found")) {
-      return res.status(500).json({ message: error.message });
-    }
     res.status(500).json({ message: 'Server error while fetching user profile.' });
   }
 };
 
 const updateProfilePicture = async (req, res) => {
-  console.log("Attempting to update user profile picture...");
+  console.log("Attempting to update user profile picture for authenticated user...");
   try {
-    const userId = await getPlaceholderUserId(); // In real app: req.user.id
-    console.log("Using placeholder User ID for profile picture update:", userId);
+    if (!req.user || !req.user._id) {
+      console.error("User not authenticated or user ID missing from request");
+      return res.status(401).json({ message: 'Not authorized, user information missing.' });
+    }
+    const userId = req.user._id; // Use ID from authenticated user
+    console.log("Using authenticated User ID for profile picture update:", userId);
 
     const user = await User.findById(userId);
 
@@ -59,6 +56,8 @@ const updateProfilePicture = async (req, res) => {
       if (req.body.hasOwnProperty('profilePicture')) {
         user.profilePicture = req.body.profilePicture;
       }
+      // else if no profilePicture in body, do nothing to the picture
+
       const updatedUser = await user.save();
       console.log("User profile picture updated successfully for user:", updatedUser.email);
       res.json({
@@ -69,23 +68,24 @@ const updateProfilePicture = async (req, res) => {
         createdAt: updatedUser.createdAt,
       });
     } else {
-      console.error(`User not found with placeholder ID: ${userId}`);
+      console.error(`User not found with authenticated ID: ${userId}`);
       res.status(404).json({ message: 'User not found' });
     }
   } catch (error) {
     console.error('Error updating user profile picture in Controller:', error);
-    if (error.message.includes("No users found")) {
-      return res.status(500).json({ message: error.message });
-    }
     res.status(500).json({ message: 'Server error while updating user profile picture.' });
   }
 };
 
 const updateUserName = async (req, res) => {
-  console.log("Attempting to update user name...");
+  console.log("Attempting to update user name for authenticated user...");
   try {
-    const userId = await getPlaceholderUserId(); // In real app: req.user.id
-    console.log("Using placeholder User ID for name update:", userId);
+    if (!req.user || !req.user._id) {
+      console.error("User not authenticated or user ID missing from request");
+      return res.status(401).json({ message: 'Not authorized, user information missing.' });
+    }
+    const userId = req.user._id; // Use ID from authenticated user
+    console.log("Using authenticated User ID for name update:", userId);
 
     const user = await User.findById(userId);
 
@@ -102,12 +102,10 @@ const updateUserName = async (req, res) => {
       } else if (newName && newName.trim() === '') {
         return res.status(400).json({ message: 'Name cannot be empty.' });
       } else if (!req.body.hasOwnProperty('name')) {
-         // If 'name' is not in the body, do nothing or return current state
-         // For this PUT request, it's implied 'name' should be there if an update is intended
         return res.status(400).json({ message: 'Name field is required for update.' });
       }
-      // If newName is same as current name, or if newName is not provided but field exists (e.g. empty string not caught above)
-      // the save operation will proceed. The Mongoose unique index on UserSchema for 'name' is the final guard.
+      // If newName is the same as current name, or if newName is not provided and not caught by above,
+      // the save operation will proceed. Mongoose unique index on UserSchema for 'name' is the final guard.
 
       const updatedUser = await user.save();
       console.log("User name updated successfully for user:", updatedUser.email);
@@ -117,16 +115,14 @@ const updateUserName = async (req, res) => {
         email: updatedUser.email,
         profilePicture: updatedUser.profilePicture,
         createdAt: updatedUser.createdAt,
+        message: "Username updated successfully."
       });
     } else {
-      console.error(`User not found with placeholder ID: ${userId}`);
+      console.error(`User not found with authenticated ID: ${userId}`);
       res.status(404).json({ message: 'User not found' });
     }
   } catch (error) {
     console.error('Error updating user name in Controller:', error);
-    if (error.message.includes("No users found")) {
-      return res.status(500).json({ message: error.message });
-    }
     // Handle potential duplicate key error from Mongoose (though explicit check is preferred)
     if (error.code === 11000 && error.keyPattern && error.keyPattern.name) {
         return res.status(400).json({ message: 'This username is already taken (DB constraint).' });
@@ -170,7 +166,7 @@ const sendOTP = async (req, res) => {
       html: `<p>Your One-Time Password (OTP) is: <b>${otp}</b>.</p><p>It is valid for 5 minutes.</p>`,
     });
 
-    console.log("OTP Email Message sent");
+    console.log("OTP Email Message sent to", email);
     res.json({ message: "OTP sent successfully to your email address." });
   } catch (error) {
     console.error('Error sending OTP:', error);
@@ -189,10 +185,12 @@ const verifyOTP = async (req, res) => {
 
   if (storedOtpData && storedOtpData.otp === otp && storedOtpData.expires > Date.now()) {
     console.log(`OTP verified successfully for ${email}`);
+    // Do not delete OTP here if it's a two-step process (e.g., verify then update)
+    // It will be deleted upon successful completion of the action (e.g., email update)
     res.json({ message: "OTP verified successfully" });
   } else if (storedOtpData && storedOtpData.otp === otp && storedOtpData.expires <= Date.now()) {
     console.log(`OTP expired for ${email}`);
-    delete otpStorage[email.toLowerCase()];
+    delete otpStorage[email.toLowerCase()]; // Clean up expired OTP
     res.status(400).json({ message: "OTP has expired. Please request a new one." });
   } else {
     console.log(`Invalid OTP attempt for ${email}`);
@@ -201,32 +199,38 @@ const verifyOTP = async (req, res) => {
 };
 
 const updateEmail = async (req, res) => {
-  const { newEmail, otp } = req.body;
-  console.log(`Attempting to update email to ${newEmail}...`);
+  const { newEmail, otp } = req.body; // Client sends the new email and the OTP it received for that new email
+  console.log(`Attempting to update email to ${newEmail} for authenticated user...`);
 
   if (!newEmail || !otp) {
     return res.status(400).json({ message: "New email and OTP are required." });
   }
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newEmail)) {
-        return res.status(400).json({ message: "Invalid new email format." });
-    }
+  if (!emailRegex.test(newEmail)) {
+      return res.status(400).json({ message: "Invalid new email format." });
+  }
 
   try {
-    const userId = await getPlaceholderUserId(); // In real app: req.user.id
-    console.log("Using placeholder User ID for email update:", userId);
+    if (!req.user || !req.user._id) {
+      console.error("User not authenticated or user ID missing from request for email update");
+      return res.status(401).json({ message: 'Not authorized, user information missing.' });
+    }
+    const userId = req.user._id; // Use ID from authenticated user
+    console.log("Using authenticated User ID for email update:", userId);
 
-    const storedOtpData = otpStorage[newEmail.toLowerCase()]; // Check against lowercase email
+    // OTP should have been sent to 'newEmail' and stored against 'newEmail'
+    const storedOtpData = otpStorage[newEmail.toLowerCase()];
     if (!storedOtpData || storedOtpData.otp !== otp) {
-      console.log(`Invalid OTP for new email ${newEmail}`);
-      return res.status(400).json({ message: "Invalid OTP provided." });
+      console.log(`Invalid OTP for new email ${newEmail}. OTP provided: ${otp}, Stored: ${storedOtpData ? storedOtpData.otp : 'N/A'}`);
+      return res.status(400).json({ message: "Invalid OTP provided for the new email address." });
     }
     if (storedOtpData.expires <= Date.now()) {
       console.log(`OTP expired for new email ${newEmail}`);
-      delete otpStorage[newEmail.toLowerCase()];
+      delete otpStorage[newEmail.toLowerCase()]; // Clean up expired OTP
       return res.status(400).json({ message: "OTP has expired. Please request a new one to change your email." });
     }
 
+    // Check if the new email is already used by ANOTHER user
     const existingUserWithNewEmail = await User.findOne({ email: newEmail.toLowerCase() });
     if (existingUserWithNewEmail && existingUserWithNewEmail._id.toString() !== userId.toString()) {
       return res.status(400).json({ message: "This email address is already in use by another account." });
@@ -235,9 +239,13 @@ const updateEmail = async (req, res) => {
     const user = await User.findById(userId);
 
     if (user) {
+      if (user.email.toLowerCase() === newEmail.toLowerCase()) {
+        delete otpStorage[newEmail.toLowerCase()]; // OTP was valid, clean it up
+        return res.status(400).json({ message: "This is already your current email address." });
+      }
       user.email = newEmail.toLowerCase(); // Store email in lowercase
       const updatedUser = await user.save();
-      delete otpStorage[newEmail.toLowerCase()];
+      delete otpStorage[newEmail.toLowerCase()]; // Clean up OTP after successful update
 
       console.log("User email updated successfully for user ID:", userId, "New email:", updatedUser.email);
       res.json({
@@ -249,15 +257,15 @@ const updateEmail = async (req, res) => {
         message: "Email updated successfully."
       });
     } else {
-      console.error(`User not found with placeholder ID: ${userId}`);
+      console.error(`User not found with authenticated ID: ${userId} during email update`);
+      // This should ideally not happen if protect middleware ran correctly and user exists
       res.status(404).json({ message: 'User not found' });
     }
   } catch (error) {
     console.error('Error updating user email in Controller:', error);
-    if (error.message.includes("No users found")) {
-      return res.status(500).json({ message: error.message });
-    }
     if (error.code === 11000 && error.keyPattern && error.keyPattern.email) {
+      // This handles the race condition where another user might take the email
+      // between the findOne check and save, or if the findOne check fails for some reason.
       return res.status(400).json({ message: "This email address is already in use (DB constraint)." });
     }
     res.status(500).json({ message: 'Server error while updating user email.' });
