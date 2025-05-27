@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react'; // Added useMemo
+import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-// import { Link } from 'react-router-dom'; // Link is unused
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Picker from 'emoji-picker-react';
 import jsPDF from 'jspdf';
@@ -10,6 +9,9 @@ import { FaEdit, FaTrash } from 'react-icons/fa';
 import axios from 'axios';
 
 import styles from './Dashboard.module.css'; // Assuming this CSS module is shared
+
+const GOAL_SAVINGS_CATEGORY_NAME = 'Goal Savings';
+const GOAL_SAVINGS_DESCRIPTION_PREFIX = "Saving for: "; // Define the prefix
 
 const formatCurrency = (value) => {
     const numValue = parseFloat(value);
@@ -29,29 +31,39 @@ const formatDate = (dateString) => {
     });
 };
 
+// Helper function to extract goal name from expense description
+const extractGoalNameFromExpenseDescription = (description) => {
+    const prefix = GOAL_SAVINGS_DESCRIPTION_PREFIX.toLowerCase();
+    const lowerDesc = description.trim().toLowerCase();
+    if (lowerDesc.startsWith(prefix)) {
+        return description.trim().substring(GOAL_SAVINGS_DESCRIPTION_PREFIX.length).trim();
+    }
+    return null; // Or return description if no prefix, depending on how you want to handle non-prefixed descriptions
+};
+
+
 function ExpensePage() {
     const [allExpenseTransactions, setAllExpenseTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [username, setUsername] = useState(() => localStorage.getItem('username') || 'User');
+
+    const [goals, setGoals] = useState([]);
+    const [loadingGoals, setLoadingGoals] = useState(true);
     
-    // Overall financial summary
-    const [currentCumulativeSavings, setCurrentCumulativeSavings] = useState(0); // All-time net savings
+    const [currentCumulativeSavings, setCurrentCumulativeSavings] = useState(0);
     const [loadingFinancialSummary, setLoadingFinancialSummary] = useState(true);
 
-    // Current month's specific financial summary (for projection display & immediate balance check)
     const [currentMonthIncomeTotalForDisplay, setCurrentMonthIncomeTotalForDisplay] = useState(0);
     const [currentMonthExpenseTotalForDisplay, setCurrentMonthExpenseTotalForDisplay] = useState(0);
 
-
     const [editingTxId, setEditingTxId] = useState(null);
-    // MODIFIED: Add amount to editFormData
     const [editFormData, setEditFormData] = useState({ description: '', category: '', emoji: '', amount: '' });
     const [showEditEmojiPicker, setShowEditEmojiPicker] = useState(false);
 
-    // Fetches ONLY current month's expense transactions for display in the list
     const fetchAllTransactions = async () => {
         setLoading(true);
+        setError(null);
         try {
             const token = localStorage.getItem('authToken');
             if (!token) throw new Error("Authentication token not found for transactions.");
@@ -74,17 +86,19 @@ function ExpensePage() {
         }
     };
 
-    // Fetches data for ALL-TIME cumulative savings AND CURRENT MONTH's income/expense totals
     const fetchFinancialSummary = async () => {
         setLoadingFinancialSummary(true);
+        setError(null);
         const token = localStorage.getItem('authToken');
         if (!token) {
             setError(prev => prev ? `${prev}\nAuth: Authentication token not found for summary.` : `Auth: Authentication token not found for summary.`);
+            setCurrentCumulativeSavings(0);
+            setCurrentMonthIncomeTotalForDisplay(0);
+            setCurrentMonthExpenseTotalForDisplay(0);
             setLoadingFinancialSummary(false);
             return;
         }
         try {
-            // 1. Fetch ALL-TIME cumulative savings
             const savingsResponse = await axios.get('/api/transactions/savings/monthly', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -94,7 +108,6 @@ function ExpensePage() {
             );
             setCurrentCumulativeSavings(calculatedTotalCumulativeSavings);
 
-            // 2. Fetch CURRENT MONTH's income and expense totals
             const dashboardResponse = await fetch('/api/transactions/dashboard', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -118,18 +131,44 @@ function ExpensePage() {
         }
     };
 
+    const fetchGoals = async () => {
+        setLoadingGoals(true);
+        setError(null);
+        try {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                setError(prev => prev ? `${prev}\nAuth: Authentication token not found for goals.` : `Auth: Authentication token not found for goals.`);
+                setGoals([]);
+                setLoadingGoals(false);
+                return;
+            }
+            const response = await axios.get('/api/goals', { headers: { Authorization: `Bearer ${token}` } });
+            setGoals(response.data || []);
+        } catch (err) {
+            console.error("Error fetching goals for Expense page:", err);
+            const errMsg = err.response?.data?.message || err.message || "Failed to fetch goals.";
+            setError(prev => prev ? `${prev}\nGoals: ${errMsg}` : `Goals: ${errMsg}`);
+            setGoals([]);
+        } finally {
+            setLoadingGoals(false);
+        }
+    };
+
+
     useEffect(() => {
         setError(null);
         fetchAllTransactions();
         fetchFinancialSummary();
+        fetchGoals();
     }, []);
 
     useEffect(() => {
         const handleUpdate = () => {
-            console.log("ExpensePage received update event, re-fetching...");
+            console.log("ExpensePage received update event, re-fetching all data...");
             setError(null);
             fetchAllTransactions();
             fetchFinancialSummary();
+            fetchGoals();
         };
         window.addEventListener('expense-updated', handleUpdate);
         window.addEventListener('transaction-deleted', handleUpdate);
@@ -166,15 +205,13 @@ function ExpensePage() {
         return currentMonthIncomeTotalForDisplay - currentMonthExpenseTotalForDisplay;
     }, [currentMonthIncomeTotalForDisplay, currentMonthExpenseTotalForDisplay]);
 
-
-    // --- Calculate projections for display using useMemo ---
     const projections = useMemo(() => {
-        if (!editingTxId || loadingFinancialSummary) {
-            return { currentMonthBalanceEffect: null, totalCumulativeSavings: null, isValidAmount: false };
+        if (!editingTxId || loadingFinancialSummary || loadingGoals) {
+            return { currentMonthBalanceEffect: null, totalCumulativeSavings: null, isValidAmount: false, goalConstraint: { applicable: false } };
         }
         const originalTx = allExpenseTransactions.find(tx => tx._id === editingTxId);
         if (!originalTx) {
-            return { currentMonthBalanceEffect: null, totalCumulativeSavings: null, isValidAmount: false };
+            return { currentMonthBalanceEffect: null, totalCumulativeSavings: null, isValidAmount: false, goalConstraint: { applicable: false } };
         }
 
         const originalAmount = parseFloat(originalTx.amount) || 0;
@@ -182,27 +219,47 @@ function ExpensePage() {
         const newAmount = parseFloat(newAmountInput);
 
         if (isNaN(newAmount)) {
-             return { currentMonthBalanceEffect: null, totalCumulativeSavings: null, isValidAmount: false };
+             return { currentMonthBalanceEffect: null, totalCumulativeSavings: null, isValidAmount: false, goalConstraint: { applicable: false } };
         }
         
-        // Difference in expense: newExpenseAmount - oldExpenseAmount
         const amountDifference = newAmount - originalAmount;
-
-        // Projected Current Month's Balance:
-        // Original Current Month Balance - Change in Expense
         const projectedCurrentMonthBalance = currentMonthBalance - amountDifference;
-
-        // Projected Total Cumulative Savings:
-        // Current Total Savings - Change in Expense (if expense increases, difference is positive, so savings decrease)
         const projectedTotalCumulativeSavings = currentCumulativeSavings - amountDifference;
+        
+        let goalConstraint = { applicable: false, limit: 0, goalName: '', isExceeded: false };
+        if (editFormData.category.trim().toLowerCase() === GOAL_SAVINGS_CATEGORY_NAME.toLowerCase() && goals && goals.length > 0) {
+            const extractedGoalName = extractGoalNameFromExpenseDescription(editFormData.description);
+            if (extractedGoalName) {
+                const matchedGoal = goals.find(g =>
+                    g.description.trim().toLowerCase() === extractedGoalName.toLowerCase() && // Compare extracted name
+                    g.status === 'active'
+                );
+                if (matchedGoal) {
+                    const goalTarget = Number(matchedGoal.targetAmount) || 0;
+                    const goalSaved = Number(matchedGoal.savedAmount) || 0;
+                    let remainingNeeded = goalTarget - goalSaved;
+                    if (remainingNeeded < 0) remainingNeeded = 0;
+                    goalConstraint = {
+                        applicable: true,
+                        limit: remainingNeeded,
+                        goalName: matchedGoal.description, // Use the goal's actual description for display
+                        isExceeded: newAmount > 0 && newAmount > remainingNeeded
+                    };
+                }
+            }
+        }
         
         return {
             currentMonthBalanceEffect: projectedCurrentMonthBalance,
             totalCumulativeSavings: projectedTotalCumulativeSavings,
-            isValidAmount: newAmount > 0 && !isNaN(newAmount)
+            isValidAmount: newAmount > 0 && !isNaN(newAmount),
+            goalConstraint
         };
-    }, [editingTxId, editFormData.amount, allExpenseTransactions, currentCumulativeSavings, currentMonthBalance, loadingFinancialSummary]);
-
+    }, [
+        editingTxId, editFormData.amount, editFormData.category, editFormData.description,
+        allExpenseTransactions, currentCumulativeSavings, currentMonthBalance, 
+        loadingFinancialSummary, loadingGoals, goals
+    ]);
 
     const handleSaveEdit = async (txId) => {
         setError(null);
@@ -219,8 +276,8 @@ function ExpensePage() {
             return;
         }
 
-        if (loadingFinancialSummary) {
-            toast.info("Financial summary is still loading. Please try again shortly to save.");
+        if (loadingFinancialSummary || loadingGoals) {
+            toast.info("Financial or goal data is still loading. Please try again shortly to save.");
             return;
         }
 
@@ -230,11 +287,76 @@ function ExpensePage() {
             setError("Update Error: Original transaction not found.");
             return;
         }
-        // const originalAmount = originalTx.amount; // Already used in projections
-        // const amountDifference = newAmount - originalAmount; // Already used in projections
-        // const projectedNewOverallNetSavings = currentCumulativeSavings - amountDifference; // Available as projections.totalCumulativeSavings
 
-        // Validation 1: Check against overall cumulative savings
+        // --- Goal Savings Category Check ---
+        if (editFormData.category.trim().toLowerCase() === GOAL_SAVINGS_CATEGORY_NAME.toLowerCase()) {
+            console.log("--- Goal Savings Check ---");
+            console.log("Attempting to save expense under 'Goal Savings'");
+            console.log("Current editFormData.category:", `"${editFormData.category.trim()}"`);
+            console.log("Current editFormData.description:", `"${editFormData.description.trim()}"`);
+            
+            const extractedGoalName = extractGoalNameFromExpenseDescription(editFormData.description);
+            console.log("Extracted Goal Name from expense description:", `"${extractedGoalName}"`);
+            console.log("Current editFormData.amount (parsed as newAmount):", newAmount);
+            console.log("Is goals array loaded and non-empty?", goals && goals.length > 0);
+            console.log("Full goals list:", JSON.parse(JSON.stringify(goals)));
+
+            if (!extractedGoalName) {
+                toast.error(
+                    `For the "${GOAL_SAVINGS_CATEGORY_NAME}" category, the expense description ` +
+                    `"${editFormData.description.trim()}" does not follow the expected format: ` +
+                    `"${GOAL_SAVINGS_DESCRIPTION_PREFIX}Your Goal Name".`
+                );
+                console.log("--- End Goal Savings Check (Description format incorrect) ---");
+                return;
+            }
+
+            if (!goals || goals.length === 0) {
+                toast.warn(`Expense categorized as "${GOAL_SAVINGS_CATEGORY_NAME}", but no goals are loaded/defined. Proceeding without goal-specific validation for spending limit.`);
+            } else {
+                const matchedGoal = goals.find(g =>
+                    g.description.trim().toLowerCase() === extractedGoalName.toLowerCase() && // Match with extracted name
+                    g.status === 'active'
+                );
+
+                console.log("Matched active goal (using extracted name):", matchedGoal ? JSON.parse(JSON.stringify(matchedGoal)) : null);
+
+                if (!matchedGoal) {
+                    toast.error(
+                        `For the "${GOAL_SAVINGS_CATEGORY_NAME}" category, the goal name "${extractedGoalName}" ` +
+                        `(extracted from description "${editFormData.description.trim()}") ` +
+                        `must exactly match the description of an *active* financial goal. No such active goal found.`
+                    );
+                    console.log("--- End Goal Savings Check (No matched goal) ---");
+                    return;
+                }
+
+                const goalTargetAmount = Number(matchedGoal.targetAmount) || 0;
+                const goalSavedAmount = Number(matchedGoal.savedAmount) || 0;
+                let remainingNeededForGoal = goalTargetAmount - goalSavedAmount;
+                if (remainingNeededForGoal < 0) remainingNeededForGoal = 0;
+                
+                console.log(`Details for matched goal "${matchedGoal.description}":`);
+                console.log(`  - Target Amount (numeric): ${goalTargetAmount}`);
+                console.log(`  - Saved Amount (numeric): ${goalSavedAmount}`);
+                console.log(`  - Calculated Remaining Needed: ${remainingNeededForGoal}`);
+                console.log(`Comparing New Expense Amount (${newAmount}) > Remaining Needed (${remainingNeededForGoal}): ${newAmount > remainingNeededForGoal}`);
+
+                if (newAmount > remainingNeededForGoal) {
+                    toast.error(
+                        `Expense amount ${formatCurrency(newAmount)} for goal "${matchedGoal.description}" ` +
+                        `exceeds the remaining amount needed (${formatCurrency(remainingNeededForGoal)}). ` +
+                        `You can spend at most ${formatCurrency(remainingNeededForGoal)} for this goal item.`
+                    );
+                    console.log("--- End Goal Savings Check (Amount exceeds limit) ---");
+                    return;
+                }
+                console.log("Goal spending limit check passed.");
+            }
+            console.log("--- End Goal Savings Check ---");
+        }
+        // --- End Goal Savings Category Check ---
+
         if (projections.totalCumulativeSavings < 0) {
             toast.error(
                 `Cannot save this expense amount (${formatCurrency(newAmount)}). Doing so ` +
@@ -244,12 +366,7 @@ function ExpensePage() {
             return;
         }
 
-        // Validation 2: Check if the new expense amount exceeds the current month's immediate balance
-        // This is a softer check, maybe a warning, or a hard stop depending on rules.
-        // currentMonthBalance is (current month income - current month ALL expenses BEFORE this edit)
-        // We need to see what the balance would be if this one expense is changed.
-        // projectedCurrentMonthBalance is already calculated in `projections.currentMonthBalanceEffect`.
-        if (projections.currentMonthBalanceEffect < 0 && currentMonthBalance >=0 ) { // Warn if it makes current month balance negative from a non-negative state
+        if (projections.currentMonthBalanceEffect < 0 && currentMonthBalance >=0 ) {
              const proceed = window.confirm(
                 `Warning: This new expense amount (${formatCurrency(newAmount)}) will make your current month's balance negative (${formatCurrency(projections.currentMonthBalanceEffect)}). ` +
                 `It will be covered by your total savings. Do you want to proceed?`
@@ -257,7 +374,7 @@ function ExpensePage() {
             if (!proceed) {
                 return;
             }
-        } else if (newAmount > currentMonthIncomeTotalForDisplay && currentMonthIncomeTotalForDisplay >=0) { // If new expense alone exceeds current month's total income
+        } else if (newAmount > currentMonthIncomeTotalForDisplay && currentMonthIncomeTotalForDisplay >=0) {
              const proceed = window.confirm(
                 `Warning: This new expense amount (${formatCurrency(newAmount)}) exceeds your total income for the current month (${formatCurrency(currentMonthIncomeTotalForDisplay)}). ` +
                 `It will be covered by your total savings. Do you want to proceed?`
@@ -277,7 +394,7 @@ function ExpensePage() {
                     category: editFormData.category.trim(),
                     emoji: editFormData.emoji,
                     amount: newAmount,
-                    type: 'expense' // Send type if backend might need it
+                    type: 'expense'
                 }),
             });
             if (!response.ok) {
@@ -285,7 +402,7 @@ function ExpensePage() {
                 throw new Error(errorData.message || `Failed to update transaction: ${response.statusText}`);
             }
             
-            window.dispatchEvent(new CustomEvent('expense-updated')); // Or 'transactions-updated'
+            window.dispatchEvent(new CustomEvent('transactions-updated'));
             toast.success("Expense updated successfully!");
             handleCancelEdit();
 
@@ -304,9 +421,7 @@ function ExpensePage() {
             setError("Delete Error: Could not find the transaction to delete.");
             return;
         }
-        // For expenses, deleting them *increases* savings/balance, so usually no complex validation is needed against savings.
-        // The main concern might be if this was a recurring expense template, but that's not handled here.
-
+        
         const token = localStorage.getItem('authToken');
         if (!token) { setError("Authentication token not found for delete."); toast.error("Authentication token not found."); return; }
         
@@ -321,8 +436,7 @@ function ExpensePage() {
                 const errorData = await response.json().catch(() => ({ message: 'Deletion failed with non-JSON response' }));
                 throw new Error(errorData.message || `Failed to delete transaction: ${response.statusText}`);
             }
-            window.dispatchEvent(new CustomEvent('transaction-deleted', { detail: { type: 'expense', amount: transactionToDelete.amount, id: txId } }));
-            window.dispatchEvent(new CustomEvent('transactions-updated'));
+            window.dispatchEvent(new CustomEvent('transactions-updated', { detail: { type: 'expense', amount: transactionToDelete.amount, id: txId } }));
             toast.success('Expense Deleted Successfully!');
         } catch (err) {
             console.error("Error deleting transaction:", err);
@@ -361,175 +475,203 @@ function ExpensePage() {
         doc.save(`expense-transactions-${username}-${new Date().toISOString().slice(0,10)}.pdf`);
     };
 
-    const pageIsLoading = loading || loadingFinancialSummary;
-
-    if (pageIsLoading) {
-        return <div className={styles.dashboardPageContent}><p>Loading expense data and financial summary...</p></div>;
-    }
-    
-    const pageLoadError = error && (error.includes("Transactions:") || error.includes("Summary:") || error.includes("Auth:"));
+    const pageIsLoading = loading || loadingFinancialSummary || loadingGoals;
+    const initialDataLoadError = error && (error.includes("Transactions:") || error.includes("Summary:") || error.includes("Auth:") || error.includes("Goals:"));
 
     return (
         <div className={styles.transactionsPageContainer}>
              <div className={styles.dashboardPageContent}>
                 <div className={styles.sectionHeader}>
                    <h1 className={styles.pageTitle}>Expense Overview</h1>
-                    <button onClick={handleDownloadPDF} className={styles.pdfButton} style={{fontSize: '1rem'}}>
+                    <button 
+                        onClick={handleDownloadPDF} 
+                        className={styles.pdfButton} 
+                        style={{fontSize: '1rem'}}
+                        disabled={pageIsLoading || allExpenseTransactions.length === 0 || !!initialDataLoadError}
+                    >
                        Download PDF
                     </button>
                 </div>
                 
-                {pageLoadError &&
+                {pageIsLoading && <div className={styles.dashboardPageContent}><p>Loading expense data, financial summary, and goals...</p></div>}
+
+                {!pageIsLoading && initialDataLoadError && (
                     <div className={styles.pageErrorBanner}>
                         Error loading page data:
-                        {error.split('\n').map((e, i) => <div key={i}>{e.replace(/(Transactions: |Summary: |Auth: )/g, '')}</div>)}
+                        {error.split('\n').filter(e => e.trim() !== "").map((e, i) => {
+                            const cleanError = e.replace(/(Transactions: |Summary: |Auth: |Goals: )/g, '');
+                            return <div key={i}>{cleanError}</div>;
+                        })}
                     </div>
-                }
+                )}
+                
+                {!pageIsLoading && !initialDataLoadError && error && (error.startsWith('Update Error:') || error.startsWith('Delete Error:')) && (
+                    <p className={styles.formErrorBanner} style={{marginBottom: '1rem'}}>{error.replace(/(Update Error: |Delete Error: )/g, '')}</p>
+                 )}
 
-                 <section className={`${styles.sectionBox} ${styles.chartSection}`}>
-                     <h2 className={styles.sectionTitle}>Expense Trend by Date (Current Month)</h2>
-                     <div className={styles.chartContainer}>
-                         {chartData.length > 0 ? (
-                             <ResponsiveContainer width="100%" height={300}>
-                                 <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                     <CartesianGrid strokeDasharray="3 3" />
-                                     <XAxis dataKey="dateLabel" name="Date" />
-                                     <YAxis tickFormatter={formatCurrency} width={80} />
-                                     <Tooltip formatter={(value, name, props) => [formatCurrency(value), `Amount (${props.payload.description})`]}/>
-                                     <Legend />
-                                     <Line type="monotone" dataKey="amount" stroke="#F87171" name="Expense Amount" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                                 </LineChart>
-                             </ResponsiveContainer>
-                         ) : (
-                             <div className={styles.placeholderContent}>No expense data for the current month to display chart.</div>
-                         )}
-                     </div>
-                 </section>
 
-                 <div className={styles.mainArea}>
-                     <section className={`${styles.sectionBox} ${styles.transactionsSection}`} style={{gridColumn: '1 / -1'}}>
-                         <div className={styles.sectionHeader}>
-                             <h2 className={styles.sectionTitle}>Expense Transactions (Current Month)</h2>
+                 {!pageIsLoading && !initialDataLoadError && (
+                    <>
+                     <section className={`${styles.sectionBox} ${styles.chartSection}`}>
+                         <h2 className={styles.sectionTitle}>Expense Trend by Date (Current Month)</h2>
+                         <div className={styles.chartContainer}>
+                             {chartData.length > 0 ? (
+                                 <ResponsiveContainer width="100%" height={300}>
+                                     <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                         <CartesianGrid strokeDasharray="3 3" />
+                                         <XAxis dataKey="dateLabel" name="Date" />
+                                         <YAxis tickFormatter={formatCurrency} width={80} />
+                                         <Tooltip formatter={(value, name, props) => [formatCurrency(value), `Amount (${props.payload.description})`]}/>
+                                         <Legend />
+                                         <Line type="monotone" dataKey="amount" stroke="#F87171" name="Expense Amount" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                                     </LineChart>
+                                 </ResponsiveContainer>
+                             ) : (
+                                 <div className={styles.placeholderContent}>No expense data for the current month to display chart.</div>
+                             )}
                          </div>
-                          {(error && (error.startsWith('Update Error:') || error.startsWith('Delete Error:'))) && (
-                           <p className={styles.formErrorBanner} style={{marginBottom: '1rem'}}>{error}</p>
-                         )}
-                         {!loading && !pageLoadError && allExpenseTransactions.length === 0 && (
-                            <div className={styles.placeholderContent}>
-                                No expense transactions found for the current month.
-                            </div>
-                         )}
-                         {!loading && !pageLoadError && allExpenseTransactions.length > 0 && (
-                             <div className={styles.transactionList}>
-                                 {allExpenseTransactions.map((tx) => (
-                                     <React.Fragment key={tx._id}>
-                                     <div
-                                         className={`${styles.transactionItem} ${styles.expenseBorder}`}
-                                     >
-                                         <span style={{ gridColumn: '1 / 2' }} className={styles.transactionDate}>
-                                             {formatDate(tx.date)}
-                                         </span>
-                                         {editingTxId === tx._id ? (
-                                             <>
-                                                 <div style={{ gridColumn: '2 / 5', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr auto', gap: '0.5rem', alignItems: 'center' }}>
-                                                     <input
-                                                         type="text" name="description" value={editFormData.description}
-                                                         onChange={handleEditFormChange} className={styles.formInput}
-                                                         style={{ fontSize: '0.9rem', padding: '0.4rem' }}
-                                                         required
-                                                     />
-                                                     <input
-                                                         type="text" name="category" value={editFormData.category}
-                                                         onChange={handleEditFormChange} className={styles.formInput}
-                                                         style={{ fontSize: '0.9rem', padding: '0.4rem' }}
-                                                         required
-                                                     />
-                                                     <input
-                                                         type="number" name="amount" value={editFormData.amount}
-                                                         onChange={handleEditFormChange} className={styles.formInput}
-                                                         style={{ fontSize: '0.9rem', padding: '0.4rem', textAlign: 'right' }}
-                                                         step="0.01" min="0.01"
-                                                         required
-                                                     />
-                                                      <div style={{ position: 'relative', justifySelf:'start' }}>
-                                                        <button
-                                                          type="button"
-                                                          onClick={() => setShowEditEmojiPicker(prev => !prev)}
-                                                          className={styles.emojiButton}
-                                                          style={{fontSize: '1.2rem', padding: '0.4rem'}}
-                                                          aria-label="Select icon"
-                                                        >
-                                                          {editFormData.emoji || '+'}
-                                                        </button>
-                                                        {showEditEmojiPicker && editingTxId === tx._id && (
-                                                          <div className={styles.emojiPickerContainer} style={{top: '100%', left: 0, zIndex: 10}}>
-                                                            <Picker
-                                                              onEmojiClick={(emojiData) => {
-                                                                setEditFormData(prev => ({ ...prev, emoji: emojiData.emoji }));
-                                                                setShowEditEmojiPicker(false);
-                                                              }}
-                                                              pickerStyle={{ width: '250px' }}
-                                                            />
-                                                          </div>
-                                                        )}
-                                                      </div>
-                                                 </div>
-                                             </>
-                                         ) : (
-                                             <>
-                                                <span style={{ gridColumn: '2 / 4' }} className={styles.transactionDesc}>
-                                                    {tx.emoji && <span className={styles.transactionEmoji}>{tx.emoji}</span>}
-                                                    {tx.description} ({tx.category})
-                                                </span>
-                                                <span style={{ gridColumn: '4 / 5' }} className={`${styles.transactionAmount} ${styles.expense}`}>
-                                                    {'-'} {formatCurrency(tx.amount)}
-                                                </span>
-                                             </>
-                                         )}
-                                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', gridColumn: '5 / 6', alignItems: 'center' }}>
+                     </section>
+
+                     <div className={styles.mainArea}>
+                         <section className={`${styles.sectionBox} ${styles.transactionsSection}`} style={{gridColumn: '1 / -1'}}>
+                             <div className={styles.sectionHeader}>
+                                 <h2 className={styles.sectionTitle}>Expense Transactions (Current Month)</h2>
+                             </div>
+                             
+                             {allExpenseTransactions.length === 0 && (
+                                <div className={styles.placeholderContent}>
+                                    No expense transactions found for the current month.
+                                </div>
+                             )}
+                             {allExpenseTransactions.length > 0 && (
+                                 <div className={styles.transactionList}>
+                                     {allExpenseTransactions.map((tx) => (
+                                         <React.Fragment key={tx._id}>
+                                         <div className={`${styles.transactionItem} ${styles.expenseBorder}`}>
+                                             <span style={{ gridColumn: '1 / 2' }} className={styles.transactionDate}>
+                                                 {formatDate(tx.date)}
+                                             </span>
                                              {editingTxId === tx._id ? (
                                                  <>
-                                                     <button onClick={() => handleSaveEdit(tx._id)} className={`${styles.actionButton} ${styles.saveButton}`}>Save</button>
-                                                     <button onClick={handleCancelEdit} className={`${styles.actionButton} ${styles.cancelButton}`}>Cancel</button>
+                                                     <div style={{ gridColumn: '2 / 5', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr auto', gap: '0.5rem', alignItems: 'center' }}>
+                                                         <input
+                                                             type="text" name="description" value={editFormData.description}
+                                                             onChange={handleEditFormChange} className={styles.formInput}
+                                                             style={{ fontSize: '0.9rem', padding: '0.4rem' }}
+                                                             required
+                                                         />
+                                                         <input
+                                                             type="text" name="category" value={editFormData.category}
+                                                             onChange={handleEditFormChange} className={styles.formInput}
+                                                             style={{ fontSize: '0.9rem', padding: '0.4rem' }}
+                                                             list="expense-categories"
+                                                             required
+                                                         />
+                                                         <datalist id="expense-categories">
+                                                            <option value="Food & Drink" />
+                                                            <option value="Transportation" />
+                                                            <option value="Housing" />
+                                                            <option value="Utilities" />
+                                                            <option value="Entertainment" />
+                                                            <option value={GOAL_SAVINGS_CATEGORY_NAME} /> 
+                                                         </datalist>
+                                                         <input
+                                                             type="number" name="amount" value={editFormData.amount}
+                                                             onChange={handleEditFormChange} className={styles.formInput}
+                                                             style={{ fontSize: '0.9rem', padding: '0.4rem', textAlign: 'right' }}
+                                                             step="0.01" min="0.01"
+                                                             required
+                                                         />
+                                                          <div style={{ position: 'relative', justifySelf:'start' }}>
+                                                            <button
+                                                              type="button"
+                                                              onClick={() => setShowEditEmojiPicker(prev => !prev)}
+                                                              className={styles.emojiButton}
+                                                              style={{fontSize: '1.2rem', padding: '0.4rem'}}
+                                                              aria-label="Select icon"
+                                                            >
+                                                              {editFormData.emoji || '+'}
+                                                            </button>
+                                                            {showEditEmojiPicker && editingTxId === tx._id && (
+                                                              <div className={styles.emojiPickerContainer} style={{top: '100%', left: 0, zIndex: 10}}>
+                                                                <Picker
+                                                                  onEmojiClick={(emojiData) => {
+                                                                    setEditFormData(prev => ({ ...prev, emoji: emojiData.emoji }));
+                                                                    setShowEditEmojiPicker(false);
+                                                                  }}
+                                                                  pickerStyle={{ width: '250px' }}
+                                                                />
+                                                              </div>
+                                                            )}
+                                                          </div>
+                                                     </div>
                                                  </>
                                              ) : (
                                                  <>
-                                                     <button onClick={() => handleEditClick(tx)} className={`${styles.actionButton} ${styles.editButton}`} aria-label="Edit transaction">
-                                                         <FaEdit />
-                                                     </button>
-                                                     <button onClick={() => handleDelete(tx._id)} className={`${styles.actionButton} ${styles.deleteButton}`} aria-label="Delete transaction">
-                                                         <FaTrash />
-                                                     </button>
+                                                    <span style={{ gridColumn: '2 / 4' }} className={styles.transactionDesc}>
+                                                        {tx.emoji && <span className={styles.transactionEmoji}>{tx.emoji}</span>}
+                                                        {tx.description} ({tx.category})
+                                                    </span>
+                                                    <span style={{ gridColumn: '4 / 5' }} className={`${styles.transactionAmount} ${styles.expense}`}>
+                                                        {'-'} {formatCurrency(tx.amount)}
+                                                    </span>
                                                  </>
                                              )}
+                                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', gridColumn: '5 / 6', alignItems: 'center' }}>
+                                                 {editingTxId === tx._id ? (
+                                                     <>
+                                                         <button onClick={() => handleSaveEdit(tx._id)} className={`${styles.actionButton} ${styles.saveButton}`}>Save</button>
+                                                         <button onClick={handleCancelEdit} className={`${styles.actionButton} ${styles.cancelButton}`}>Cancel</button>
+                                                     </>
+                                                 ) : (
+                                                     <>
+                                                         <button onClick={() => handleEditClick(tx)} className={`${styles.actionButton} ${styles.editButton}`} aria-label="Edit transaction">
+                                                             <FaEdit />
+                                                         </button>
+                                                         <button onClick={() => handleDelete(tx._id)} className={`${styles.actionButton} ${styles.deleteButton}`} aria-label="Delete transaction">
+                                                             <FaTrash />
+                                                         </button>
+                                                     </>
+                                                 )}
+                                             </div>
                                          </div>
-                                     </div>
-                                     {editingTxId === tx._id && projections.isValidAmount && (
-                                        <div className={styles.editProjections}>
-                                            <p>
-                                                If saved, this month's balance will become: <strong>{formatCurrency(projections.currentMonthBalanceEffect)}</strong>
-                                            </p>
-                                            <p>
-                                                Your total cumulative savings will become: <strong>{formatCurrency(projections.totalCumulativeSavings)}</strong>
-                                            </p>
-                                             {projections.totalCumulativeSavings < 0 && (
-                                                <p style={{color: 'red', fontWeight: 'bold'}}>
-                                                    Warning: This change will result in overall negative savings!
+                                         {editingTxId === tx._id && projections.isValidAmount && (
+                                            <div className={styles.editProjections}>
+                                                <p>
+                                                    If saved, this month's balance will become: <strong>{formatCurrency(projections.currentMonthBalanceEffect)}</strong>
                                                 </p>
-                                            )}
-                                            { projections.currentMonthBalanceEffect < 0 && currentMonthBalance >= 0 && (
-                                                <p style={{color: 'orange', fontWeight: 'bold'}}>
-                                                    Note: This change will make your current month's balance negative.
+                                                <p>
+                                                    Your total cumulative savings will become: <strong>{formatCurrency(projections.totalCumulativeSavings)}</strong>
                                                 </p>
-                                            )}
-                                        </div>
-                                     )}
-                                     </React.Fragment>
-                                 ))}
-                             </div>
-                         )}
-                     </section>
-                 </div>
+                                                {projections.goalConstraint && projections.goalConstraint.applicable && (
+                                                    <p style={projections.goalConstraint.isExceeded ? {color: 'red', fontWeight: 'bold'} : {color: 'darkgreen'}}>
+                                                        For goal "<strong>{projections.goalConstraint.goalName}</strong>":
+                                                        Max spend for this item is <strong>{formatCurrency(projections.goalConstraint.limit)}</strong>.
+                                                        {projections.goalConstraint.isExceeded && (
+                                                            <em> Current amount exceeds this limit!</em>
+                                                        )}
+                                                    </p>
+                                                )}
+                                                 {projections.totalCumulativeSavings < 0 && (
+                                                    <p style={{color: 'red', fontWeight: 'bold'}}>
+                                                        Warning: This change will result in overall negative savings!
+                                                    </p>
+                                                )}
+                                                { projections.currentMonthBalanceEffect < 0 && currentMonthBalance >= 0 && (
+                                                    <p style={{color: 'orange', fontWeight: 'bold'}}>
+                                                        Note: This change will make your current month's balance negative.
+                                                    </p>
+                                                )}
+                                            </div>
+                                         )}
+                                         </React.Fragment>
+                                     ))}
+                                 </div>
+                             )}
+                         </section>
+                     </div>
+                    </>
+                 )}
             </div>
         </div>
     );
