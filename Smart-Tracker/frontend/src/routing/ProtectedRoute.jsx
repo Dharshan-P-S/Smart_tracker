@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 
 const ProtectedRoute = () => {
-  const isAuthenticated = !!localStorage.getItem('token'); // Check if token exists
+  const isAuthenticated = !!localStorage.getItem('authToken'); // Check if token exists
 
   // If authorized, return an outlet that will render child elements
   // If not, return element that will navigate to login page
