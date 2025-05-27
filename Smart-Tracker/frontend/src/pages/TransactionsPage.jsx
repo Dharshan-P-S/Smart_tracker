@@ -5,11 +5,15 @@ import 'react-toastify/dist/ReactToastify.css';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 import Picker from 'emoji-picker-react';
 import axios from 'axios';
-import jsPDF from 'jspdf'; // Import jsPDF
-import autoTable from 'jspdf-autotable'; // Import jspdf-autotable
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import styles from './Dashboard.module.css';
 
-const formatCurrency = (value, type) => { // Added type parameter
+// --- Constants for Goal Savings ---
+const GOAL_SAVINGS_CATEGORY_NAME = 'Goal Savings';
+const GOAL_SAVINGS_DESCRIPTION_PREFIX = "Saving for: "; // Ensure this matches your expense description prefix
+
+const formatCurrency = (value, type) => {
     const numValue = parseFloat(value);
     let prefix = '';
     if (type === 'income') prefix = '+ ';
@@ -38,21 +42,36 @@ const isDateInCurrentMonth = (dateString) => {
     return date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth();
 };
 
+// --- Helper function for Goal Savings ---
+const extractGoalNameFromExpenseDescription = (description) => {
+    const prefix = GOAL_SAVINGS_DESCRIPTION_PREFIX.toLowerCase();
+    const lowerDesc = description.trim().toLowerCase();
+    if (lowerDesc.startsWith(prefix)) {
+        return description.trim().substring(GOAL_SAVINGS_DESCRIPTION_PREFIX.length).trim();
+    }
+    return null;
+};
+
 
 function TransactionsPage() {
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [username, setUsername] = useState(() => localStorage.getItem('username') || 'User'); // For PDF title
+    const [username, setUsername] = useState(() => localStorage.getItem('username') || 'User');
 
     const [editingTxId, setEditingTxId] = useState(null);
     const [editFormData, setEditFormData] = useState({ description: '', category: '', emoji: '', amount: '' });
     const [showEditEmojiPicker, setShowEditEmojiPicker] = useState(null);
 
+    // Financial Summary State
     const [currentCumulativeSavings, setCurrentCumulativeSavings] = useState(0);
     const [currentMonthIncomeTotal, setCurrentMonthIncomeTotal] = useState(0);
     const [currentMonthExpenseTotal, setCurrentMonthExpenseTotal] = useState(0);
     const [loadingFinancialSummary, setLoadingFinancialSummary] = useState(true);
+
+    // Goals State
+    const [goals, setGoals] = useState([]);
+    const [loadingGoals, setLoadingGoals] = useState(true);
 
 
     const fetchFinancialSummary = useCallback(async () => {
@@ -60,6 +79,9 @@ function TransactionsPage() {
         const token = localStorage.getItem('authToken');
         if (!token) {
             setError(prev => prev ? `${prev}\nAuth: Token not found for summary.` : `Auth: Token not found for summary.`);
+            setCurrentCumulativeSavings(0);
+            setCurrentMonthIncomeTotal(0);
+            setCurrentMonthExpenseTotal(0);
             setLoadingFinancialSummary(false);
             return;
         }
@@ -129,12 +151,35 @@ function TransactionsPage() {
         }
     }, []);
 
+    const fetchGoals = useCallback(async (isRefresh = false) => {
+        if (!isRefresh) setLoadingGoals(true);
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            setError(prev => prev ? `${prev}\nAuth: Token not found for goals.` : `Auth: Token not found for goals.`);
+            setGoals([]);
+            if (!isRefresh) setLoadingGoals(false);
+            return;
+        }
+        try {
+            const response = await axios.get('/api/goals', { headers: { Authorization: `Bearer ${token}` } });
+            setGoals(response.data || []);
+        } catch (err) {
+            console.error("Error fetching goals for Transactions page:", err);
+            const errMsg = err.response?.data?.message || err.message || "Failed to fetch goals.";
+            setError(prev => prev ? `${prev}\nGoals: ${errMsg}` : `Goals: ${errMsg}`);
+            setGoals([]);
+        } finally {
+            if (!isRefresh) setLoadingGoals(false);
+        }
+    }, []);
+
 
     useEffect(() => {
         setError(null);
         fetchAllTransactions();
         fetchFinancialSummary();
-    }, [fetchAllTransactions, fetchFinancialSummary]);
+        fetchGoals();
+    }, [fetchAllTransactions, fetchFinancialSummary, fetchGoals]);
 
     useEffect(() => {
         const handleExternalUpdate = (event) => {
@@ -142,12 +187,13 @@ function TransactionsPage() {
             setError(null);
             fetchAllTransactions(true); 
             fetchFinancialSummary();
+            fetchGoals(true); // Refresh goals too
         };
         window.addEventListener('transactions-updated', handleExternalUpdate);
         return () => {
             window.removeEventListener('transactions-updated', handleExternalUpdate);
         };
-    }, [fetchAllTransactions, fetchFinancialSummary]);
+    }, [fetchAllTransactions, fetchFinancialSummary, fetchGoals]);
 
     const handleEditClick = (tx) => {
         setEditingTxId(tx._id);
@@ -175,12 +221,12 @@ function TransactionsPage() {
     }, [currentMonthIncomeTotal, currentMonthExpenseTotal]);
 
     const projections = useMemo(() => {
-        if (!editingTxId || loadingFinancialSummary) {
-            return { projectedCurrentMonthBalance: null, projectedTotalCumulativeSavings: null, isValidAmount: false };
+        if (!editingTxId || loadingFinancialSummary || loadingGoals) { // Added loadingGoals
+            return { projectedCurrentMonthBalance: null, projectedTotalCumulativeSavings: null, isValidAmount: false, goalConstraint: { applicable: false } };
         }
         const originalTx = transactions.find(tx => tx._id === editingTxId);
         if (!originalTx) {
-            return { projectedCurrentMonthBalance: null, projectedTotalCumulativeSavings: null, isValidAmount: false };
+            return { projectedCurrentMonthBalance: null, projectedTotalCumulativeSavings: null, isValidAmount: false, goalConstraint: { applicable: false } };
         }
 
         const originalAmount = parseFloat(originalTx.amount) || 0;
@@ -189,7 +235,7 @@ function TransactionsPage() {
         const newAmount = parseFloat(newAmountInput);
 
         if (isNaN(newAmount)) {
-             return { projectedCurrentMonthBalance: null, projectedTotalCumulativeSavings: null, isValidAmount: false };
+             return { projectedCurrentMonthBalance: null, projectedTotalCumulativeSavings: null, isValidAmount: false, goalConstraint: { applicable: false } };
         }
         
         const amountDifference = newAmount - originalAmount;
@@ -207,15 +253,43 @@ function TransactionsPage() {
                 projectedCurrentMonthBalance -= amountDifference;
             }
         }
+
+        let goalConstraint = { applicable: false, limit: 0, goalName: '', isExceeded: false };
+        if (txType === 'expense' && editFormData.category.trim().toLowerCase() === GOAL_SAVINGS_CATEGORY_NAME.toLowerCase() && goals && goals.length > 0) {
+            const extractedGoalName = extractGoalNameFromExpenseDescription(editFormData.description);
+            if (extractedGoalName) {
+                const matchedGoal = goals.find(g =>
+                    g.description.trim().toLowerCase() === extractedGoalName.toLowerCase() &&
+                    g.status === 'active'
+                );
+                if (matchedGoal) {
+                    const goalTarget = Number(matchedGoal.targetAmount) || 0;
+                    const goalSaved = Number(matchedGoal.savedAmount) || 0;
+                    let remainingNeeded = goalTarget - goalSaved;
+                    if (remainingNeeded < 0) remainingNeeded = 0;
+                    goalConstraint = {
+                        applicable: true,
+                        limit: remainingNeeded,
+                        goalName: matchedGoal.description,
+                        isExceeded: newAmount > 0 && newAmount > remainingNeeded
+                    };
+                }
+            }
+        }
         
         return {
             projectedCurrentMonthBalance: isDateInCurrentMonth(originalTx.date) ? projectedCurrentMonthBalance : null,
             projectedTotalCumulativeSavings: projectedTotalCumulativeSavings,
             isValidAmount: newAmount > 0 && !isNaN(newAmount),
             txType: txType,
-            isCurrentMonthTx: isDateInCurrentMonth(originalTx.date)
+            isCurrentMonthTx: isDateInCurrentMonth(originalTx.date),
+            goalConstraint // Added goalConstraint
         };
-    }, [editingTxId, editFormData.amount, transactions, currentCumulativeSavings, currentMonthNetBalance, loadingFinancialSummary]);
+    }, [
+        editingTxId, editFormData.amount, editFormData.category, editFormData.description, // Added category & description
+        transactions, currentCumulativeSavings, currentMonthNetBalance, 
+        loadingFinancialSummary, loadingGoals, goals // Added goals related states
+    ]);
 
 
     const handleSaveEdit = async (txId) => {
@@ -231,8 +305,8 @@ function TransactionsPage() {
             toast.error("Please enter a valid positive amount."); return;
         }
 
-        if (loadingFinancialSummary) {
-            toast.info("Financial summary is still loading. Please try again."); return;
+        if (loadingFinancialSummary || loadingGoals) { // Added loadingGoals
+            toast.info("Financial or goal data is still loading. Please try again."); return;
         }
 
         const originalTx = transactions.find(tx => tx._id === txId);
@@ -240,17 +314,71 @@ function TransactionsPage() {
             toast.error("Original transaction not found."); setError("Update Error: Original transaction not found."); return;
         }
         
+        // --- Goal Savings Category Check (Only for expenses) ---
+        if (originalTx.type === 'expense' && editFormData.category.trim().toLowerCase() === GOAL_SAVINGS_CATEGORY_NAME.toLowerCase()) {
+            console.log("--- TxPage: Goal Savings Check ---");
+            const extractedGoalName = extractGoalNameFromExpenseDescription(editFormData.description);
+            console.log("Extracted Goal Name:", `"${extractedGoalName}"`, "from desc:", `"${editFormData.description}"`);
+
+
+            if (!extractedGoalName) {
+                toast.error(
+                    `For the "${GOAL_SAVINGS_CATEGORY_NAME}" category, the expense description ` +
+                    `"${editFormData.description.trim()}" does not follow the expected format: ` +
+                    `"${GOAL_SAVINGS_DESCRIPTION_PREFIX}Your Goal Name".`
+                );
+                return;
+            }
+
+            if (!goals || goals.length === 0) {
+                toast.warn(`Expense categorized as "${GOAL_SAVINGS_CATEGORY_NAME}", but no goals are loaded/defined. Proceeding without goal-specific validation.`);
+            } else {
+                const matchedGoal = goals.find(g =>
+                    g.description.trim().toLowerCase() === extractedGoalName.toLowerCase() &&
+                    g.status === 'active'
+                );
+                console.log("Matched active goal:", matchedGoal ? matchedGoal.description : "None");
+
+                if (!matchedGoal) {
+                    toast.error(
+                        `For the "${GOAL_SAVINGS_CATEGORY_NAME}" category, the goal name "${extractedGoalName}" ` +
+                        `(from description "${editFormData.description.trim()}") ` +
+                        `must match an *active* financial goal. No such active goal found.`
+                    );
+                    return;
+                }
+
+                const goalTargetAmount = Number(matchedGoal.targetAmount) || 0;
+                const goalSavedAmount = Number(matchedGoal.savedAmount) || 0;
+                let remainingNeededForGoal = goalTargetAmount - goalSavedAmount;
+                if (remainingNeededForGoal < 0) remainingNeededForGoal = 0;
+                 console.log(`Goal "${matchedGoal.description}": Target=${goalTargetAmount}, Saved=${goalSavedAmount}, Remaining=${remainingNeededForGoal}, NewExpense=${newAmount}`);
+
+
+                if (newAmount > remainingNeededForGoal) {
+                    toast.error(
+                        `Expense amount ${formatCurrency(newAmount, null)} for goal "${matchedGoal.description}" ` +
+                        `exceeds the remaining amount needed (${formatCurrency(remainingNeededForGoal, null)}). ` +
+                        `Max spend for this item is ${formatCurrency(remainingNeededForGoal, null)}.`
+                    );
+                    return;
+                }
+            }
+        }
+        // --- End Goal Savings Category Check ---
+
+
         if (projections.projectedTotalCumulativeSavings < 0) {
             toast.error(
-                `Cannot save. This change would result in an overall negative net savings of ${formatCurrency(projections.projectedTotalCumulativeSavings)}.` + // No type here
-                ` Current total savings: ${formatCurrency(currentCumulativeSavings)}.`
+                `Cannot save. This change would result in an overall negative net savings of ${formatCurrency(projections.projectedTotalCumulativeSavings, null)}.` +
+                ` Current total savings: ${formatCurrency(currentCumulativeSavings, null)}.`
             );
             return;
         }
 
         if (projections.isCurrentMonthTx && projections.projectedCurrentMonthBalance < 0 && currentMonthNetBalance >=0) {
             const proceed = window.confirm(
-                `Warning: This change will make your current month's balance negative (${formatCurrency(projections.projectedCurrentMonthBalance, null)}). ` + // No type here
+                `Warning: This change will make your current month's balance negative (${formatCurrency(projections.projectedCurrentMonthBalance, null)}). ` +
                 `It will be covered by your total savings. Do you want to proceed?`
             );
             if (!proceed) return;
@@ -265,7 +393,7 @@ function TransactionsPage() {
                     category: editFormData.category.trim(),
                     emoji: editFormData.emoji,
                     amount: newAmount,
-                    type: originalTx.type
+                    type: originalTx.type 
                 }),
             });
             if (!response.ok) {
@@ -297,7 +425,7 @@ function TransactionsPage() {
         }
         const { amount: amountToDelete, type: txType } = transactionToDelete;
 
-        if (loadingFinancialSummary) {
+        if (loadingFinancialSummary) { // No need to check loadingGoals here, as delete logic primarily affects overall savings
             toast.info("Financial summary is loading. Please try again to delete.");
             return;
         }
@@ -312,7 +440,7 @@ function TransactionsPage() {
         if (txType === 'income' && projectedNewOverallNetSavings < 0) {
             toast.error(
                 `Cannot delete this income of ${formatCurrency(amountToDelete, 'income')}. Doing so ` +
-                `would result in an overall negative net savings of ${formatCurrency(projectedNewOverallNetSavings, null)}.` // No type for net savings
+                `would result in an overall negative net savings of ${formatCurrency(projectedNewOverallNetSavings, null)}.`
             );
             return;
         }
@@ -345,7 +473,6 @@ function TransactionsPage() {
         }
     };
 
-    // --- PDF Download Handler for ALL Transactions ---
     const handleDownloadAllPDF = () => {
         if (transactions.length === 0) {
             toast.info("No transactions to download.");
@@ -358,35 +485,48 @@ function TransactionsPage() {
         doc.setFontSize(18);
         doc.text(`All Transactions for ${username}`, 14, 22);
 
-        // Use the current 'transactions' state which is already sorted by date descending
         transactions.forEach(tx => {
             tableRows.push([
                 formatDate(tx.date),
-                tx.type.charAt(0).toUpperCase() + tx.type.slice(1), // Capitalize type
+                tx.type.charAt(0).toUpperCase() + tx.type.slice(1),
                 tx.description,
                 tx.category,
-                formatCurrency(tx.amount, tx.type) // Pass type for +/- prefix
+                formatCurrency(tx.amount, null) // Keep only amount formatting, +/- will be based on cell content or logic
             ]);
         });
+         // For PDF amount, we want the raw value without +/- from formatCurrency if we handle color/prefix in PDF
+        const pdfTransactions = transactions.map(tx => [
+            formatDate(tx.date),
+            tx.type.charAt(0).toUpperCase() + tx.type.slice(1),
+            tx.description,
+            tx.category,
+            (tx.type === 'income' ? '+ ' : '- ') + new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(tx.amount)
+        ]);
+
 
         autoTable(doc, {
             head: [tableColumn],
-            body: tableRows,
+            body: pdfTransactions, // Use the specially formatted data for PDF
             startY: 30,
             theme: 'grid',
-            styles: { fontSize: 10, cellPadding: 2 },
-            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' }, // Example: Blue header
+            styles: { fontSize: 9, cellPadding: 2 },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
             columnStyles: {
-                4: { halign: 'right' } // Align amount column to the right
+                4: { halign: 'right' } 
             },
-            didDrawCell: (data) => { // Optional: Custom styling for income/expense rows
-                if (data.section === 'body') {
-                    const txType = transactions[data.row.index]?.type;
-                    if (txType === 'income') {
-                        doc.setFillColor(232, 245, 233); // Light green for income rows (optional)
-                    } else if (txType === 'expense') {
-                        doc.setFillColor(253, 237, 237); // Light red for expense rows (optional)
+            didDrawCell: (data) => {
+                if (data.section === 'body' && data.column.index === 4) { // Amount column
+                    const rawAmountText = data.cell.raw.toString(); // Get the raw string e.g., "+ $100.00"
+                    if (rawAmountText.startsWith('+')) {
+                        doc.setTextColor(34, 139, 34); // Dark Green for income
+                    } else if (rawAmountText.startsWith('-')) {
+                        doc.setTextColor(220, 20, 60); // Crimson for expense
                     }
+                }
+            },
+            willDrawCell: (data) => { // Reset text color for other cells
+                if (data.column.index !== 4) {
+                    doc.setTextColor(40); // Default text color
                 }
             }
         });
@@ -394,29 +534,30 @@ function TransactionsPage() {
         const date = new Date();
         const dateStr = date.toLocaleDateString() + " " + date.toLocaleTimeString();
         doc.setFontSize(10);
+        doc.setTextColor(40); // Reset text color for footer
         doc.text(`Generated on: ${dateStr}`, 14, doc.internal.pageSize.height - 10);
         doc.save(`all-transactions-${username}-${new Date().toISOString().slice(0,10)}.pdf`);
     };
 
-
-    const pageIsLoading = loading || loadingFinancialSummary;
+    const pageIsLoading = loading || loadingFinancialSummary || loadingGoals; // Added loadingGoals
 
     if (pageIsLoading) {
-        return <div className={styles.dashboardPageContent}><p>Loading transactions and financial summary...</p></div>;
+        return <div className={styles.dashboardPageContent}><p>Loading transactions, financial summary, and goals...</p></div>;
     }
     
-    const pageLoadError = error && (error.includes("Transactions List:") || error.includes("Summary:") || error.includes("Auth:"));
+    const pageLoadError = error && (error.includes("Transactions List:") || error.includes("Summary:") || error.includes("Auth:") || error.includes("Goals:"));
 
     return (
         <div className={styles.transactionsPageContainer}>
             <div className={styles.dashboardPageContent}>
                 <div className={styles.sectionHeader}>
                    <h1 className={styles.pageTitle}>All Transactions</h1>
-                   <div> {/* Wrapper for buttons */}
+                   <div>
                        <button 
                            onClick={handleDownloadAllPDF} 
-                           className={styles.pdfButton} // Use existing or new specific class
-                           style={{fontSize: '1rem', marginRight: '1rem'}} // Add margin if needed
+                           className={styles.pdfButton}
+                           style={{fontSize: '1rem', marginRight: '1rem'}}
+                           disabled={pageIsLoading || transactions.length === 0 || !!pageLoadError}
                        >
                            Download All PDF
                        </button>
@@ -427,11 +568,11 @@ function TransactionsPage() {
                 {pageLoadError && 
                     <div className={styles.pageErrorBanner}>
                         Error loading page data:
-                        {error.split('\n').map((e, i) => <div key={i}>{e.replace(/(Transactions List: |Summary: |Auth: )/g, '')}</div>)}
+                        {error.split('\n').filter(e => e.trim()).map((e, i) => <div key={i}>{e.replace(/(Transactions List: |Summary: |Auth: |Goals: )/g, '')}</div>)}
                     </div>
                 }
-                {(error && (error.startsWith('Update Error:') || error.startsWith('Delete Error:'))) && (
-                    <p className={styles.formErrorBanner} style={{marginBottom: '1rem'}}>{error}</p>
+                {(!pageLoadError && error && (error.startsWith('Update Error:') || error.startsWith('Delete Error:'))) && (
+                    <p className={styles.formErrorBanner} style={{marginBottom: '1rem'}}>{error.replace(/(Update Error: |Delete Error: )/g, '')}</p>
                 )}
 
 
@@ -463,8 +604,18 @@ function TransactionsPage() {
                                                         type="text" name="category" value={editFormData.category}
                                                         onChange={handleEditFormChange} className={styles.formInput}
                                                         style={{ fontSize: '0.9rem', padding: '0.4rem' }}
-                                                        placeholder="Category" required
+                                                        placeholder="Category" 
+                                                        list="transaction-categories"
+                                                        required
                                                     />
+                                                    <datalist id="transaction-categories">
+                                                        {/* You can populate this dynamically or have common ones */}
+                                                        <option value="Salary" />
+                                                        <option value="Freelance" />
+                                                        <option value="Food & Drink" />
+                                                        <option value="Transportation" />
+                                                        <option value={GOAL_SAVINGS_CATEGORY_NAME} />
+                                                    </datalist>
                                                     <input
                                                         type="number" name="amount" value={editFormData.amount}
                                                         onChange={handleEditFormChange} className={styles.formInput}
@@ -479,7 +630,7 @@ function TransactionsPage() {
                                                           style={{fontSize: '1.2rem', padding: '0.4rem'}}
                                                           aria-label="Select icon"
                                                         >
-                                                          {editFormData.emoji || '🙂'}
+                                                          {editFormData.emoji || '+'}
                                                         </button>
                                                         {showEditEmojiPicker === tx._id && (
                                                           <div className={styles.emojiPickerContainer} style={{top: '100%', left: 0, zIndex: 10, position: 'absolute', minWidth: '280px'}}>
@@ -505,7 +656,7 @@ function TransactionsPage() {
                                                 className={`${styles.transactionAmount} ${tx.type === 'income' ? styles.income : styles.expense}`}
                                                 style={{ gridColumn: '4 / 5', gridRow: '1 / 2', justifySelf: 'end' }}
                                             >
-                                                {tx.type === 'income' ? '+' : '-'} {formatCurrency(tx.amount, null)} {/* Pass null for type for basic formatting */}
+                                                {formatCurrency(tx.amount, tx.type)} {/* Pass type for +/- prefix */}
                                             </span>
                                             </>
                                         )}
@@ -535,18 +686,28 @@ function TransactionsPage() {
                                         <div className={styles.editProjections} style={{gridColumn: '1 / -1'}}>
                                             {projections.isCurrentMonthTx && projections.projectedCurrentMonthBalance !== null && (
                                                 <p>
-                                                    If saved, this month's balance will become: <strong>{formatCurrency(projections.projectedCurrentMonthBalance, null)}</strong> {/* No type for balance */}
+                                                    If saved, this month's balance will become: <strong>{formatCurrency(projections.projectedCurrentMonthBalance, null)}</strong>
                                                 </p>
                                             )}
                                             <p>
-                                                Your total cumulative savings will become: <strong>{formatCurrency(projections.projectedTotalCumulativeSavings, null)}</strong> {/* No type for net savings */}
+                                                Your total cumulative savings will become: <strong>{formatCurrency(projections.projectedTotalCumulativeSavings, null)}</strong>
                                             </p>
+                                            {/* Goal Constraint Projection */}
+                                            {projections.txType === 'expense' && projections.goalConstraint && projections.goalConstraint.applicable && (
+                                                <p style={projections.goalConstraint.isExceeded ? {color: 'red', fontWeight: 'bold'} : {color: 'darkgreen'}}>
+                                                    For goal "<strong>{projections.goalConstraint.goalName}</strong>":
+                                                    Max spend for this item is <strong>{formatCurrency(projections.goalConstraint.limit, null)}</strong>.
+                                                    {projections.goalConstraint.isExceeded && (
+                                                        <em> Current amount exceeds this limit!</em>
+                                                    )}
+                                                </p>
+                                            )}
                                              {projections.projectedTotalCumulativeSavings < 0 && (
                                                 <p style={{color: 'red', fontWeight: 'bold'}}>
                                                     Warning: This change will result in overall negative savings!
                                                 </p>
                                             )}
-                                            {projections.isCurrentMonthTx && projections.projectedCurrentMonthBalance < 0 && currentMonthNetBalance >= 0 && (
+                                            {projections.isCurrentMonthTx && projections.projectedCurrentMonthBalance !== null && projections.projectedCurrentMonthBalance < 0 && currentMonthNetBalance >= 0 && (
                                                 <p style={{color: 'orange', fontWeight: 'bold'}}>
                                                     Note: This change will make your current month's balance negative.
                                                 </p>
