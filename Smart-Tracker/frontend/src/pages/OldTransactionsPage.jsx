@@ -568,7 +568,7 @@ function OldTransactionsPage() {
             tableRows.push([
                 tx.type === 'monthly_savings' ? formatMonthYearDisplay(tx.date) : formatDateDisplay(tx.date),
                 displayType,
-                (tx.emoji && tx.type !== 'monthly_savings' ? tx.emoji + " " : "") + tx.description,
+                tx.description,
                 tx.category,
                 formatCurrency(tx.amount, tx.type)
             ]);
