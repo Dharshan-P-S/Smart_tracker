@@ -203,17 +203,44 @@ function GoalsPage() {
 
         const trimmedEditDescription = editDescription.trim();
 
-        if (!trimmedEditDescription || !editTargetAmount || !editTargetDate || editSavedAmount === '') {
-            toast.error('All fields are required for editing.'); return;
+        if (!trimmedEditDescription || !editTargetAmount || !editTargetDate || editSavedAmount === '' || !editStatus) {
+            toast.error('Description, Target Amount, Target Date, Saved Amount, and Status are required for editing.'); return;
         }
-        if (parseFloat(editTargetAmount) <= 0) { toast.error('Target amount must be positive.'); return; }
-        if (parseFloat(editSavedAmount) < 0) { toast.error('Saved amount cannot be negative.'); return; }
+        
+        const newTargetAmountNum = parseFloat(editTargetAmount);
+        const newSavedAmountNum = parseFloat(editSavedAmount);
+
+        if (newTargetAmountNum <= 0) { toast.error('Target amount must be positive.'); return; }
+        if (newSavedAmountNum < 0) { toast.error('Saved amount cannot be negative.'); return; }
 
         const targetDateObj = new Date(editTargetDate + "T00:00:00.000Z");
         const todayStartDate = new Date(new Date().setUTCHours(0,0,0,0));
 
         if (targetDateObj <= todayStartDate && editStatus !== 'achieved' && editStatus !== 'archived') {
              toast.error('Target date must be in the future for active goals.'); return;
+        }
+        
+        let finalStatusForPayload = editStatus; // Start with the status from the form
+
+        // If the goal was originally 'achieved', and the user is attempting to keep it 'achieved' (or hasn't changed the status field)
+        // but the saved amount is now less than the target amount, automatically change status to 'active'.
+        if (editingGoal.status === 'achieved' && 
+            editStatus === 'achieved' && // Check current form selection for status
+            newSavedAmountNum < newTargetAmountNum) {
+            
+            finalStatusForPayload = 'active';
+            // Update the local state for the dropdown, so it reflects the change if the form remains visible (e.g. on other errors)
+            setEditStatus('active'); 
+            toast.info('Goal status automatically updated to "Active" because saved amount is now less than target amount.', { autoClose: 5000 });
+        }
+
+        // Now, validate consistency if the final determined status is 'achieved'
+        // This check runs *after* the potential automatic change to 'active'.
+        if (finalStatusForPayload === 'achieved' && newSavedAmountNum < newTargetAmountNum) {
+            // This case would typically be hit if the user manually set status to 'achieved' 
+            // AND saved amount is too low, AND the auto-change condition above was not met.
+            toast.error('For "Achieved" status, Saved Amount must be greater than or equal to Target Amount. Please adjust amounts or change Status to "Active".');
+            return;
         }
 
         // Client-side check for duplicate description if it's being changed
@@ -231,11 +258,18 @@ function GoalsPage() {
         setIsSubmittingEditGoal(true);
         try {
             const token = localStorage.getItem('authToken');
-            const payload = { description: trimmedEditDescription, targetAmount: parseFloat(editTargetAmount), targetDate: editTargetDate, savedAmount: parseFloat(editSavedAmount), status: editStatus, icon: editIcon };
+            const payload = { 
+                description: trimmedEditDescription, 
+                targetAmount: newTargetAmountNum, 
+                targetDate: editTargetDate, 
+                savedAmount: newSavedAmountNum, 
+                status: finalStatusForPayload, // Use the potentially modified status
+                icon: editIcon 
+            };
             await axios.put(`/api/goals/${editingGoal._id}`, payload, { headers: { Authorization: `Bearer ${token}` } });
             toast.success('Goal updated!');
             fetchGoals();
-            setEditingGoal(null);
+            setEditingGoal(null); // This will also clear the 'editStatus' state hook for the form
         } catch (err) {
             if (err.response?.status === 400 && err.response?.data?.message?.toLowerCase().includes('description already exists')) {
                 toast.error(err.response.data.message);
@@ -381,11 +415,19 @@ function GoalsPage() {
                          <div className={styles.formRow}>
                             <div className={styles.formGroup}>
                                 <label htmlFor="editSavedAmount">Saved Amount</label>
-                                <input type="number" id="editSavedAmount" value={editSavedAmount} onChange={(e) => setEditSavedAmount(e.target.value)} min="0" step="0.01" max={editTargetAmount} required />
+                                <input 
+                                    type="number" 
+                                    id="editSavedAmount" 
+                                    value={editSavedAmount} 
+                                    onChange={(e) => setEditSavedAmount(e.target.value)} 
+                                    min="0" 
+                                    step="0.01" 
+                                    required 
+                                />
                             </div>
                             <div className={styles.formGroup}>
                                 <label htmlFor="editStatus">Status</label>
-                                <select id="editStatus" value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
+                                <select id="editStatus" value={editStatus} onChange={(e) => setEditStatus(e.target.value)} required>
                                     <option value="active">Active</option>
                                     <option value="achieved">Achieved</option>
                                     <option value="archived">Archived</option>
