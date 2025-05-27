@@ -39,10 +39,10 @@ function LoginPage() {
       // IMPORTANT: Replace with your actual backend URL if it's not localhost:5000
       const res = await axios.post('http://localhost:5000/api/auth/login', body, config);
 
-      console.log('Login successful:', res.data); // res.data contains the JWT token
+      console.log('LOGIN RESPONSE:', JSON.stringify(res.data)); // See the whole response
 
       // Store token in localStorage
-      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('authToken', res.data.token);
       // Store username in localStorage again
       if (res.data.username) { // Check if username exists in response
         localStorage.setItem('username', res.data.username);
