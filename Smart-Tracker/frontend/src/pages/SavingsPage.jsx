@@ -1,10 +1,11 @@
+// SavingsPage.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import styles from './SavingsPage.module.css';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const SavingsPage = () => {
-  const [savingsData, setSavingsData] = useState([]); // Will store { month, savings, cumulativeSavings }
+  const [savingsData, setSavingsData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -13,28 +14,26 @@ const SavingsPage = () => {
       setLoading(true);
       setError(null);
       try {
-        // Simulate API delay for testing loading state
-        // await new Promise(resolve => setTimeout(resolve, 1500));
+        const token = localStorage.getItem('authToken'); // <<< GET THE TOKEN
 
-        // Mock data for frontend testing if backend is not ready
-        // const mockData = [
-        //   { month: '2023-01-01', savings: 100 },
-        //   { month: '2023-02-01', savings: 150 },
-        //   { month: '2023-03-01', savings: 80 },
-        //   { month: '2023-04-01', savings: 200 },
-        //   { month: '2023-05-01', savings: -50 }, // Example of negative savings
-        //   { month: '2023-06-01', savings: 120 },
-        // ];
-        // const data = mockData; // Use mock data
+        if (!token) { // <<< CHECK IF TOKEN EXISTS
+          setError('Authentication token not found. Please log in.');
+          setLoading(false);
+          return;
+        }
 
-        const { data } = await axios.get('/api/transactions/savings/monthly');
+        // Make sure your API base URL is configured if not hitting the same domain/port
+        // For Vite, if proxy is set in vite.config.js, '/api/...' should work.
+        // Otherwise, use full URL e.g., 'http://localhost:5000/api/transactions/savings/monthly'
+        const { data } = await axios.get('/api/transactions/savings/monthly', {
+          headers: { // <<< ADD HEADERS
+            'Authorization': `Bearer ${token}`
+          }
+        });
 
-
-        // Assuming data is sorted by month from backend
-        // Calculate cumulative savings
         let cumulativeTotal = 0;
         const processedData = data.map(item => {
-          const monthlySavings = parseFloat(item.savings) || 0; // Ensure savings is a number
+          const monthlySavings = parseFloat(item.savings) || 0;
           cumulativeTotal += monthlySavings;
           return {
             ...item,
@@ -44,39 +43,45 @@ const SavingsPage = () => {
         });
 
         setSavingsData(processedData);
-        setLoading(false);
       } catch (err) {
-        setError('Failed to fetch savings data. Please ensure the backend is running and the endpoint is correct.');
-        console.error(err);
+        if (err.response && err.response.status === 401) {
+          setError('Unauthorized: Your session may have expired. Please log in again.');
+        } else {
+          setError('Failed to fetch savings data. Please try again later.');
+        }
+        console.error("Error fetching savings data:", err.response?.data || err.message, err);
+        setSavingsData([]); // Clear data on error
+      } finally {
         setLoading(false);
       }
     };
 
     fetchSavingsData();
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount
+
+  // ... (rest of your component is likely fine if the data fetching works)
 
   // Prepare data for the chart
   const chartData = savingsData.map(item => ({
-    name: new Date(item.month).toLocaleString('default', { month: 'short', year: 'numeric' }),
-    Savings: parseFloat(item.savings.toFixed(2)), // Ensure it's a number for the chart
-    'Cumulative Savings': parseFloat(item.cumulativeSavings.toFixed(2)), // Add cumulative savings
+    name: new Date(item.month + 'T00:00:00Z').toLocaleDateString('default', { month: 'short', year: 'numeric', timeZone: 'UTC' }), // Ensure date is parsed as UTC if it's YYYY-MM
+    Savings: parseFloat(item.savings.toFixed(2)),
+    'Cumulative Savings': parseFloat(item.cumulativeSavings.toFixed(2)),
   }));
 
   const renderGraph = () => {
-    if (savingsData.length === 0 && !loading) {
+    if (savingsData.length === 0 && !loading && !error) { // Added !error condition
       return <p className={styles.noDataText}>No savings data available to display chart.</p>;
+    }
+    // Don't render graph if there's an error and no data, let the main error message handle it.
+    if (savingsData.length === 0 && error) {
+        return null;
     }
     return (
       <div className={styles.chartContainer}>
-        <ResponsiveContainer width="100%" height={400}> {/* Specify a height */}
+        <ResponsiveContainer width="100%" height={400}>
           <AreaChart
             data={chartData}
-            margin={{
-              top: 10, // Adjusted top margin
-              right: 30,
-              left: 20, // Increased left margin for Y-axis labels
-              bottom: 20, // Increased bottom margin for legend if it's close
-            }}
+            margin={{ top: 10, right: 30, left: 20, bottom: 20 }}
           >
             <defs>
               <linearGradient id="colorSavings" x1="0" y1="0" x2="0" y2="1">
@@ -97,24 +102,8 @@ const SavingsPage = () => {
               cursor={{ fill: 'rgba(204,204,204,0.2)' }}
             />
             <Legend wrapperStyle={{ paddingTop: '20px' }}/>
-            <Area
-              type="monotone"
-              dataKey="Savings"
-              stroke="#8884d8"
-              fillOpacity={1}
-              fill="url(#colorSavings)"
-              dot={{ fill: '#8884d8', stroke: '#fff', strokeWidth: 1, r: 3 }} // Added dot prop
-              activeDot={{ r: 5, stroke: '#fff', strokeWidth: 2 }}          // Optional: style for active dot
-            />
-            <Area
-              type="monotone"
-              dataKey="Cumulative Savings"
-              stroke="#82ca9d"
-              fillOpacity={1}
-              fill="url(#colorCumulative)"
-              dot={{ fill: '#82ca9d', stroke: '#fff', strokeWidth: 1, r: 3 }} // Added dot prop
-              activeDot={{ r: 5, stroke: '#fff', strokeWidth: 2 }}          // Optional: style for active dot
-            />
+            <Area type="monotone" dataKey="Savings" stroke="#8884d8" fillOpacity={1} fill="url(#colorSavings)" dot={{ fill: '#8884d8', stroke: '#fff', strokeWidth: 1, r: 3 }} activeDot={{ r: 5, stroke: '#fff', strokeWidth: 2 }} />
+            <Area type="monotone" dataKey="Cumulative Savings" stroke="#82ca9d" fillOpacity={1} fill="url(#colorCumulative)" dot={{ fill: '#82ca9d', stroke: '#fff', strokeWidth: 1, r: 3 }} activeDot={{ r: 5, stroke: '#fff', strokeWidth: 2 }} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -122,6 +111,10 @@ const SavingsPage = () => {
   };
 
   const renderSavingsList = () => {
+    // Don't render list if there's an error and no data
+    if (savingsData.length === 0 && error) {
+        return null;
+    }
     return (
       <div className={styles.savingsList}>
         <h3>Monthly Savings Breakdown</h3>
@@ -130,7 +123,8 @@ const SavingsPage = () => {
             {savingsData.map((item, index) => (
               <li key={index} className={styles.savingsListItem}>
                 <div className={styles.monthYear}>
-                  {new Date(item.month).toLocaleString('default', { month: 'long', year: 'numeric' })}:
+                  {/* Assuming item.month is "YYYY-MM", append day for proper UTC parsing if needed */}
+                  {new Date(item.month + '-01T00:00:00Z').toLocaleDateString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })}:
                 </div>
                 <div className={styles.savingsAmounts}>
                   <span className={styles.label}>Monthly: </span>
@@ -147,20 +141,31 @@ const SavingsPage = () => {
             ))}
           </ul>
         ) : (
-          <p className={styles.noDataText}>No savings data available for the list.</p>
+          !loading && !error && <p className={styles.noDataText}>No savings data available for the list.</p> // Show only if no loading and no error
         )}
       </div>
     );
   };
 
+  // Main loading/error display
   if (loading) return <div className={styles.savingsContainer}><p className={styles.loadingText}>Loading savings data...</p></div>;
+  // If there's an error and no data could be fetched (e.g., initial 401)
   if (error && savingsData.length === 0) return <div className={styles.savingsContainer}><p className={styles.error}>{error}</p></div>;
-
+  // If no data and no error (empty successful response)
+  if (!loading && savingsData.length === 0 && !error) {
+    return (
+      <div className={styles.savingsContainer}>
+        <h2>Monthly Savings Analysis</h2>
+        <p className={styles.noDataText}>You have no savings data yet. Start by adding some income and expenses!</p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.savingsContainer}>
       <h2>Monthly Savings Analysis</h2>
-      {error && <p className={styles.error}>{error}</p>} {/* Show error even if some data is loaded */}
+      {/* Display error at top if it occurred but some stale data might still be shown (less likely with current logic) */}
+      {error && <p className={styles.error}>{error}</p>}
       {renderGraph()}
       {renderSavingsList()}
     </div>
