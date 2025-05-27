@@ -854,7 +854,7 @@ Some data might be unavailable: {error.split('\n').map((e,i)=> <span key={i}>{e.
 
     <section className={`${styles.sectionBox} ${styles.goalsSection}`}>
         <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}><FaBullseye style={{marginRight: '8px'}}/>Active Goals</h2>
+            <h2 className={styles.sectionTitle}><FaBullseye style={{marginRight: '8px', display:'inline-block'}}/>Active Goals</h2>
             <Link to="/goals" className={styles.seeAllButton}>Manage Goals</Link>
         </div>
         {loadingGoals && recentGoals.length === 0 && !error ? (<div className={styles.placeholderContent}>Loading goals...</div>)
