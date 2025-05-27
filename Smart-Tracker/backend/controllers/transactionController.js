@@ -572,7 +572,7 @@ const getDashboardData = async (req, res) => {
             date: { $gte: startOfMonth, $lte: endOfMonth }
         })
         .sort({ date: -1 })
-        .limit(5)
+        .limit(10)
         .lean();
 
         const totalsAggregation = await Transaction.aggregate([
