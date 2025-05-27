@@ -794,7 +794,7 @@ Some data might be unavailable: {error.split('\n').map((e,i)=> <span key={i}>{e.
                 </ResponsiveContainer>
             ) : (
                 <div className={styles.placeholderContent} style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                    No savings data yet. <Link to="/transactions">Add transactions</Link> to see your trend.
+                    No savings data yet. Add transactions to see your trend.
                 </div>
             )}
         </div>
@@ -917,7 +917,7 @@ Some data might be unavailable: {error.split('\n').map((e,i)=> <span key={i}>{e.
     </section>
 
     <section className={`${styles.sectionBox} ${styles.incomeCategoryChartSection}`}>
-        <h2 className={styles.sectionTitle}>Monthly Income Breakdown</h2>
+        <h2 className={styles.sectionTitle} style={{marginBottom:'20px'}}>Monthly Income Breakdown</h2>
         <div className={styles.chartContainer} style={{ height: '300px' }}>
             {loadingCurrentMonthIncome && incomeByCategoryPieData.length === 0 && !error ? (
                 <div className={styles.placeholderContent}>Loading income chart...</div>
@@ -984,7 +984,7 @@ Some data might be unavailable: {error.split('\n').map((e,i)=> <span key={i}>{e.
     </section>
 
     <section className={`${styles.sectionBox} ${styles.expenseCategoryChartSection}`}>
-        <h2 className={styles.sectionTitle}>Monthly Expense Breakdown</h2> {/* Removed inline style for margins */}
+        <h2 className={styles.sectionTitle}style={{marginBottom:'20px'}}>Monthly Expense Breakdown</h2> {/* Removed inline style for margins */}
         <div className={styles.chartContainer} style={{ height: '300px' }}>
             {loadingCurrentMonthExpenses && expenseByCategoryBarData.length === 0 && !error ? (
                 <div className={styles.placeholderContent}>Loading expense chart...</div>

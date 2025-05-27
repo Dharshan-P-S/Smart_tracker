@@ -116,12 +116,21 @@
 .placeholderContent {
   flex-grow: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary-light);
-  font-style: italic;
-  min-height: 150px; /* Give it some minimum size */
+  color: var(--text-primary-light); /* CHANGE to primary text color for better contrast if bg is added */
+  font-style: normal;
+  font-size: 1.1rem;
+  font-weight: 500;
+  min-height: 150px;
   text-align: center;
+  padding: 1.5rem; /* Increased padding */
+  border-radius: 6px; /* Rounded corners */
+  background-color: var(--placeholder-bg-light, #f9fafb); /* LIGHTER, distinct background */
+  /* OR */
+  /* border: 2px dashed var(--border-light); */ /* OR a dashed border */
+  margin: 1rem 0; /* Add some margin to separate it within the sectionBox */
 }
 
 /* Responsive Adjustments for smaller screens */
@@ -166,8 +175,8 @@
   }
 
   .placeholderContent {
-     color: var(--text-secondary-dark);
-  }
+    color: var(--text-primary-dark);
+    background-color: var(--placeholder-bg-dark, #262f3d);  }
 
   /* Ensure chart tooltips/legends have dark mode styles */
   /* Recharts usually needs specific prop overrides for theme */
