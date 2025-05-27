@@ -705,7 +705,7 @@ function Dashboard() {
                   );
                 })}
               </div>
-            ) : (<div className={styles.placeholderContent}>No spending limits set. <Link to="/limits">Set one now!</Link></div>)}
+            ) : (<div className={styles.placeholderContent}>No spending limits set. <Link style={{textDecoration:'underline', color:'var(--primary-accent-light)'}} to="/limits">Set one now!</Link></div>)}
         </section>
       </div>
 
@@ -736,7 +736,7 @@ function Dashboard() {
                   </div>
                 ))}
               </div>
-            ) : (<div className={styles.placeholderContent}>No active goals found. <Link to="/goals">Set a new goal!</Link></div>)}
+            ) : (<div className={styles.placeholderContent}>No active goals found. <Link style={{textDecoration:'underline', color:'var(--primary-accent-light)'}} to="/goals">Set a new goal!</Link></div>)}
         </section>
 
         <section className={`${styles.sectionBox} ${styles.savingsChartSection}`}>
