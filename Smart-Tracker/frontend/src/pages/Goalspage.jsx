@@ -367,7 +367,7 @@ function GoalsPage() {
                             </div>
                             <div className={styles.formGroup} style={{ flexBasis: '85%'}}>
                                 <label htmlFor="newGoalDescription"><FaInfoCircle /> Description</label>
-                                <input type="text" id="newGoalDescription" value={newGoalDescription} onChange={(e) => setNewGoalDescription(e.target.value)} placeholder="e.g., Save for Vacation" required />
+                                <input type="text" id="newGoalDescription" value={newGoalDescription} onChange={(e) => setNewGoalDescription(e.target.value)} placeholder="e.g., Vacation" required />
                             </div>
                         </div>
                         <div className={styles.formRow}>
