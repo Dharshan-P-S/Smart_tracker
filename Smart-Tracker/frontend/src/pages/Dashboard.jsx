@@ -824,7 +824,7 @@ function Dashboard() {
         </section>
 
         <section className={`${styles.sectionBox} ${styles.expenseCategoryChartSection}`}>
-          <h2 className={styles.sectionTitle}>Monthly Expense Breakdown</h2>
+          <h2 className={styles.sectionTitle} style={{marginBottom:'70px'}}>Monthly Expense Breakdown</h2>
           <div className={styles.chartContainer} style={{ height: '300px' }}>
             {loadingCurrentMonthExpenses && expenseByCategoryBarData.length === 0 && !error ? (<div className={styles.placeholderContent}>Loading expense breakdown...</div>)
               : expenseByCategoryBarData.length > 0 ? (
