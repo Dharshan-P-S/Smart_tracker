@@ -115,23 +115,18 @@ const SmartAssistantPage = () => {
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(scrollToBottom, [messages]);
 
-  // This effect attempts to focus the input field whenever it's deemed "ready"
   useEffect(() => {
     const isInputReady = !isLoading && !goalsLoading && !limitsLoading && !loadingCumulativeSavings;
 
     if (isInputReady && inputRef.current) {
       const focusTimeout = setTimeout(() => {
-        // Check if the input element still exists and is not the currently focused element
-        // Also, very importantly, check if it's not disabled in the DOM
         if (inputRef.current && document.activeElement !== inputRef.current && !inputRef.current.disabled) {
           inputRef.current.focus();
         }
-      }, 0); // Minimal delay to allow DOM updates to settle
+      }, 0); 
       return () => clearTimeout(focusTimeout);
     }
   }, [isLoading, goalsLoading, limitsLoading, loadingCumulativeSavings, messages, pendingAction]);
-  // Adding `messages` and `pendingAction` to dependencies ensures this effect re-runs
-  // after an interaction completes or a confirmation state changes.
 
 
     const fetchGoals = useCallback(async () => {
@@ -157,11 +152,11 @@ const SmartAssistantPage = () => {
 
     const fetchLimits = useCallback(async () => {
         setLimitsLoading(true);
-        setFetchError('');
+        setFetchError(''); // Reset fetch error specific to limits
         try {
             const token = localStorage.getItem('authToken');
             if (!token) {
-                setFetchError('Please log in to manage limits.');
+                setFetchError('Please log in to manage limits.'); // This error might be general, consider namespacing or specific state
                 setLimits([]);
                 return;
             }
@@ -219,6 +214,7 @@ const SmartAssistantPage = () => {
             setGoalsLoading(false);
             setLimitsLoading(false);
             setLoadingCumulativeSavings(false);
+            setFetchError("Please log in to use the assistant's features."); // Set a general fetch error if not logged in
         }
         const handleDataUpdate = () => {
             if (localStorage.getItem('authToken')) {
@@ -536,7 +532,7 @@ const SmartAssistantPage = () => {
             if (foundLimit) {
                 let limitText = `Limit for ${capitalizeFirstLetter(foundLimit.category)}:\n- Amount: ${formatCurrency(foundLimit.amount)}\n- Spent this month: ${formatCurrency(foundLimit.currentSpending)}\n- Remaining: ${formatCurrency(foundLimit.remainingAmount)}`;
                 if (foundLimit.exceeded) {
-                    limitText += `\n\nWarning: You have exceeded this limit by ${formatCurrency(foundLimit.currentSpending - foundLimit.amount)}!`;
+                    limitText += `\n\nWarning: You have exceeded this limit by ${formatCurrency(Math.abs(foundLimit.remainingAmount))}!`;
                 }
                 addMessage('assistant', limitText);
             } else {
@@ -645,6 +641,18 @@ const SmartAssistantPage = () => {
         }
         const targetDate = new Date(targetDateValue).toISOString().split('T')[0];
 
+        if (goalsLoading) {
+            addMessage('assistant', "I'm still loading your goals data. Please try again in a moment to set a goal.");
+            setIsLoading(false);
+            return;
+        }
+         if (fetchError && goals.length === 0) { // Check fetchError if goals are empty potentially due to it
+            addMessage('assistant', `There was an issue fetching your goals: ${fetchError}. Please try again after resolving.`, null, true);
+            setIsLoading(false);
+            return;
+        }
+
+
         if (goals.some(g => g.description.toLowerCase() === goalDescription.toLowerCase())) {
             addMessage('assistant', `A goal named "${goalDescription}" already exists. Please choose a different name or manage the existing one.`);
             setIsLoading(false);
@@ -668,7 +676,7 @@ const SmartAssistantPage = () => {
             setIsLoading(false);
             return;
         }
-        if (fetchError) {
+        if (fetchError) { // General fetch error check
             addMessage('assistant', `There was an issue fetching your data: ${fetchError}. Please try again after resolving.`, null, true);
             setIsLoading(false);
             return;
@@ -734,6 +742,25 @@ const SmartAssistantPage = () => {
         }
         const category = capitalizeFirstLetter(categoryEntity.value);
         const amount = parseFloat(amountEntity.value);
+
+        if (limitsLoading) {
+            addMessage('assistant', "I'm still loading your limits data. Please try again in a moment to set a limit.");
+            setIsLoading(false);
+            return;
+        }
+        if (fetchError && limits.length === 0) { // Check fetchError if limits are empty potentially due to it
+            addMessage('assistant', `There was an issue fetching your limits: ${fetchError}. Please try again after resolving.`, null, true);
+            setIsLoading(false);
+            return;
+        }
+
+        const existingLimit = limits.find(l => l.category.toLowerCase() === category.toLowerCase());
+        if (existingLimit) {
+            addMessage('assistant', `A limit for "${category}" already exists with an amount of ${formatCurrency(existingLimit.amount)}. You can ask me to "update this limit for ${category}" or check its details by asking "What is the limit for ${category}?".`);
+            setIsLoading(false);
+            return;
+        }
+
         actionDetailsForConfirmation = { type: 'confirm_action', intent: 'set_limit', data: { category, amount }, confirmationId: generateId(), originalQuery };
         confirmationMessage = `Alright, set a spending limit:\n- Category: ${category}\n- Amount: ${formatCurrency(amount)}\n\nIs this correct? (yes/no)`;
     }
@@ -779,6 +806,10 @@ const SmartAssistantPage = () => {
             addMessage('assistant', "I'm still loading your goals data. Please try again in a moment.");
             setIsLoading(false); return;
         }
+         if (fetchError && goals.length === 0) {
+            addMessage('assistant', `There was an issue fetching your goals: ${fetchError}. Please try again after resolving.`, null, true);
+            setIsLoading(false); return;
+        }
         executeGetGoalDetailsByName(goalNameEntities);
         return;
     }
@@ -790,6 +821,10 @@ const SmartAssistantPage = () => {
         }
          if (limitsLoading) {
             addMessage('assistant', "I'm still loading your limits data. Please try again in a moment.");
+            setIsLoading(false); return;
+        }
+         if (fetchError && limits.length === 0) {
+            addMessage('assistant', `There was an issue fetching your limits: ${fetchError}. Please try again after resolving.`, null, true);
             setIsLoading(false); return;
         }
         executeGetLimitDetailsByCategory(categoryEntities);
@@ -816,7 +851,6 @@ const SmartAssistantPage = () => {
 
     addMessage('user', query);
     setInputValue('');
-    // The useEffect hook handles focusing.
 
     if (pendingAction) {
       if (pendingAction.type === 'confirm_action') {
@@ -917,7 +951,7 @@ const SmartAssistantPage = () => {
             }
             className={styles.chatInput}
             disabled={isInputDisabled}
-            autoFocus // Primarily for initial load
+            autoFocus 
           />
           <button type="submit" className={styles.sendButton} disabled={isInputDisabled || !inputValue.trim()}>
             Send

@@ -28,15 +28,14 @@ const formatCurrency = (value) => {
 
 const formatDate = (dateString, options = { year: 'numeric', month: 'short', day: 'numeric' }) => {
   if (!dateString) return "Invalid Date";
-  // Check if dateString is just YYYY-MM (from savings data potentially)
   if (typeof dateString === 'string' && /^\d{4}-\d{2}$/.test(dateString)) {
-    dateString += '-01'; // Append a day to make it a valid date for parsing
+    dateString += '-01';
   }
   const date = new Date(dateString);
   if (isNaN(date.getTime())) {
     return 'Invalid Date';
   }
-  const dateToFormat = new Date(dateString.includes('T') ? dateString : dateString + 'T00:00:00Z'); // Treat as UTC if no T
+  const dateToFormat = new Date(dateString.includes('T') ? dateString : dateString + 'T00:00:00Z');
   return dateToFormat.toLocaleDateString('en-US', options);
 };
 
@@ -50,13 +49,21 @@ const getDisplayDateString = (dateObj) => {
 function Dashboard() {
   console.log("--- Dashboard Component Render Start ---");
 
-  // --- State Variables ---
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpense, setTotalExpense] = useState(0);
-  const [transactions, setTransactions] = useState([]); // For "Recent Transactions (Current Month)" in the first data row
-  const [loading, setLoading] = useState(true); // General loading for initial dashboard data (totals, top recent tx)
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [allCategories, setAllCategories] = useState([]);
+  const [allCategories, setAllCategories] = useState(() => {
+    const savedCategories = localStorage.getItem('allCategories');
+    try {
+      return savedCategories ? JSON.parse(savedCategories) : [];
+    } catch (e) {
+      console.error("Error parsing categories from localStorage:", e);
+      localStorage.removeItem('allCategories'); // Clear corrupted data
+      return [];
+    }
+  });
   const [username, setUsername] = useState(() => localStorage.getItem('username') || 'User');
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
@@ -72,7 +79,7 @@ function Dashboard() {
   const [limits, setLimits] = useState([]);
   const [loadingLimits, setLoadingLimits] = useState(true);
   const [categoryLimitWarning, setCategoryLimitWarning] = useState(null);
-  const [registrationDate, setRegistrationDate] = useState(null); // Still fetched, but not used for transaction date validation
+  const [registrationDate, setRegistrationDate] = useState(null);
   const [monthlySavingsData, setMonthlySavingsData] = useState([]);
   const [currentCumulativeSavings, setCurrentCumulativeSavings] = useState(0);
   const [loadingFinancialSummary, setLoadingFinancialSummary] = useState(true);
@@ -83,28 +90,20 @@ function Dashboard() {
   const [currentMonthExpenseTransactions, setCurrentMonthExpenseTransactions] = useState([]);
   const [loadingCurrentMonthExpenses, setLoadingCurrentMonthExpenses] = useState(true);
 
-  // --- Refs ---
   const addTransactionSectionRef = useRef(null);
 
-  // --- Scroll Handler ---
   const handleScrollToAddTransaction = () => {
     if (addTransactionSectionRef.current) {
-      addTransactionSectionRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      });
+      addTransactionSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
-  // --- Data Fetching Callbacks ---
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error("Auth token not found for dashboard.");
-      const response = await axios.get('/api/transactions/dashboard', {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      const response = await axios.get('/api/transactions/dashboard', { headers: { 'Authorization': `Bearer ${token}` } });
       const data = response.data;
       setTotalIncome(data.totalIncome || 0);
       setTotalExpense(data.totalExpense || 0);
@@ -118,17 +117,26 @@ function Dashboard() {
     }
   }, []);
 
+  // This function definition is kept for potential future use or if other parts rely on its structure,
+  // but it is NOT CALLED during initial data load to prevent the 404 error.
+  // Categories are now primarily managed locally and loaded from localStorage.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const fetchAllCategoriesFromAPI = useCallback(async () => {
+    console.warn("fetchAllCategoriesFromAPI is defined but should not be called in the current configuration to avoid 404 errors for /api/categories/all. Categories are loaded from localStorage.");
     try {
       const token = localStorage.getItem('authToken');
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-      const response = await axios.get('/api/categories/all', { headers });
-      const categoriesData = response.data;
-      if (Array.isArray(categoriesData)) {
-        setAllCategories(categoriesData);
-        localStorage.setItem('allCategories', JSON.stringify(categoriesData));
-      } else { console.error("Fetched categories is not an array:", categoriesData); }
-    } catch (err) { console.error("Error fetching all categories:", err); }
+      // The following line would make the problematic API call:
+      // const response = await axios.get('/api/categories/all', { headers });
+      // const categoriesData = response.data;
+      // if (Array.isArray(categoriesData)) {
+      //   setAllCategories(categoriesData);
+      //   localStorage.setItem('allCategories', JSON.stringify(categoriesData));
+      // } else { console.error("Fetched categories is not an array:", categoriesData); }
+    } catch (err) {
+        // This error handling is for if the call were to be re-enabled.
+        console.error("Error during (currently disabled) fetchAllCategoriesFromAPI call:", err);
+    }
   }, []);
 
   const fetchFinancialSummaryAndSavings = useCallback(async () => {
@@ -141,9 +149,7 @@ function Dashboard() {
       return;
     }
     try {
-      const savingsResponse = await axios.get('/api/transactions/savings/monthly', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const savingsResponse = await axios.get('/api/transactions/savings/monthly', { headers: { 'Authorization': `Bearer ${token}` } });
       const fetchedMonthlyNetSavings = savingsResponse.data || [];
       let cumulativeTotal = 0;
       const processedData = fetchedMonthlyNetSavings.map(item => {
@@ -192,9 +198,7 @@ function Dashboard() {
     try {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error("Auth token not found for goals.");
-      const response = await axios.get('/api/goals', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await axios.get('/api/goals', { headers: { 'Authorization': `Bearer ${token}` } });
       const sortedGoals = (response.data || [])
         .filter(goal => goal.status === 'active')
         .sort((a, b) => new Date(a.targetDate) - new Date(b.targetDate));
@@ -214,9 +218,7 @@ function Dashboard() {
     try {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error("Auth token not found for current month income.");
-      const response = await axios.get('/api/transactions/current-month/income', {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      const response = await axios.get('/api/transactions/current-month/income', { headers: { 'Authorization': `Bearer ${token}` } });
       const incomeData = response.data || [];
       incomeData.sort((a, b) => new Date(b.date) - new Date(a.date));
       setCurrentMonthIncomeTransactions(incomeData);
@@ -235,9 +237,7 @@ function Dashboard() {
     try {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error("Auth token not found for current month expenses.");
-      const response = await axios.get('/api/transactions/current-month/expense', {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      const response = await axios.get('/api/transactions/current-month/expense', { headers: { 'Authorization': `Bearer ${token}` } });
       const expenseData = response.data || [];
       expenseData.sort((a, b) => new Date(b.date) - new Date(a.date));
       setCurrentMonthExpenseTransactions(expenseData);
@@ -251,7 +251,6 @@ function Dashboard() {
     }
   }, []);
 
-  // --- Main useEffect for Initial Data Load ---
   useEffect(() => {
     setError(null);
     const token = localStorage.getItem('authToken');
@@ -265,7 +264,7 @@ function Dashboard() {
             }
             if (profileResponse.data.createdAt) {
                 const regDate = new Date(profileResponse.data.createdAt);
-                setRegistrationDate(getDisplayDateString(regDate)); // Still set for potential other uses
+                setRegistrationDate(getDisplayDateString(regDate));
             }
         } catch (err) {
             console.error("Error fetching user profile:", err.response?.data || err.message, err);
@@ -274,6 +273,7 @@ function Dashboard() {
             if (err.response?.status === 401) {
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('username');
+                // Consider redirecting to login here
             }
         }
     };
@@ -286,16 +286,22 @@ function Dashboard() {
         fetchRecentGoalsFromAPI();
         fetchCurrentMonthIncomeData();
         fetchCurrentMonthExpenseData();
-        fetchAllCategoriesFromAPI();
+        // fetchAllCategoriesFromAPI(); // <<<< CRITICAL CHANGE: This call is COMMENTED OUT to prevent the 404 error.
+                                      // Categories are loaded from localStorage at state initialization.
     } else {
         setError("Please log in to view the dashboard.");
         setLoading(false); setLoadingLimits(false); setLoadingFinancialSummary(false); setLoadingGoals(false); setLoadingCurrentMonthIncome(false); setLoadingCurrentMonthExpenses(false);
         setTotalIncome(0); setTotalExpense(0); setTransactions([]); setLimits([]); setMonthlySavingsData([]); setCurrentCumulativeSavings(0); setRecentGoals([]); setCurrentMonthIncomeTransactions([]); setCurrentMonthExpenseTransactions([]);
+        setAllCategories([]); // Reset categories if not logged in
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // The dependencies for this useEffect are effectively empty `[]` because:
+  // 1. `token` is a primitive derived from localStorage (not reactive state itself for this effect's trigger).
+  // 2. All `fetch...` functions called within are wrapped in `useCallback` with empty dependency arrays,
+  //    making them stable references that don't change across renders.
+  // 3. `fetchAllCategoriesFromAPI` is no longer called here.
   }, []);
 
-  // Event listener for transaction updates
   useEffect(() => {
     const handleDataUpdate = () => {
       console.log('Dashboard received transactions-updated event, re-fetching relevant data...');
@@ -314,7 +320,6 @@ function Dashboard() {
     };
   }, [fetchDashboardData, fetchFinancialSummaryAndSavings, fetchLimitsFromAPI, fetchCurrentMonthIncomeData, fetchCurrentMonthExpenseData]);
 
-  // Category limit warning
   useEffect(() => {
     if (type === 'expense' && category.trim() !== '' && limits.length > 0) {
       const categoryTrimmed = category.trim().toLowerCase();
@@ -325,7 +330,6 @@ function Dashboard() {
     } else { setCategoryLimitWarning(null); }
   }, [category, type, limits]);
 
-  // --- Memoized Values for Calculations and Display ---
   const dateInputProps = useMemo(() => {
     const today = new Date();
     const currentMonthFirstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -384,7 +388,6 @@ function Dashboard() {
     }));
   }, [monthlySavingsData]);
 
-  // --- Event Handlers ---
   const handleAddTransaction = async (event) => {
     event.preventDefault();
     if (isSubmitting) return;
@@ -403,14 +406,7 @@ function Dashboard() {
     if (selectedYear !== currentYear || selectedJsMonth !== currentJsMonth) {
       toast.error("Please select a date within the current month."); return;
     }
-    // REMOVED: Validation against registrationDate
-    // if (registrationDate) {
-    //   const [regYear, regMonthNum, regDayNum] = registrationDate.split('-').map(Number);
-    //   const regJsMonth = regMonthNum - 1;
-    //   if (selectedYear < regYear || (selectedYear === regYear && selectedJsMonth < regJsMonth) || (selectedYear === regYear && selectedJsMonth === regJsMonth && selectedDayNum < regDayNum)) {
-    //     toast.error(`Transactions cannot be before your registration date of ${formatDate(registrationDate)}. This rule is independent of the current month selection.`); return;
-    //   }
-    // }
+
     if (!amount || parseFloat(amount) <= 0) { toast.error("Please enter a valid positive amount."); return; }
     if (!description.trim()) { toast.error("Please enter a description."); return; }
     if (!category.trim()) { toast.error("Please enter a category."); return; }
@@ -428,7 +424,7 @@ function Dashboard() {
       return count;
     };
     const transactionYearForFreq = selectedYear;
-    const transactionMonthForFreq = selectedJsMonth; // This is 0-indexed month
+    const transactionMonthForFreq = selectedJsMonth;
     if (frequency === 'daily') {
       const daysInSelectedMonth = new Date(Date.UTC(transactionYearForFreq, transactionMonthForFreq + 1, 0)).getUTCDate();
       finalAmount = baseAmount * daysInSelectedMonth;
@@ -450,7 +446,7 @@ function Dashboard() {
       }
     }
 
-    const newTransaction = { type, amount: finalAmount, description, category, emoji: selectedEmoji, date, frequency };
+    const newTransaction = { type, amount: finalAmount, description: description.trim(), category: category.trim(), emoji: selectedEmoji, date, frequency };
     try {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error("Auth token not found.");
@@ -461,8 +457,11 @@ function Dashboard() {
       setDate(todayDateString); setSelectedDayOfWeek('');
       window.dispatchEvent(new CustomEvent('transactions-updated'));
       toast.success("Transaction added successfully.");
-      if (!allCategories.some(cat => cat.toLowerCase() === newTransaction.category.toLowerCase().trim())) {
-        const updatedCategories = [...new Set([...allCategories, newTransaction.category.trim()])];
+
+      const newCategoryTrimmed = newTransaction.category.trim();
+      const newCategoryLower = newCategoryTrimmed.toLowerCase();
+      if (newCategoryTrimmed && !allCategories.some(cat => cat.toLowerCase() === newCategoryLower)) {
+        const updatedCategories = [...new Set([...allCategories, newCategoryTrimmed])];
         setAllCategories(updatedCategories);
         localStorage.setItem('allCategories', JSON.stringify(updatedCategories));
       }
@@ -476,7 +475,6 @@ function Dashboard() {
     }
   };
 
-  // --- Loading and Error States for Rendering ---
   const overallPageLoading = loading || loadingFinancialSummary || loadingLimits || loadingGoals || loadingCurrentMonthIncome || loadingCurrentMonthExpenses;
 
   if (overallPageLoading && !localStorage.getItem('authToken') && !error) {
@@ -510,7 +508,6 @@ function Dashboard() {
     );
   }
 
-  // --- Visibility flags for sections ---
   const showRecentTransactionsList = transactions.length > 0;
   const showFinancialOverviewPieChart = hasChartData;
   const showSpendingLimits = limits.length > 0;
@@ -521,7 +518,6 @@ function Dashboard() {
   const showRecentExpensesList = recentExpensesForDisplay.length > 0;
   const showExpenseBreakdownBarChart = expenseByCategoryBarData.length > 0;
 
-  // --- JSX Return ---
   return (
     <div className={styles.dashboardPageContent}>
       <h1 className={styles.pageTitle}>Welcome back, {username}!</h1>
@@ -532,7 +528,6 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Summary Section - Always Visible */}
       <section className={styles.summarySection}>
         <div className={styles.summaryItem}>
           <div className={styles.summaryTitle}><img src="https://cdn-icons-png.flaticon.com/128/869/869067.png" alt="" className={styles.summaryIcon} />Current Month Balance</div>
@@ -543,7 +538,7 @@ function Dashboard() {
           <div className={`${styles.summaryValue} ${styles.income}`}>{formatCurrency(totalIncome)}</div>
         </div>
         <div className={styles.summaryItem}>
-          <div className={styles.summaryTitle}><img src="https://cdn-icons-png.flaticon.com/128/8733/8733406.png" alt="" className={`${styles.summaryIcon} ${styles.expenseIconColor}`} />Current Month Expense</div>
+          <div className={styles.summaryTitle}><img src="https.cdn-icons-png.flaticon.com/128/8733/8733406.png" alt="" className={`${styles.summaryIcon} ${styles.expenseIconColor}`} />Current Month Expense</div>
           <div className={`${styles.summaryValue} ${styles.expense}`}>{formatCurrency(totalExpense)}</div>
         </div>
         <div className={styles.summaryItem}>
@@ -554,14 +549,12 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* Scroll to Form Trigger - Always Visible */}
       <div className={styles.scrollToFormContainer}>
         <button type="button" className={styles.scrollToFormTrigger} onClick={handleScrollToAddTransaction}>
           Go to Add Transaction Form
         </button>
       </div>
 
-      {/* Row 1: Recent Transactions & Financial Overview Chart */}
       {(showRecentTransactionsList || showFinancialOverviewPieChart) && (
         <div className={styles.dashboardRow} style={ !(showRecentTransactionsList && showFinancialOverviewPieChart) ? { gridTemplateColumns: '1fr' } : {} }>
           {showRecentTransactionsList && (
@@ -611,7 +604,6 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Row 2: Add Transaction Form & Limits */}
       <div className={styles.dashboardRow} style={ !showSpendingLimits ? { gridTemplateColumns: '1fr' } : {} }>
         <section ref={addTransactionSectionRef} className={`${styles.sectionBox} ${styles.addTransactionSection}`}>
           <h2 className={styles.sectionTitle}>Add New Transaction</h2>
@@ -721,7 +713,6 @@ function Dashboard() {
         )}
       </div>
 
-      {/* Row 3: Goals & Savings Trend */}
       {(showActiveGoals || showMonthlySavingsLineChart) && (
         <div className={styles.dashboardRow} style={ !(showActiveGoals && showMonthlySavingsLineChart) ? { gridTemplateColumns: '1fr' } : {} }>
           {showActiveGoals && (
@@ -779,7 +770,6 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Row 4: Income Details */}
       {(showRecentIncomeList || showIncomeBreakdownPieChart) && (
         <div className={styles.dashboardRow} style={ !(showRecentIncomeList && showIncomeBreakdownPieChart) ? { gridTemplateColumns: '1fr' } : {} }>
           {showRecentIncomeList && (
@@ -824,7 +814,6 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Row 5: Expense Details */}
       {(showRecentExpensesList || showExpenseBreakdownBarChart) && (
         <div className={styles.dashboardRow} style={ !(showRecentExpensesList && showExpenseBreakdownBarChart) ? { gridTemplateColumns: '1fr' } : {} }>
           {showRecentExpensesList && (
@@ -871,7 +860,7 @@ function Dashboard() {
         </div>
       )}
 
-    </div> // End of dashboardPageContent
+    </div>
   );
 }
 
