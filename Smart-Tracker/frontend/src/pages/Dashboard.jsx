@@ -538,7 +538,7 @@ function Dashboard() {
           <div className={`${styles.summaryValue} ${styles.income}`}>{formatCurrency(totalIncome)}</div>
         </div>
         <div className={styles.summaryItem}>
-          <div className={styles.summaryTitle}><img src="https.cdn-icons-png.flaticon.com/128/8733/8733406.png" alt="" className={`${styles.summaryIcon} ${styles.expenseIconColor}`} />Current Month Expense</div>
+          <div className={styles.summaryTitle}><img src="https://cdn-icons-png.flaticon.com/128/8733/8733406.png" alt="" className={`${styles.summaryIcon} ${styles.expenseIconColor}`} />Current Month Expense</div>
           <div className={`${styles.summaryValue} ${styles.expense}`}>{formatCurrency(totalExpense)}</div>
         </div>
         <div className={styles.summaryItem}>
