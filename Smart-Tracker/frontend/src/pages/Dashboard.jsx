@@ -591,7 +591,7 @@ function Dashboard() {
           )}
           {showFinancialOverviewPieChart && (
             <section className={`${styles.sectionBox} ${styles.chartSection}`}>
-              <h2 className={styles.sectionTitle}>Current Month Financial Overview</h2>
+              <h2 style={{marginBottom:'30px'}} className={styles.sectionTitle}>Current Month Financial Overview</h2>
               <div className={styles.chartContainer} style={{ height: '300px' }}>
                 {(loading && !hasChartData && !error) ? <div className={styles.placeholderContent}>Loading chart data...</div> :
                   hasChartData ? (
