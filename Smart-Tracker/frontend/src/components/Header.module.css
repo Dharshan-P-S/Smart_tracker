@@ -10,14 +10,31 @@
   border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
-  gap: 1rem; /* Add gap between toggle and logo */
-  padding: 0 1rem; /* Adjust padding slightly */
-  z-index: 1000; /* Ensure header stays on top */
+  /* justify-content: space-between; /* Let margin-left: auto on headerActions handle spacing */
+  padding: 0 1rem;
+  z-index: 1000;
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
+.menuToggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  margin-right: 0.5rem; /* Space between toggle and logo container */
+  display: block;
+}
+
+.icon { /* General icon style for menu/close in toggle */
+  width: 24px;
+  height: 24px;
+  color: var(--text-primary-light);
+  transition: color 0.3s ease;
+}
+
 .logoContainer {
-  /* Styles for logo area */
+  display: flex;
+  align-items: center;
 }
 
 .logoLink {
@@ -28,125 +45,119 @@
   font-size: 1.4rem;
   font-weight: 700;
   color: var(--text-primary-light);
-  transition: color 0.3s ease;
+  margin: 0;
+  white-space: nowrap;
 }
 
-.menuToggle {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem; /* Ensure some padding */
-  margin-right: 0.5rem; /* Add some space if needed */
-  display: block; /* Initially shown */
+/* Container for right-aligned header items */
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem; /* Space between "About" and other potential future actions */
+  margin-left: auto; /* Pushes this block to the right */
 }
 
-.icon {
-  width: 24px;
-  height: 24px;
-  color: var(--text-primary-light);
-  transition: color 0.3s ease;
+/* Styling for the "About" link (and other potential action links) in the header actions */
+.headerActionLink {
+  font-size: 0.9rem;
+  color: var(--text-primary-light); /* Use primary text color for better visibility */
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.4rem 0.8rem; /* Adjusted padding for a balanced look */
+  border-radius: 6px;
+  background-color: var(--bg-subtle-light, #f0f4f8); /* ADDED: Subtle background by default */
+  border: 1px solid var(--border-light); /* ADDED: Subtle border by default */
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Navigation Menu Styles - Reverted to Slide-in Drawer */
+.headerActionLink:hover {
+  color: var(--button-text-light, #ffffff); /* Text color for hovered button */
+  background-color: var(--primary-accent-light); /* Accent background on hover */
+  border-color: var(--primary-accent-light); /* Accent border on hover */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* Slight shadow on hover for depth */
+}
+
+
+/* Navigation Menu Styles - Slide-in Drawer */
 .nav {
   display: flex;
   flex-direction: column;
   position: fixed;
-  top: 0; /* Start from top */
+  top: 0;
   left: 0;
-  width: 85%; /* Take up most of the width */
-  max-width: 400px; /* Max width */
-  height: 100vh; /* Full height */
+  width: 85%;
+  max-width: 300px;
+  height: 100vh;
   overflow-y: auto;
   background-color: var(--box-bg-light);
-  padding: 1.5rem 1rem;
-  border-right: 1px solid var(--border-light); /* Restore border-right */
-  /* Removed border-bottom */
-  transform: translateX(-100%); /* Start hidden to the left */
-  opacity: 1; /* Opacity is handled by visibility/transform */
+  padding: 1rem;
+  border-right: 1px solid var(--border-light);
+  transform: translateX(-100%);
   visibility: hidden;
-  transition: transform 0.3s ease-out, visibility 0.3s ease-out, background-color 0.3s ease, border-color 0.3s ease;
-  z-index: 999;
-  box-shadow: 4px 0 6px rgba(0, 0, 0, 0.05);
-  justify-content: space-between; /* Added back for logout positioning */
+  transition: transform 0.3s ease-out, visibility 0s linear 0.3s;
+  z-index: 1001;
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
+  justify-content: space-between;
 }
 
 .navOpen {
   transform: translateX(0);
   visibility: visible;
+  transition: transform 0.3s ease-out, visibility 0s linear 0s;
 }
 
-/* NEW: Menu Backdrop Styles */
 .menuBackdrop {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5); 
-  opacity: 1; /* Make it visible when rendered */
-  visibility: visible; /* Make it visible when rendered */
-  /* Add transition for smooth fade-in/out if needed, triggered by conditional rendering */
-  /* Example (if not using React transitions): */
-  /* transition: opacity 0.3s ease-out; */
-  /* &.entering { opacity: 0; } */
-  /* &.entered { opacity: 1; } */
-  /* &.exiting { opacity: 0; } */
-  z-index: 998; 
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
 }
 
-/* NEW: Menu Header inside Drawer */
 .menuHeader {
   display: flex;
-  justify-content: flex-end; /* Position button to the right */
+  justify-content: flex-end;
   align-items: center;
-  padding-bottom: 1rem; /* Space below header */
-  margin-bottom: 1rem; /* Space below header */
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
   border-bottom: 1px solid var(--border-light);
 }
 
-/* NEW: Close button inside Drawer */
 .closeMenuButton {
   background: none;
   border: none;
   padding: 0.5rem;
   cursor: pointer;
-  line-height: 0; /* Prevent extra space */
+  line-height: 0;
 }
 
 .closeMenuButton .icon {
-  width: 28px; /* Slightly larger icon */
-  height: 28px;
-  color: var(--text-secondary-light);
-  transition: color 0.2s ease;
+  width: 26px;
+  height: 26px;
+  /* color inherited from .icon */
 }
-
 .closeMenuButton:hover .icon {
-  color: var(--text-primary-light);
+  color: var(--primary-accent-light);
 }
 
 .navLinksSection {
-  /* border-bottom: 1px dashed var(--border-light); */
-  /* padding-bottom: 1rem; */
-  /* margin-bottom: 1rem; */
-  flex-grow: 1; /* Make this section take up space */
-  /* Maybe remove border/padding from here now */
-  /* border-bottom: none; */ 
-  /* padding-bottom: 0; */
-  /* margin-bottom: 0; */
+  flex-grow: 1;
+  overflow-y: auto;
 }
 
-/* NEW: Styles for navigation icons */
 .navIcon {
-  width: 22px;
-  height: 22px;
-  margin-right: 0.8rem; /* Add margin back */
+  width: 20px;
+  height: 20px;
+  margin-right: 0.9rem;
+  flex-shrink: 0;
 }
 
 .navLink, .logoutButton {
   display: flex;
   align-items: center;
-  padding: 0.9rem 1rem;
+  padding: 0.8rem 0.75rem;
   border-radius: 6px;
   text-decoration: none;
   color: var(--text-secondary-light);
@@ -156,36 +167,35 @@
   background: none;
   border: none;
   cursor: pointer;
-  text-align: left; /* Ensure text aligns left */
-  font-size: 1rem;
+  text-align: left;
+  font-size: 0.95rem;
 }
 
 .navLink:hover {
-  background-color: var(--bg-light);
-  color: var(--accent-primary-light);
+  background-color: var(--bg-light-accent, rgba(0,0,0,0.04));
+  color: var(--primary-accent-light);
 }
 
+.logoutAreaInMenu {
+  padding-top: 0.75rem;
+  margin-top: auto;
+  border-top: 1px solid var(--border-light);
+}
 .logoutButton {
-  margin-top: 0; /* Remove auto margin */
-  /* padding-top: 1rem; Keep padding? */
-  /* border-top: 1px dashed var(--border-light); Keep border? */
+  color: var(--error-light, #EF4444);
+}
+.logoutButton .navIcon {
+    color: var(--error-light, #EF4444);
 }
 
 .logoutButton:hover {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: rgba(239, 68, 68, 0.05);
+  color: var(--error-hover-light, #DC2626);
+}
+.logoutButton:hover .navIcon {
+    color: var(--error-hover-light, #DC2626);
 }
 
-/* REMOVED Styles for Dashboard Content inside Menu */
-/* .dashboardContentArea { ... } */
-/* .section { ... } */
-/* .section h2 { ... } */
-/* .section p { ... } */
-
-.logoutAreaInMenu {
-  margin-top: 0; /* Remove auto margin */
-  /* padding-top: 1rem; Keep padding? */
-  /* border-top: 1px dashed var(--border-light); Keep border? */
-}
 
 /* Dark Mode Adjustments */
 @media (prefers-color-scheme: dark) {
@@ -196,54 +206,55 @@
   .logo {
     color: var(--text-primary-dark);
   }
-  .icon {
+  .icon { /* Menu/Close toggle icons */
     color: var(--text-primary-dark);
   }
+  .headerActionLink {
+    color: var(--text-primary-dark);
+    background-color: var(--bg-subtle-dark, #2d3748); /* Subtle dark background */
+    border-color: var(--border-dark); /* Subtle dark border */
+  }
+  .headerActionLink:hover {
+    color: var(--button-text-dark, #1a202c); /* Or #ffffff if your dark accent is light enough */
+    background-color: var(--primary-accent-dark);
+    border-color: var(--primary-accent-dark);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+
   .nav {
     background-color: var(--box-bg-dark);
-    border-right-color: var(--border-dark); /* Restore border-right */
-    /* Removed border-bottom-color */
-    box-shadow: 4px 0 6px rgba(0, 0, 0, 0.1);
+    border-right-color: var(--border-dark);
+    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
   }
-  .navLinksSection {
-    /* border-bottom-color: var(--border-dark); */
-  }
+  
   .navLink {
      color: var(--text-secondary-dark);
   }
   .navLink:hover {
-    background-color: var(--bg-dark);
-    color: var(--accent-secondary-dark);
+    background-color: var(--bg-dark-accent, rgba(255,255,255,0.07));
+    color: var(--primary-accent-dark);
+  }
+  .logoutAreaInMenu {
+    border-top-color: var(--border-dark);
   }
   .logoutButton {
-     color: var(--error-dark);
+     color: var(--error-dark, #F87171);
+  }
+  .logoutButton .navIcon {
+      color: var(--error-dark, #F87171);
   }
    .logoutButton:hover {
     background-color: rgba(248, 113, 113, 0.1);
+    color: var(--error-hover-dark, #EF4444);
   }
-  .logoutAreaInMenu {
-     /* border-top-color: var(--border-dark); */
+  .logoutButton:hover .navIcon {
+      color: var(--error-hover-dark, #EF4444);
   }
-  /* Remove dark mode styles for dashboard content */
-  /* .section h2 { ... } */
-  /* .section p { ... } */
 
   .menuHeader {
     border-bottom-color: var(--border-dark);
   }
-
-  .closeMenuButton .icon {
-    color: var(--text-secondary-dark);
-  }
-
   .closeMenuButton:hover .icon {
-    color: var(--text-primary-dark);
-  }
-  
-  .navLinksSection {
-     /* border-bottom-color: none; */
+    color: var(--primary-accent-dark);
   }
 }
-
-/* Optional: Hide nav links in header for larger screens if desired */
-/* @media (min-width: 768px) { ... } */ 

@@ -1,0 +1,162 @@
+/* AboutPage.module.css */
+
+.aboutContainer {
+  padding: 20px;
+  max-width: 900px; /* Slightly wider for text content */
+  margin: 20px auto;
+  background-color: var(--box-bg-light);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-light);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+  color: var(--text-primary-light); /* Default text color for the page */
+}
+
+.aboutHeader {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.aboutHeader h1 {
+  color: var(--text-primary-light);
+  font-size: 2rem; /* Prominent title */
+  font-weight: 600;
+}
+.aboutHeader h1 span { /* Emoji styling */
+  margin-right: 0.5em;
+}
+
+
+.aboutSection {
+  margin-bottom: 2.5rem; /* Space between sections */
+}
+
+.aboutSection h2 {
+  color: var(--accent-color-light, #2c5282); /* Use an accent color if defined, or primary */
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px dashed var(--border-subtle-light, #e2e8f0);
+}
+.aboutSection h2 span { /* Emoji styling */
+  margin-right: 0.4em;
+}
+
+.aboutSection p {
+  font-size: 1rem;
+  line-height: 1.7;
+  margin-bottom: 1rem;
+  color: var(--text-secondary-light); /* Slightly lighter text for paragraphs */
+}
+
+.navList,
+.featureList,
+.commandList {
+  list-style: none; /* Remove default bullets */
+  padding-left: 0;
+  margin-bottom: 1rem;
+}
+
+.navList li,
+.featureList li,
+.commandList li {
+  padding: 0.4rem 0;
+  font-size: 0.95rem;
+  color: var(--text-primary-light);
+  position: relative;
+  padding-left: 1.5em; /* Space for custom bullet */
+}
+
+/* Custom bullet style for lists */
+.navList li::before,
+.featureList li::before {
+  content: '➔'; /* Or '✔', '•', etc. */
+  position: absolute;
+  left: 0;
+  color: var(--primary-accent-light, #3b82f6); /* Accent color for bullets */
+  font-weight: bold;
+}
+.commandList li::before {
+  content: '»';
+  position: absolute;
+  left: 0;
+  color: var(--secondary-accent-light, #667eea);
+  font-weight: bold;
+}
+
+
+.commandHeader {
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+  color: var(--text-primary-light);
+}
+
+.aboutFooter {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-light);
+  text-align: center;
+}
+
+.aboutFooter h3 {
+  color: var(--text-primary-light);
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+}
+.aboutFooter h3 span { /* Emoji styling */
+  margin-right: 0.4em;
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  .aboutContainer {
+    background-color: var(--box-bg-dark);
+    border-color: var(--border-dark);
+    color: var(--text-primary-dark);
+  }
+
+  .aboutHeader {
+    border-bottom-color: var(--border-dark);
+  }
+  .aboutHeader h1 {
+    color: var(--text-primary-dark);
+  }
+
+  .aboutSection h2 {
+    color: var(--accent-color-dark, #63b3ed);
+    border-bottom-color: var(--border-subtle-dark, #4a5568);
+  }
+  .aboutSection p {
+    color: var(--text-secondary-dark);
+  }
+
+  .navList li,
+  .featureList li,
+  .commandList li {
+    color: var(--text-primary-dark);
+  }
+
+  .navList li::before,
+  .featureList li::before {
+    color: var(--primary-accent-dark, #60a5fa);
+  }
+  .commandList li::before {
+    color: var(--secondary-accent-dark, #a3bffa);
+  }
+
+  .commandHeader {
+    color: var(--text-primary-dark);
+  }
+
+  .aboutFooter {
+    border-top-color: var(--border-dark);
+  }
+  .aboutFooter h3 {
+    color: var(--text-primary-dark);
+  }
+}
