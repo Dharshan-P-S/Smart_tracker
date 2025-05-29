@@ -7,7 +7,7 @@ import Picker from 'emoji-picker-react';
 import axios from 'axios';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import styles from './Dashboard.module.css'; // Assuming TransactionsPage uses these styles as per your original code.
+import styles from './TransactionsPage.module.css'; // Assuming TransactionsPage uses these styles as per your original code.
 import Header from '../components/Header'; // Path to your Header component
 
 // --- Constants for Goal Savings ---
@@ -550,17 +550,17 @@ function TransactionsPage() {
             <div className={styles.transactionsPageContainer}> {/* Ensure this class exists or use a general one like styles.pageContainer */}
                 <div className={styles.dashboardPageContent}>
                     <div className={styles.sectionHeader}>
-                       <h1 style={{marginTop:'40px'}} className={styles.pageTitle}>All Transactions</h1>
+                       <h1 style={{marginTop:'100px'}} className={styles.pageTitle}>All Transactions</h1>
                        <div>
                            <button
                                onClick={handleDownloadAllPDF}
                                className={styles.pdfButton}
-                               style={{fontSize: '1rem', marginRight: '1rem',marginTop:'40px'}}
+                               style={{fontSize: '1rem', marginRight: '1rem',marginTop:'100px'}}
                                disabled={pageIsLoading || transactions.length === 0 || !!pageLoadError}
                            >
                                Download All PDF
                            </button>
-                           <Link to="/dashboard" className={styles.seeAllButton} style={{fontSize: '1rem'}}>Back to Dashboard</Link>
+                           <Link to="/dashboard" className={styles.seeAllButton} style={{fontSize: '1rem', marginTop:'100px'}}>Back to Dashboard</Link>
                        </div>
                     </div>
 

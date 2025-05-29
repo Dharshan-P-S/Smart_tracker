@@ -8,7 +8,7 @@ import autoTable from 'jspdf-autotable';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 import axios from 'axios';
 
-import styles from './Dashboard.module.css'; // Assuming this CSS module is shared
+import styles from './ExpensePage.module.css'; // Assuming this CSS module is shared
 
 const GOAL_SAVINGS_CATEGORY_NAME = 'Goal Savings';
 const GOAL_SAVINGS_DESCRIPTION_PREFIX = "Saving for: "; // Define the prefix

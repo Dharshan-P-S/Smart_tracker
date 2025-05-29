@@ -8,7 +8,7 @@ import autoTable from 'jspdf-autotable';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 import axios from 'axios';
 
-import styles from './Dashboard.module.css';
+import styles from './IncomePage.module.css';
 
 const formatCurrency = (value) => {
     const numValue = parseFloat(value);

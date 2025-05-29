@@ -1,1342 +1,548 @@
 /* Dashboard.module.css */
 
 .dashboardPageContent {
-  /* Styles for the content area within the main layout */
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  padding-bottom: 2rem;
 }
 
 .pageTitle {
-  font-size: 1.8rem; /* Adjusted size */
+  font-size: 1.8rem;
   font-weight: 600;
   color: var(--text-primary-light);
-  margin-bottom: 0.5rem; /* Reduced margin */
+  margin-bottom: 0.5rem;
 }
 
 /* Summary Section Styles */
 .summarySection {
   display: flex;
-  flex-direction: row; /* Changed to row */
+  flex-direction: row;
   gap: 1rem;
   background-color: var(--box-bg-light);
   padding: 1.5rem;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   border: 1px solid var(--border-light);
-  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .summaryItem {
   display: flex;
   flex-direction: column;
   align-items: center;
+  text-align: center;
   padding: 1rem;
   border-radius: 6px;
   background-color: var(--bg-light);
-  flex: 1; /* Make items take equal space */
+  flex: 1;
 }
 
 .summaryTitle {
-  font-size: 1rem; /* Match existing title size or adjust */
+  font-size: 0.9rem;
   color: var(--text-secondary-light);
   margin-bottom: 0.4rem;
   text-transform: uppercase;
   font-weight: 500;
-  /* Re-add flex alignment for inline SVG */
   display: inline-flex;
   align-items: center;
 }
 
 .summaryValue {
-  font-size: 1.75rem;
+  font-size: 1.6rem;
   font-weight: 600;
   color: var(--text-primary-light);
 }
 
-/* Specific colors for income/expense */
-.summaryValue.income {
-  color: #10B981; /* lightgreen */
+.summaryValue.income { color: #10B981; }
+.summaryValue.expense { color: #EF4444; }
+
+.summaryIcon {
+  width: 36px;
+  height: 36px;
+  margin-right: 0.5em;
+  vertical-align: middle;
 }
+.savingsIconColor { color: #FFD700; }
+.incomeIconColor { color: #10B981; }
+.expenseIconColor { color: #EF4444; }
 
-.summaryValue.expense {
-  color: #EF4444; /* Red */
-}
 
-/* Add styles for other sections later */
-
-/* NEW: Main Content Area Layout */
-.mainArea {
-  display: grid;
-  grid-template-columns: 1fr 1fr; /* Default: 2 equal columns */
-  gap: 1.5rem;
-}
-
-/* NEW: Shared Box Style for Sections */
+/* Shared Box Style for Sections */
 .sectionBox {
   background-color: var(--box-bg-light);
   padding: 1.5rem;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   border: 1px solid var(--border-light);
-  transition: background-color 0.3s ease, border-color 0.3s ease;
-  display: flex; /* Added for internal layout */
-  flex-direction: column; /* Added for internal layout */
+  display: flex;
+  flex-direction: column;
 }
 
-/* NEW: Section Title Style */
+/* Section Title Style */
 .sectionTitle {
   font-size: 1.2rem;
   font-weight: 600;
   margin-bottom: 1rem;
   color: var(--text-primary-light);
 }
+.sectionHeader > .sectionTitle { margin-bottom: 0; }
 
-/* NEW: Specific Section Styles (can add more later) */
-.transactionsSection {
-  opacity: 1;
-}
 
-.chartSection {
-  /* Styles specific to chart section if needed */
-  align-items: center; /* Center chart horizontally */
-}
 
-/* NEW: Chart Container Style */
+/* Chart Container Style */
 .chartContainer {
   width: 100%;
-  height: 400px; /* Fixed height for the chart - Increased */
-  display: flex; /* Enable flexbox */
-  justify-content: center; /* Center chart horizontally */
-  align-items: center; /* Center chart vertically */
-  position: relative; /* Add this line */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  min-height: 250px;
 }
+.chartSection .chartContainer { height: 300px; } /* Overview chart */
+.savingsChartSection .chartContainer { height: 250px; }
+.incomeCategoryChartSection .chartContainer,
+.expenseCategoryChartSection .chartContainer { height: 300px; }
 
-/* NEW: Placeholder Content Style */
+
+/* Placeholder Content Style */
 .placeholderContent {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: var(--text-primary-light); /* CHANGE to primary text color for better contrast if bg is added */
-  font-style: normal;
-  font-size: 1.1rem;
+  color: var(--text-primary-light);
+  font-size: 1rem;
   font-weight: 500;
   min-height: 150px;
   text-align: center;
-  padding: 1.5rem; /* Increased padding */
-  border-radius: 6px; /* Rounded corners */
-  background-color: var(--placeholder-bg-light, #f9fafb); /* LIGHTER, distinct background */
-  /* OR */
-  /* border: 2px dashed var(--border-light); */ /* OR a dashed border */
-  margin: 1rem 0; /* Add some margin to separate it within the sectionBox */
+  padding: 1.5rem;
+  border-radius: 6px;
+  background-color: var(--placeholder-bg-light, #f9fafb);
+  margin: 1rem 0;
+}
+.placeholderContent a,
+.placeholderContent span[onClick] {
+  color: var(--primary-accent-light, #3b82f6);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.placeholderContent span[onClick]:hover {
+  color: var(--primary-accent-hover-light, #2563eb);
 }
 
-/* Responsive Adjustments for smaller screens */
-@media (max-width: 768px) {
-  .mainArea {
-    grid-template-columns: 1fr; /* Stack columns */
-  }
-}
-
-/* Dark Mode */
-@media (prefers-color-scheme: dark) {
-  .pageTitle {
-    color: var(--text-primary-dark);
-  }
-  .summarySection {
-    background-color: var(--box-bg-dark);
-    border-color: var(--border-dark);
-  }
-   .summaryItem {
-     background-color: var(--bg-dark);
-   }
-  .summaryTitle {
-     color: var(--text-secondary-dark);
-  }
-  .summaryValue {
-     color: var(--text-primary-dark);
-  }
-  .summaryValue.income {
-     color: lightgreen; /* Lighter lightgreen */
-  }
-  .summaryValue.expense {
-     color: red; /* Lighter Red */
-  }
-
-  .sectionBox {
-    background-color: var(--box-bg-dark);
-    border-color: var(--border-dark);
-  }
-
-  .sectionTitle {
-     color: var(--text-primary-dark);
-  }
-
-  .placeholderContent {
-    color: var(--text-primary-dark);
-    background-color: var(--placeholder-bg-dark, #262f3d);  }
-
-  /* Ensure chart tooltips/legends have dark mode styles */
-  /* Recharts usually needs specific prop overrides for theme */
-
-  /* Removed specific icon stroke colors */
-
-  .transactionItem {
-    background-color: var(--bg-dark);
-  }
-
-  /* MODIFIED: Dark mode Income/Expense Border Style */
-  .incomeBorder {
-    border-color: #34D399 !important; /* Lighter Green */
-  }
-  .expenseBorder {
-    border-color: #F87171 !important; /* Lighter Red */
-  }
-}
-
-/* Styles for the summary icons */
-.summaryIcon {
-  width: 48px; /* Increased fixed size further */
-  height: 48px; /* Increased fixed size further */
-  margin-right: 0.5em; /* Keep space relative to font size */
-  vertical-align: middle; /* Better align image with text */
-  /* color property won't affect img tags directly */
-}
-
-/* Optional: Color specific icons */
-.incomeIconColor {
-  color: #10B981; /* Match income value color */
-}
-
-.expenseIconColor {
-  color: #EF4444; /* Match expense value color */
-}
-
-/* Dark Mode specific icon colors */
-@media (prefers-color-scheme: dark) {
-  /* ... existing dark mode styles ... */
-  .incomeIconColor {
-    color: lightgreen; /* Match dark mode income value color */
-  }
-
-  .expenseIconColor {
-    color: red; /* Match dark mode expense value color */
-  }
-}
-
-/* --- Styles for Recent Transactions List --- */
-
-/* NEW: Header container for title and button */
+/* Section Header (Title + Button) */
 .sectionHeader {
   display: flex;
-  justify-content: space-between; /* Pushes title and button apart */
-  align-items: center; /* Vertically aligns title and button */
-  margin-bottom: 1.5rem; /* Space below header - Increased */
-  margin-top: 1.5rem; /* Add space above the header */
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
 }
 
-/* Adjust section title margin since it's now in a flex container */
-.sectionTitle {
-  margin-bottom: 0; /* Remove bottom margin from title itself */
-}
-
-/* NEW: Style for the See All button */
+/* "See All" / "Manage" button for Dashboard sections */
 .seeAllButton {
   padding: 0.5rem 0.8rem;
   font-size: 0.85rem;
   font-weight: 500;
   text-decoration: none;
-  color: var(--primary-accent-light, #3b82f6); /* Use accent color */
+  color: var(--primary-accent-light, #3b82f6);
   border: 1px solid var(--primary-accent-light, #3b82f6);
   border-radius: 4px;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
-
 .seeAllButton:hover {
   background-color: var(--primary-accent-light, #3b82f6);
   color: var(--button-text-light, #ffffff);
 }
 
-/* NEW: Style for the PDF Download button (based on seeAllButton) */
-.pdfButton {
-  padding: 0.3rem 0.8rem;
-  font-size: 1rem; /* Keep the override from inline style */
-  font-weight: 500;
-  text-decoration: none;
-  /* Make it a filled button in light mode */
-  color: var(--button-text-light, #ffffff); /* White text */
-  background-color: var(--primary-accent-light, #3b82f6); /* Blue background */
-  border: 1px solid var(--primary-accent-light, #3b82f6); /* Matching border */
-  border-radius: 4px;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease; /* Added border-color transition */
-  cursor: pointer;
-}
-
-.pdfButton:hover {
-  /* Darker blue on hover */
-  background-color: var(--primary-accent-hover-light, #2563eb);
-  border-color: var(--primary-accent-hover-light, #2563eb);
-  color: var(--button-text-light, #ffffff); /* Keep text white */
-}
-
+/* Transaction List & Item for Dashboard Recent Transactions */
 .transactionList {
   list-style: none;
   padding: 0;
   margin: 0;
   flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
-
 .transactionItem {
   display: grid;
-  grid-template-columns: auto 1fr auto auto auto; /* Date | Desc | Cat/Input | Amount | Actions */
+  grid-template-columns: auto 1fr auto;
   column-gap: 1rem;
-  /* Replaced border-bottom and padding-left with full box styles */
-  padding: 1rem; /* Padding inside the box */
-  border: 2px solid var(--border-light); /* Border on ALL sides - Increased width to 2px */
-  border-radius: 6px; /* Rounded corners for the box */
-  background-color: var(--bg-light); /* Background for the box */
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background-color: var(--bg-light);
   align-items: center;
-  position: relative; /* Needed for pseudo-element borders */
-  transition: background-color 0.15s ease, border-color 0.15s ease; /* Added border transition */
-  margin-bottom: 0.75rem; /* Keeps space between boxes */
+  position: relative;
 }
-
-.transactionItem:hover {
-  background-color: rgba(0, 0, 0, 0.03); /* Slight background on hover */
-}
-
-/* NEW: Border Indicators using ::before pseudo-element */
 .transactionItem::before {
   content: '';
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  width: 4px; /* Width of the indicator border */
-  /* Default background, can be transparent or match section bg */
-  background-color: transparent;
+  width: 4px;
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
 }
-
-/* NEW: Income Border Style */
-.incomeBorder::before {
-  background-color:lightgreen; /* lightgreen */
-}
-
-/* NEW: Expense Border Style */
-.expenseBorder::before {
-  background-color: #EF4444; /* Red */
-}
-
-
-.transactionItem:last-child {
-  border-bottom: none;
-}
+.incomeBorder::before { background-color: #10B981; }
+.expenseBorder::before { background-color: #EF4444; }
 
 .transactionDate {
-  font-size: 0.85rem;
-  color: 	#2d75f2;
+  font-size: 0.8rem;
+  color: var(--text-secondary-light);
   white-space: nowrap;
 }
-
 .transactionEmoji {
-  margin-right: 0.5em; /* Space between emoji and description */
-  font-size: 1em; /* Inherit size or set explicitly */
+  margin-right: 0.4em;
+  font-size: 0.9em;
 }
-
 .transactionDesc {
-  font-size: 0.95rem;
-  color: rgb(253, 158, 41);
-  /* Prevent text from overflowing */
+  font-size: 0.9rem;
+  color: var(--text-primary-light);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .transactionAmount {
-  font-weight: 600; /* Make amount slightly bolder */
-  font-size: 0.95rem;
+  font-weight: 500;
+  font-size: 0.9rem;
   white-space: nowrap;
+  text-align: right;
 }
+.transactionAmount.income { color: #10B981; }
+.transactionAmount.expense { color: #EF4444; }
 
-.transactionAmount.income {
-  color: #10B981; /* lightgreen */
-}
 
-.transactionAmount.expense {
-  color: #EF4444; /* Red */
-}
-
-.transactionsSection {
-  opacity: 1;
-}
-/* --- Styles for Add Transaction Section & Form --- */
-.addTransactionSection {
-  margin-top: 1.5rem;
-}
-
+/* Add Transaction Section */
 .transactionForm {
   display: grid;
-  /* Force a single column layout */
   grid-template-columns: 1fr;
-  gap: 1rem; /* Adjust gap for vertical spacing */
+  gap: 0.9rem;
   margin-top: 1rem;
 }
-
+@media (min-width: 600px) {
+  .transactionForm {
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem 1.5rem;
+  }
+  .transactionForm > div:nth-child(5), /* Description */
+  .transactionForm > div:nth-child(6)  /* Category */
+   {
+    grid-column: 1 / -1;
+  }
+}
 .formGroup {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem; /* Slightly increased gap */
+  gap: 0.3rem;
 }
-
 .formGroup label {
-  font-size: 0.85rem; /* Slightly smaller label */
-  font-weight: 600; /* Bolder label */
+  font-size: 0.8rem;
+  font-weight: 500;
   color: var(--text-secondary-light);
-  text-transform: uppercase; /* Uppercase labels */
-  letter-spacing: 0.5px; /* Add slight letter spacing */
+  text-transform: uppercase;
 }
-
 .formInput,
 .transactionForm select {
-  padding: 0.75rem 1rem; /* Increased padding */
+  padding: 0.65rem 0.9rem;
   border: 1px solid var(--border-light);
-  border-radius: 6px; /* Slightly more rounded */
-  font-size: 1rem;
-  background-color: var(--input-bg-light, var(--bg-light)); /* Use specific input bg var if available */
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background-color: var(--input-bg-light, var(--bg-light));
   color: var(--text-primary-light);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-
 .formInput:focus,
 .transactionForm select:focus {
   outline: none;
   border-color: var(--primary-accent-light, #60a5fa);
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3); /* Slightly larger focus shadow */
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
 }
-
 .formInput::placeholder {
-   color: var(--text-secondary-light);
-   opacity: 0.6; /* Slightly less visible placeholder */
+   color: var(--text-placeholder-light, #a0aec0);
+   opacity: 0.8;
 }
-
 .submitButton {
-  /* grid-column: 1 / -1; */ /* No longer needed */
-  padding: 0.85rem 1.5rem; /* Increased padding */
-  font-size: 1rem;
+  grid-column: 1 / -1;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--button-text-light, #ffffff);
   background-color: var(--primary-accent-light, #3b82f6);
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease; /* Added transform transition */
-  margin-top: 0.75rem; /* Slightly increased margin */
+  margin-top: 0.5rem;
 }
-
-.submitButton:hover {
-  background-color: var(--primary-accent-hover-light, #2563eb);
-}
-
-.submitButton:active {
-   transform: scale(0.98); /* Slight press effect */
-}
-
-/* Responsive Adjustments */
-@media (max-width: 600px) {
-  /* Stack date/desc/amount on smaller screens maybe? */
-  .transactionItem {
-     grid-template-columns: 1fr auto; /* Desc/Category | Amount */
-     padding-left: 0.5rem; /* Adjust padding if border removed */
-  }
-   .transactionItem::before {
-     display: none; /* Hide side border on mobile? Optional */
-   }
-  .transactionDate {
-    grid-column: 1 / 2; /* Date above description */
-    margin-bottom: 0.2rem;
-    font-size: 0.8rem;
-  }
-   .transactionDesc {
-    grid-column: 1 / 2; /* Description below date */
-    white-space: normal; /* Allow wrap */
-  }
-   .transactionAmount {
-     grid-column: 2 / 3; /* Amount to the right */
-     grid-row: 1 / 3; /* Span both rows */
-     align-self: center; /* Vertically center amount */
-   }
-}
-
-
-/* Dark Mode Adjustments */
-@media (prefers-color-scheme: dark) {
-  /* ... existing dark mode styles ... */
-  .seeAllButton {
-    color: var(--primary-accent-dark, #60a5fa);
-    border-color: var(--primary-accent-dark, #60a5fa);
-  }
-
-  .transactionItem {
-    background-color: var(--bg-dark);
-  }
-
-  .seeAllButton:hover {
-    background-color: var(--primary-accent-dark, #60a5fa);
-    color: var(--button-text-dark, #1a202c); /* Darker text on hover maybe */
-  }
-
-  .transactionItem:hover {
-    background-color: rgba(255, 255, 255, 0.05); /* Slight background on hover */
-  }
-
-  /* Adjust border indicator colors if needed for contrast */
-  .incomeBorder {
-    border-color: #34D399 !important; /* Lighter Green */
-  }
-  .expenseBorder {
-    border-color: #F87171 !important; /* Lighter Red */
-  }
-
-  .formInput,
-  .transactionForm select {
-    background-color: 	#1d2e33;
-    border-color: var(--border-dark);
-    color: var(--text-primary-dark);
-  }
-
-   .formInput::placeholder {
-     color: var(--text-secondary-dark);
-     opacity: 0.6;
-   }
-
-   .submitButton {
-    background-color: var(--primary-accent-dark, #4299e1);
-    color: var(--button-text-dark, #ffffff);
-  }
-
-  .submitButton:hover {
-     background-color: var(--primary-accent-hover-dark, #2b6cb0);
-  }
-
-  /* MODIFIED: Dark mode Income/Expense Border Style */
-  .incomeBorder {
-    border-color: #34D399 !important; /* Lighter Green */
-  }
-  .expenseBorder {
-    border-color: #F87171 !important; /* Lighter Red */
-  }
-}
-
-/* Ensure the border classes take precedence if needed */
-.transactionItem.incomeBorder::before {
-  background-color: #10B981; /* Use specific colors directly */
-}
-.transactionItem.expenseBorder::before {
-  background-color: #EF4444; /* Use specific colors directly */
-}
-
-@media (prefers-color-scheme: dark) {
-  .transactionItem.incomeBorder::before {
-     background-color: lightgreen;
-  }
-  .transactionItem.expenseBorder::before {
-     background-color: red;
-  }
-}
-
-/* NEW: Style for the Transactions Page wrapper */
-.transactionsPageContainer {
-  padding: 2rem 1rem; /* Add padding around the whole page content */
-  /* Alternatively, use margin: */
-  /* margin: 2rem; */
-  max-width: 1200px; /* Optional: Set a max-width for larger screens */
-  margin-left: auto;  /* Optional: Center the content if max-width is set */
-  margin-right: auto; /* Optional: Center the content if max-width is set */
-}
-
-/* Dark Mode Adjustments */
-@media (prefers-color-scheme: dark) {
-  /* ... existing dark mode styles ... */
-
-   /* Optional: Adjust container background for dark mode if needed */
-   /* .transactionsPageContainer { */
-     /* background-color: var(--bg-dark); */
-   /* } */
-
-  .seeAllButton {
-    color: var(--primary-accent-dark, #60a5fa);
-    border-color: var(--primary-accent-dark, #60a5fa);
-  }
-  /* ... rest of dark mode styles ... */
-}
-
-/* --- Styles for Transaction Action Buttons --- */
-
-.actionButton {
-  padding: 0.3rem 0.6rem;
-  font-size: 0.8rem;
-  font-weight: 500;
-  border-radius: 4px;
-  border: 1px solid transparent; /* Base border */
-  cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-}
-
-/* Default/Edit/Cancel Button Styles (Light) */
-.editButton,
-.cancelButton {
-  background-color: var(--bg-light);
-  color: var(--text-secondary-light);
-  border-color: var(--border-light);
-}
-
-.editButton:hover,
-.cancelButton:hover {
-  background-color: #f0f0f0; /* Slightly darker gray */
-  border-color: #d1d1d1;
-}
-
-/* Save Button Styles (Light) */
-.saveButton {
-   background-color: #34D399; /* Green */
-   color: white;
-   border-color: #34D399;
-}
-.saveButton:hover {
-   background-color: #10B981; /* Darker Green */
-   border-color: #10B981;
-}
-
-/* Delete Button Styles (Light) */
-.deleteButton {
-  background-color: #EF4444; /* Red */
-  color: white;
-  border-color: #EF4444;
-}
-
-.deleteButton:hover {
-  background-color: #DC2626; /* Darker Red */
-  border-color: #DC2626;
-}
-
-
-/* Dark Mode Overrides for Action Buttons */
-@media (prefers-color-scheme: dark) {
-  /* Dark Mode Overrides for Action Buttons */
-  /* Keep Cancel button dark mode style */
-  .cancelButton {
-    background-color: var(--bg-dark);
-    color: var(--text-secondary-dark);
-    border-color: var(--border-dark);
-  }
-
-  .cancelButton:hover {
-    background-color: #374151; /* Slightly lighter dark gray */
-    border-color: #4b5563;
-  }
-
-  /* Edit Button Dark Mode Styles - Explicit Blue */
-  .editButton {
-    background-color: #60a5fa; /* Lighter Blue for Dark Mode */
-    color: #ffffff; /* White text */
-    border-color: #60a5fa;
-  }
-
-  .editButton:hover {
-    background-color: #3b82f6; /* Standard Blue on hover */
-    border-color: #2563eb;
-  }
-
-  /* Save Button Styles (Dark) */
-  .saveButton {
-     background-color: #34D399; /* Keep green */
-     border-color: #34D399;
-  }
-  .saveButton:hover {
-     background-color: #10B981;
-     border-color: #10B981;
-  }
-
-  .deleteButton {
-    background-color: #F87171; /* Lighter Red */
-    border-color: #F87171;
-  }
-
-  .deleteButton:hover {
-    background-color: #EF4444; /* Darker Red */
-    border-color: #EF4444;
-  }
-}
-
-/* NEW: Container for Form and Limits */
-.formAndLimitsContainer {
-  display: grid;
-  grid-template-columns: 1fr 1fr; /* Two equal columns */
-  gap: 1.5rem;
-  margin-top: 1.5rem; /* Add space above this combined section */
-}
-
-/* Adjust Add Transaction Section width within the grid */
-.addTransactionSection {
-  margin-top: 0; /* Remove top margin as it's handled by the container */
-  /* No specific width needed, grid handles it */
-}
-
-/* NEW: Styles for Limits Section */
-.limitsSection {
-  /* Inherits .sectionBox styles */
-  margin-top: 0; /* Remove top margin as it's handled by the container */
-}
-
-.limitList {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  margin-top: 1rem; /* Add space above the list */
-  flex-grow: 1; /* Allow list to take available space */
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem; /* Space between limit items */
-}
-
-.limitItem {
-  display: flex;
-  flex-direction: column; /* Stack details and progress bar */
-  gap: 0.5rem; /* Space between details and progress bar */
-  padding: 1rem; /* Increased padding */
-  background-color: var(--bg-light);
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
-  transition: background-color 0.2s ease;
-}
-.limitItem:hover {
-  background-color: rgba(0, 0, 0, 0.03);
-}
-
-/* NEW: Container for category and amounts */
-.limitDetails {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start; /* Align items to the top */
-  width: 100%;
-}
-
-.limitCategory {
-  font-weight: 600; /* Bolder category */
-  font-size: 1rem;
-  color: var(--text-primary-light);
-  margin-right: 1rem; /* Space between category and amounts */
-}
-
-/* NEW: Container for spent/remaining */
-.limitAmounts {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end; /* Align amounts to the right */
-  font-size: 0.85rem;
-  white-space: nowrap;
-}
-
-.limitSpent {
-  color: var(--text-secondary-light);
-}
-
-.limitRemaining {
-  font-weight: 500;
-  /* Color is set inline based on value */
-}
-
-/* NEW: Style for limit exceeded message (This is the older, larger message style if you still use it elsewhere) */
-.limitExceededMessage {
-  color: #EF4444; /* Red color for warning */
-  font-weight: 600;
-  font-size: 0.9rem;
-  background-color: rgba(221, 27, 27, 0.3);
-  text-align: center;
-  margin-top: -0.25rem; /* Adjust spacing relative to details */
-  margin-bottom: 0.5rem; /* Space before total limit */
-}
-
-/* START OF MODIFIED SECTION FOR .limitExceededMessageSmall */
-.limitExceededMessageSmall {
-    font-size: 0.75rem;
-    font-weight: 500;
-    padding: 3px 0; /* Padding top/bottom 3px, no horizontal padding as text-align centers it */
-    /* border-radius: 4px; */ /* Removed as per "no background" implies no visible box needing radius */
-    margin-top: 0.5rem;
-    text-align: center;     /* Centers text content */
-    color: red;
-    background-color: rgba(221, 27, 27, 0.3);
-    align-self: center;     /* Centers the element itself horizontally within .limitItem */
-    width: 100%;            /* Make it take full width to truly center text within the item width */
-    background-color: transparent; /* Explicitly no background */
-    /* Text color will be applied via inline styles in the React component */
-}
-/* END OF MODIFIED SECTION FOR .limitExceededMessageSmall */
-
-/* NEW: Style for the total limit amount */
-.limitTotal {
-  font-size: 0.8rem;
-  color: var(--text-secondary-light);
-  align-self: flex-end; /* Align total to the right */
-  margin-top: -0.25rem; /* Adjust spacing slightly */
-  margin-bottom: 0.5rem; /* Space before progress bar */
-}
-
-
-/* NEW: Progress Bar Styles */
-.progressBarContainer {
-  width: 100%;
-  height: 8px; /* Slimmer progress bar */
-  background-color: var(--border-light); /* Light grey background */
-  border-radius: 4px;
-  overflow: hidden; /* Ensure inner bar respects border radius */
-}
-
-.progressBar {
-  height: 100%;
-  background-color: #4299e1; /* Default blue */
-  border-radius: 4px;
-  transition: width 0.3s ease-in-out, background-color 0.3s ease;
-}
-
-/* NEW: Style for the repositioned See All button */
-.limitsSeeAll {
-  margin-top: 1rem; /* Space above the button */
-  align-self: center; /* Center the button */
-  display: inline-block; /* Needed for centering */
-  width: fit-content; /* Button width fits content */
-}
-
-/* NEW: Style for the inline category warning message */
+.submitButton:hover { background-color: var(--primary-accent-hover-light, #2563eb); }
+.submitButton:active { transform: scale(0.98); }
+.submitButton:disabled { background-color: #ccc; cursor: not-allowed; }
 .categoryWarningMessage {
-  color: #EF4444; /* Red color for warning */
-  font-size: 0.8rem;
-  margin-top: 0.2rem; /* Small space above the message */
-  /* Add padding or margin if needed for visual separation */
+  color: #EF4444;
+  font-size: 0.75rem;
+  margin-top: 0.2rem;
 }
-
-/* Styles for the category input container (no longer needs special emoji button styles) */
-.categoryInputContainer {
-  display: flex; /* Keep if other elements might be added, otherwise can be removed if only input */
-  align-items: center;
-}
-
-/* Adjust the category input if it was relying on padding for an internal button */
-.categoryInputContainer input[type="text"] {
-  flex-grow: 1;
-  /* padding-right: normal; */ /* Reset padding if it was set for an internal button */
-}
-
-
-/* NEW: Styles for the emoji selector container (at the top of the form) */
-.emojiSelectorContainer {
-  position: relative; /* For positioning the picker */
-  display: inline-block; /* Or 'block' depending on desired layout with label */
-}
-
-/* Dashboard.module.css */
-
-/* ... other styles ... */
-
-/* UPDATED: Styles for the main emoji button (at the top of the form) */
+.emojiSelectorContainer { position: relative; display: inline-block; }
 .emojiButton {
   background-color: var(--input-bg-light, var(--bg-light));
   border: 1px solid var(--border-light);
   border-radius: 6px;
-  padding: 0.5rem;         /* Make padding uniform for better centering */
-  font-size: 1.8rem;       /* Slightly larger emoji if desired */
-  color: var(--text-primary-light); /* Explicitly set text color */
+  padding: 0.5rem;
+  font-size: 1.5rem;
+  color: var(--text-primary-light);
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-  min-width: 48px;         /* Adjust size as needed */
-  min-height: 48px;        /* ADD: Ensure minimum height */
-  display: inline-flex;    /* ADD: Use flexbox for alignment */
-  align-items: center;     /* ADD: Vertically center content */
-  justify-content: center; /* ADD: Horizontally center content */
-  line-height: 1;          /* ADD: Prevent extra line spacing */
-  /* text-align: center; */ /* No longer needed with justify-content */
-  box-sizing: border-box;  /* Ensure padding/border are included in size */
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.emojiPickerContainer {
+  position: absolute;
+  z-index: 1050;
+  background-color: var(--box-bg-light, #fff);
+  border: 1px solid var(--border-light, #ccc);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  border-radius: 8px;
+  top: 100%;
+  left: 0;
 }
 
-.emojiButton:hover {
-  border-color: var(--primary-accent-light, #60a5fa);
-  background-color: #f0f0f0; /* Or use a variable */
+/* Limits Section */
+.limitList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.limitItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.8rem 1rem;
+  background-color: var(--bg-light);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+}
+.limitDetails {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+.limitCategory {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--text-primary-light);
+  margin-right: 1rem;
+}
+.limitAmounts {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.limitSpent { color: var(--text-secondary-light); }
+.limitRemaining { font-weight: 500; }
+.limitTotal {
+  font-size: 0.75rem;
+  color: var(--text-secondary-light);
+  align-self: flex-end;
+  margin-top: 0.2rem;
+}
+.limitExceededMessageSmall {
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-align: right;
+    width: 100%;
+    color: red; /* Base, often overridden */
+    margin-top: 0.1rem;
+}
+.progressBarContainer {
+  width: 100%;
+  height: 6px;
+  background-color: var(--border-light);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 0.2rem;
+}
+.progressBar {
+  height: 100%;
+  background-color: #4299e1;
+  border-radius: 3px;
+  transition: width 0.3s ease-in-out, background-color 0.3s ease;
+}
+.limitsSeeAll {
+  margin-top: 1rem;
+  align-self: flex-end;
 }
 
-.emojiButton:focus {
-  outline: none;
-  border-color: var(--primary-accent-light, #60a5fa);
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
-}
-
-/* ... other styles ... */
-
-/* ADD: Dark Mode styles for the emoji button */
-@media (prefers-color-scheme: dark) {
-  /* ... other dark mode styles ... */
-
-  .emojiButton {
-    background-color: var(--input-bg-dark, #2d3748);
-    border-color: var(--border-dark);
-    color: var(--text-primary-dark);
-  }
-
-  .emojiButton:hover {
-    border-color: var(--primary-accent-dark, #60a5fa);
-    background-color: #374151; /* Or use a variable */
-  }
-
-  .emojiButton:focus {
-     border-color: var(--primary-accent-dark, #60a5fa);
-     box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.4); /* Adjust focus shadow for dark */
-  }
-
-  .emojiPickerContainer {
-    background-color: var(--box-bg-dark);
-    border-color: var(--border-dark);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  }
-
-  /* ... rest of dark mode styles ... */
-}
-
-/* ... rest of the file ... */
-/* Responsive adjustments for form/limits container */
-@media (max-width: 992px) { /* Adjust breakpoint as needed */
-  .formAndLimitsContainer {
-    grid-template-columns: 1fr; /* Stack form and limits */
-  }
-}
-
-/* Dark Mode for Emoji Picker */
-@media (prefers-color-scheme: dark) {
-  .emojiPickerContainer {
-    background-color: var(--box-bg-dark);
-    border-color: var(--border-dark);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  }
-
-  /* Dark Mode for Limits Section */
-  .limitItem {
-    background-color: var(--bg-dark);
-    border-color: var(--border-dark);
-  }
-  .limitItem:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-  .limitCategory {
-    color: var(--text-primary-dark);
-  }
-  .limitAmounts {
-    /* Adjust colors if needed */
-    opacity: 1;
-  }
-  .limitSpent {
-    color: var(--text-secondary-dark);
-  }
-  .limitTotal {
-    color: var(--text-secondary-dark);
-  }
-  .progressBarContainer {
-    background-color: var(--border-dark);
-  }
-  .progressBar {
-     /* Keep default blue or adjust */
-     /* Overspent color is handled inline */
-     opacity: 1;
-  }
-  .limitsSeeAll {
-    /* Inherits dark mode styles from .seeAllButton */
-    opacity: 1;
-  }
-  .limitExceededMessage { /* This is the larger, older message style */
-    color: #F87171; /* Lighter red for dark mode */
-    background-color: rgba(221, 27, 27, 0.3);
-
-    
-  }
-  /* START OF MODIFIED DARK MODE FOR .limitExceededMessageSmall */
-  .limitExceededMessageSmall {
-    background-color: rgba(221, 27, 27, 0.2);    /* Text color will be applied via inline styles in the React component */
-  }
-  /* END OF MODIFIED DARK MODE FOR .limitExceededMessageSmall */
-  .categoryWarningMessage {
-    color: #F87171; /* Lighter red for dark mode */
-  }
-}
-
+/* Goals Section */
 .goalListDashboard {
     display: flex;
     flex-direction: column;
-    gap: 12px; /* Space between goal items */
+    gap: 0.75rem;
 }
-
 .goalItemDashboard {
-    background-color: var(--item-bg-light, #fdfdff); /* Or var(--box-bg-light) */
-    padding: 12px 15px;
+    background-color: var(--bg-light);
+    padding: 0.8rem 1rem;
     border-radius: 6px;
-    border: 1px solid var(--border-light, #e8e8f3);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    border: 1px solid var(--border-light);
 }
-
 .goalItemHeaderDashboard {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 6px;
+    gap: 0.6rem;
+    margin-bottom: 0.3rem;
 }
-
 .goalIconDashboard {
-    font-size: 1.3rem; /* Slightly smaller for dashboard view */
-    color: var(--primary-accent-light); /* Or a specific goal color */
+    font-size: 1.1rem;
+    color: var(--primary-accent-light);
 }
-
 .goalDescriptionDashboard {
     font-weight: 500;
     color: var(--text-primary-light);
-    font-size: 0.9rem; /* Slightly smaller */
+    font-size: 0.85rem;
     flex-grow: 1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 180px; /* Adjust as needed */
 }
-
 .goalProgressDashboard {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--text-secondary-light);
-    margin-bottom: 4px;
+    margin-bottom: 0.2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 .goalPercentageDashboard {
     font-weight: 500;
-    color: var(--secondary-accent-light); /* Or a progress-specific color */
+    color: var(--secondary-accent-light, #667eea);
 }
-
 .progressBarContainerSmall {
     width: 100%;
-    background-color: var(--progress-bar-bg-light, #e9ecef);
-    border-radius: 4px; /* Smaller radius */
-    height: 6px; /* Smaller progress bar */
+    background-color: var(--border-light);
+    border-radius: 3px;
+    height: 5px;
     overflow: hidden;
-    margin-bottom: 6px;
+    margin-bottom: 0.3rem;
 }
-
 .progressBarSmall {
     height: 100%;
     background-color: var(--progress-bar-fill-light, #2ecc71);
-    border-radius: 4px;
-    transition: width 0.4s ease-in-out;
+    border-radius: 3px;
 }
 .goalDeadlineDashboard {
-    font-size: 0.75rem;
-    color: var(--text-secondary-light);
+    font-size: 0.7rem;
+    color: var(--text-placeholder-light, #a0aec0);
     text-align: right;
 }
 
-/* Dark Mode for Goals Section on Dashboard */
-@media (prefers-color-scheme: dark) {
-    .goalItemDashboard {
-        background-color: var(--input-bg-dark, #252c35);
-        border-color: var(--border-dark, #3a424d);
-    }
-    .goalIconDashboard {
-        color: var(--primary-accent-dark);
-    }
-    .goalDescriptionDashboard {
-        color: var(--text-primary-dark);
-    }
-    .goalProgressDashboard {
-        color: var(--text-secondary-dark);
-    }
-    .goalPercentageDashboard {
-        color: var(--secondary-accent-dark);
-    }
-    .progressBarContainerSmall {
-        background-color: var(--progress-bar-bg-dark, #3f4a59);
-    }
-    .progressBarSmall {
-        background-color: var(--progress-bar-fill-dark, #48bb78);
-    }
-    .goalDeadlineDashboard {
-        color: var(--text-secondary-dark);
-    }
-}
-
-/* Adjust layout for the bottom row container to include goals */
-/* Assuming your existing .bottomRowContainer CSS is something like this: */
-.bottomRowContainer {
-    display: grid;
-    grid-template-columns: 1fr; /* Default: 1 column for small screens (mobile-first) */
-    gap: 20px; /* Retaining original gap from user's code */
-    margin-top: 20px; /* Retaining original margin-top from user's code */
-}
-
-/* Apply 2-column layout from tablet size (768px) upwards */
-@media (min-width: 768px) {
-    .bottomRowContainer {
-        grid-template-columns: 1fr 1fr; /* 2 equal columns */
-    }
-}
-/*
-  The media queries @media (min-width: 1024px) {...} and
-  @media (min-width: 768px) and (max-width: 1023px) {...}
-  that were previously here are removed as they are superseded by the simpler rule above.
-  The .addTransactionSection rule that was inside the (min-width: 768px) and (max-width: 1023px)
-  is also implicitly removed as that entire media query block is gone.
-*/
-
-/* Dashboard.module.css */
-
-/* ... (all your existing styles) ... */
-
-/* NEW: Styles for the Income Details Row */
-.incomeDetailsRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr; /* Two equal columns */
-  gap: 1.5rem; /* Same gap as mainArea */
-}
-
-
-
-.incomeCategoryChartSection {
-  /* Inherits .sectionBox styles */
-  /* Add specific overrides if .sectionBox isn't enough */
-  align-items: center; /* Center chart horizontally if needed */
-}
-
-/* Adjust chart container height for the new income pie chart */
-.incomeCategoryChartSection .chartContainer {
-  height: 300px; /* Or adjust as preferred */
-  /* Other .chartContainer styles like width, display:flex etc. will be inherited */
-}
-
-/* Responsive Adjustments for Income Details Row */
-@media (max-width: 992px) { /* Or your preferred breakpoint for stacking */
-  .incomeDetailsRow {
-    grid-template-columns: 1fr; /* Stack columns on smaller screens */
-  }
-}
-
-/* Ensure non-critical error banner has a higher z-index if it overlaps emoji picker */
-.nonCriticalError {
-  position: relative; /* Or a specific z-index if needed */
-  z-index: 5; /* Lower than emoji picker's z-index (usually 1000+) but above normal content */
-}
-
-/* Make sure emoji picker is on top */
-.emojiPickerContainer {
-  position: absolute;
-  z-index: 1050; /* High z-index to be on top of other elements */
-  /* Add other styles like background, border, shadow as per your theme */
-  background-color: var(--box-bg-light, #fff);
-  border: 1px solid var(--border-light, #ccc);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-  border-radius: 8px;
-}
-@media (prefers-color-scheme: dark) {
-  .emojiPickerContainer {
-    background-color: var(--box-bg-dark, #2d3748);
-    border-color: var(--border-dark, #4a5568);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-  }
-}
-
-
-/* Existing chart container style (ensure it's generic enough or adjust) */
-.chartContainer {
-  width: 100%;
-  /* height: 400px; -- Height is now set specifically in .incomeCategoryChartSection .chartContainer and original .chartSection */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-}
-
-
-/* Placeholder content if you want to style it for the income pie chart specifically */
-.incomeCategoryChartSection .placeholderContent {
-  min-height: 200px; /* Adjust if needed */
-}
-
-/* Dashboard.module.css */
-
-/* ... (all your existing styles, including .incomeDetailsRow and its children) ... */
-
-/* NEW: Styles for the Expense Details Row */
-.expenseDetailsRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr; /* Two equal columns */
-  gap: 1.5rem; /* Same gap as other rows */
-}
-
-
-.expenseCategoryChartSection {
-  /* Inherits .sectionBox styles */
-  align-items: center; /* Center chart horizontally if needed */
-}
-
-/* Adjust chart container height for the new expense bar chart */
-.expenseCategoryChartSection .chartContainer {
-  height: 300px; /* Or adjust as preferred, can be same as income pie chart */
-}
-
-
-/* Responsive Adjustments for Expense Details Row */
-@media (max-width: 992px) { /* Or your preferred breakpoint for stacking */
-  .expenseDetailsRow {
-    grid-template-columns: 1fr; /* Stack columns on smaller screens */
-  }
-}
-
-/* Ensure transaction item styling is generic enough or add specific overrides if needed */
-/* .transactionItem, .transactionList, .transactionDate, .transactionDesc, .transactionAmount, .incomeBorder, .expenseBorder
-   are assumed to be styled generically from previous additions. */
-
-
-/* Placeholder content styling (already exists, ensure it works well here too) */
-.expenseCategoryChartSection .placeholderContent {
-  min-height: 200px; /* Adjust if needed */
-}
-
-/* Add these if they don't exist or need adjustment for dark mode */
-@media (prefers-color-scheme: dark) {
-  /* ... other dark mode styles ... */
-
-  .recentExpenseSection .sectionTitle, /* Example if specific title color needed */
-  .expenseCategoryChartSection .sectionTitle {
-    color: var(--text-primary-dark);
-  }
-
-  /* Ensure placeholder for expense chart is also themed */
-  .expenseCategoryChartSection .placeholderContent {
-     color: var(--text-secondary-dark);
-  }
-   .expenseCategoryChartSection .placeholderContent a {
-     color: var(--primary-accent-dark);
-   }
-}
-/* ======== CSS ADDITIONS START ======== */
-
-/* New CSS for the consistent row layout */
+/* Dashboard Row Layout */
 .dashboardRow {
   display: grid;
-  grid-template-columns: 1fr 1fr; /* Two equal columns */
-  gap: 1.5rem; /* Consistent gap, matches .mainArea and others */
-  margin-bottom: 1.5rem; /* Space between rows */
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
 }
-
-/* Responsive adjustments for new rows */
-@media (max-width: 992px) { /* Using a common breakpoint for stacking */
+@media (max-width: 992px) {
   .dashboardRow {
-    grid-template-columns: 1fr; /* Stack columns */
+    grid-template-columns: 1fr;
   }
 }
 
-/* Custom Scrollbar Styles */
-/* Apply to the main scrollable container of your dashboard page */
-.dashboardPageContent::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+/* Error Banners & Loading */
+.nonCriticalError {
+  position: relative; z-index: 5; padding: 0.75rem 1.25rem; margin-bottom: 1rem;
+  border: 1px solid transparent; border-radius: .25rem;
+  color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; font-size: 0.9em;
 }
-
-.dashboardPageContent::-webkit-scrollbar-track {
-  background: var(--scrollbar-track-bg, #e0e0e0); /* Lighter track for light mode */
-  border-radius: 10px;
+.pageErrorBanner {
+  padding: 1rem; margin: 1rem 0; border: 1px solid #f5c6cb;
+  border-radius: .25rem; color: #721c24; background-color: #f8d7da; text-align: center;
 }
+.pageErrorBanner a { color: #721c24; font-weight: bold; text-decoration: underline; }
+.pageErrorBanner small { display: block; margin-top: 0.5rem; font-size: 0.85em; }
+.loadingMessage { text-align: center; font-size: 1.2rem; padding: 2rem; color: var(--text-secondary-light); }
 
-.dashboardPageContent::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-bg, #888); /* Thumb color */
-  border-radius: 10px;
-  border: 2px solid var(--scrollbar-track-bg, #e0e0e0); /* Padding around thumb */
-}
-
-.dashboardPageContent::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-bg, #555); /* Darker on hover */
-}
-
-/* Firefox scrollbar styling */
-.dashboardPageContent {
-  scrollbar-width: auto; /* "auto" or "thin" */
-  scrollbar-color: var(--scrollbar-thumb-bg, #888) var(--scrollbar-track-bg, #e0e0e0); /* thumb and track */
-}
-
-/* Dark Mode Scrollbar Variables & Styles */
-@media (prefers-color-scheme: dark) {
-  .dashboardPageContent::-webkit-scrollbar-track {
-    background: var(--scrollbar-track-bg-dark, #2d3748); /* Darker track for dark mode */
-  }
-
-  .dashboardPageContent::-webkit-scrollbar-thumb {
-    background-color: var(--scrollbar-thumb-bg-dark, #718096); /* Adjusted thumb for dark */
-    border-color: var(--scrollbar-track-bg-dark, #2d3748);
-  }
-
-  .dashboardPageContent::-webkit-scrollbar-thumb:hover {
-    background-color: var(--scrollbar-thumb-hover-bg-dark, #a0aec0); /* Lighter on hover for dark */
-  }
-
-  .dashboardPageContent {
-    scrollbar-color: var(--scrollbar-thumb-bg-dark, #718096) var(--scrollbar-track-bg-dark, #2d3748);
-  }
-}
-
-/* Ensure sectionBox children can grow if needed, though content usually dictates height */
-.dashboardRow > .sectionBox {
-  display: flex; /* Already present in .sectionBox but re-emphasizing for context */
-  flex-direction: column;
-  /* min-height: 400px; */ /* Example: if you want all boxes to have a minimum uniform height, but usually content-driven is better */
-}
-
-/* ... your existing styles ... */
-/* Dashboard.module.css */
-
-/* ... your existing styles ... */
-
-/* New styles for the fixed "Go to Add Transaction Form" button */
+/* Fixed Scroll to Form Button */
 .fixedScrollToFormContainer {
-  position: fixed;
-  top: 85px; /* Adjust this value based on your header's height + desired spacing */
-  right: 20px;
-  z-index: 1000; /* Ensure it's above other content but below modals if any */
+  position: fixed; top: 80px; right: 20px; z-index: 1000;
 }
-
 .scrollToFormTrigger {
-  /* Assuming you have these CSS variables defined globally or in :root */
-  /* Otherwise, replace with actual color values */
-  background-color: var(--primary-accent, #007bff); 
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 0.9rem;
+  background-color: var(--primary-accent, #007bff); color: white; border: none;
+  padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 0.9rem;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+}
+.scrollToFormTrigger:hover { background-color: var(--primary-accent-dark, #0056b3); }
+.scrollToFormTrigger:active { transform: translateY(1px); }
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  .pageTitle { color: var(--text-primary-dark); }
+  .summarySection { background-color: var(--box-bg-dark); border-color: var(--border-dark); }
+  .summaryItem { background-color: var(--bg-dark); }
+  .summaryTitle { color: var(--text-secondary-dark); }
+  .summaryValue { color: var(--text-primary-dark); }
+  .summaryValue.income { color: lightgreen; }
+  .summaryValue.expense { color: red; }
+  .savingsIconColor { color: #FFC107; }
+  .incomeIconColor { color: lightgreen; }
+  .expenseIconColor { color: red; }
+  .sectionBox { background-color: var(--box-bg-dark); border-color: var(--border-dark); }
+  .sectionTitle { color: var(--text-primary-dark); }
+  .placeholderContent { color: var(--text-primary-dark); background-color: var(--placeholder-bg-dark, #262f3d); }
+  .placeholderContent a, .placeholderContent span[onClick] { color: var(--primary-accent-dark, #60a5fa); }
+  .seeAllButton { color: var(--primary-accent-dark, #60a5fa); border-color: var(--primary-accent-dark, #60a5fa); }
+  .seeAllButton:hover { background-color: var(--primary-accent-dark, #60a5fa); color: var(--button-text-dark, #1a202c); }
+  .transactionItem { background-color: var(--bg-dark); border-color: var(--border-dark); }
+  .transactionDate { color: var(--text-secondary-dark); }
+  .transactionDesc { color: var(--text-primary-dark); }
+  .incomeBorder::before { background-color: lightgreen; }
+  .expenseBorder::before { background-color: red; }
+  .formInput, .transactionForm select { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark); color: var(--text-primary-dark); }
+  .formInput::placeholder { color: var(--text-placeholder-dark, #718096); }
+  .formGroup label { color: var(--text-secondary-dark); }
+  .submitButton { background-color: var(--primary-accent-dark, #4299e1); color: var(--button-text-dark, #ffffff); }
+  .submitButton:hover { background-color: var(--primary-accent-hover-dark, #2b6cb0); }
+  .submitButton:disabled { background-color: #555; }
+  .categoryWarningMessage { color: #F87171; }
+  .emojiButton { background-color: var(--input-bg-dark, #2d3748); border-color: var(--border-dark); color: var(--text-primary-dark); }
+  .emojiButton:hover { border-color: var(--primary-accent-dark, #60a5fa); background-color: #374151; }
+  .emojiPickerContainer { background-color: var(--box-bg-dark, #2d3748); border-color: var(--border-dark, #4a5568); box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+  .limitItem { background-color: var(--bg-dark); border-color: var(--border-dark); }
+  .limitCategory { color: var(--text-primary-dark); }
+  .limitSpent, .limitTotal { color: var(--text-secondary-dark); }
+  .progressBarContainer { background-color: var(--border-dark); }
+  .goalItemDashboard { background-color: var(--bg-dark); border-color: var(--border-dark); }
+  .goalIconDashboard { color: var(--primary-accent-dark); }
+  .goalDescriptionDashboard { color: var(--text-primary-dark); }
+  .goalProgressDashboard { color: var(--text-secondary-dark); }
+  .goalPercentageDashboard { color: var(--secondary-accent-dark, #a3bffa); }
+  .progressBarContainerSmall { background-color: var(--border-dark); }
+  .progressBarSmall { background-color: var(--progress-bar-fill-dark, #48bb78); }
+  .goalDeadlineDashboard { color: var(--text-placeholder-dark, #718096); }
+  .nonCriticalError { color: #f8d7da; background-color: #721c24; border-color: #f5c6cb; }
+  .pageErrorBanner { color: #f8d7da; background-color: #4a1317; border-color: #8c1c23; }
+  .pageErrorBanner a, .pageErrorBanner small { color: #f8d7da; }
+  .loadingMessage { color: var(--text-secondary-dark); }
 }
 
-.scrollToFormTrigger:hover {
-  background-color: var(--primary-accent-dark, #0056b3); /* Make sure this var exists or use a direct color */
+/* Custom Scrollbar */
+.dashboardPageContent::-webkit-scrollbar { width: 10px; height: 10px; }
+.dashboardPageContent::-webkit-scrollbar-track { background: var(--scrollbar-track-bg, #f1f1f1); border-radius: 10px; }
+.dashboardPageContent::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb-bg, #888); border-radius: 10px; border: 2px solid var(--scrollbar-track-bg, #f1f1f1); }
+.dashboardPageContent::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-thumb-hover-bg, #555); }
+.dashboardPageContent { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb-bg, #888) var(--scrollbar-track-bg, #f1f1f1); }
+@media (prefers-color-scheme: dark) {
+  .dashboardPageContent::-webkit-scrollbar-track { background: var(--scrollbar-track-bg-dark, #2d3748); }
+  .dashboardPageContent::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb-bg-dark, #555e6d); border-color: var(--scrollbar-track-bg-dark, #2d3748); }
+  .dashboardPageContent::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-thumb-hover-bg-dark, #718096); }
+  .dashboardPageContent { scrollbar-color: var(--scrollbar-thumb-bg-dark, #555e6d) var(--scrollbar-track-bg-dark, #2d3748); }
 }
-.scrollToFormTrigger:active {
-  transform: translateY(1px);
-}
-
-/* ... rest of your existing styles ... */
-
-/* ... rest of your existing styles ... */
-/*
-  If you have specific height set on .chartContainer globally,
-  you might need to override it for each chart instance or make the global one more flexible.
-  The example above sets height for .incomeCategoryChartSection .chartContainer specifically.
-  The existing .chartSection for "Current Month Financial Overview" also has height: 300px in its JSX,
-  so the global .chartContainer height: 400px might not be strictly necessary if individual charts define their height.
-*/
-
-/* Your other CSS rules */
-/* --- End of file --- */
