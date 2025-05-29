@@ -784,8 +784,8 @@ function Dashboard() {
           {(showMonthlySavingsLineChart || loadingFinancialSummary) && (
             <section className={`${styles.sectionBox} ${styles.savingsChartSection}`}>
               <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>Monthly Savings Trend</h2>
-                <Link to="/savings" className={styles.seeAllButton}>Full Report</Link>
+                <h2 style={{marginBottom:'50px'}} className={styles.sectionTitle}>Monthly Savings Trend</h2>
+                <Link style={{marginBottom:'50px'}} to="/savings" className={styles.seeAllButton}>Full Report</Link>
               </div>
               <div className={styles.chartContainer} style={{ height: '250px' }}>
                 {loadingFinancialSummary && savingsChartData.length === 0 && !error.includes("Summary/Savings:") ? (<div className={styles.placeholderContent}>Loading savings trend...</div>)
