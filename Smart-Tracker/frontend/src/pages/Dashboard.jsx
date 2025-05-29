@@ -103,29 +103,17 @@ function Dashboard() {
   // IntersectionObserver setup
   useEffect(() => {
     const formElement = addTransactionSectionRef.current;
-
-    // If the main component is still loading or the ref isn't attached yet, don't proceed.
-    // The effect will re-run when 'loading' changes.
     if (loading || !formElement) {
       return;
     }
-
-
     const observerCallback = (entries) => {
       entries.forEach(entry => {
-        // console.log("boundingClientRect:", entry.boundingClientRect); // Optional: for more detail
-        // console.log("intersectionRect:", entry.intersectionRect);   // Optional: for more detail
-        // console.log("rootBounds:", entry.rootBounds);               // Optional: for more detail
         setIsAddTransactionFormVisible(entry.isIntersecting);
       });
     };
-
     const observerOptions = {
-      root: null, // relative to the viewport
-      rootMargin: '0px',
-      threshold: 0, // Trigger as soon as a single pixel is visible or hidden
+      root: null, rootMargin: '0px', threshold: 0,
     };
-
     let observer;
     try {
       observer = new IntersectionObserver(observerCallback, observerOptions);
@@ -134,21 +122,17 @@ function Dashboard() {
       console.error("!!! Dashboard Observer: Error creating or starting IntersectionObserver:", e);
       return;
     }
-
     return () => {
       if (observer && formElement) {
         observer.unobserve(formElement);
       }
     };
-  }, [loading]); // MODIFIED: Added `loading` to the dependency array
+  }, [loading]);
 
-  // Log the state that controls button visibility
-  useEffect(() => {
-  }, [isAddTransactionFormVisible]);
+  useEffect(() => {}, [isAddTransactionFormVisible]);
 
 
   const fetchDashboardData = useCallback(async () => {
-    // setLoading(true); // setLoading is now handled in the main useEffect
     try {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error("Auth token not found for dashboard.");
@@ -162,11 +146,6 @@ function Dashboard() {
       const msg = (err.response?.data?.message || err.message || "Failed to load dashboard data.").substring(0, 150);
       setError(prev => prev ? `${prev}\nDashboard: ${msg}` : `Dashboard: ${msg}`);
     } 
-    // finally { setLoading(false); } // setLoading is now handled in the main useEffect
-  }, []);
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const fetchAllCategoriesFromAPI = useCallback(async () => {
   }, []);
 
   const fetchFinancialSummaryAndSavings = useCallback(async () => {
@@ -283,9 +262,8 @@ function Dashboard() {
 
   useEffect(() => {
     setError(null);
-    setLoading(true); // Set main loading true at the start of data fetching
+    setLoading(true);
     const token = localStorage.getItem('authToken');
-
     const fetchUserProfile = async (authToken) => {
         try {
             const profileResponse = await axios.get('/api/users/me', { headers: { 'Authorization': `Bearer ${authToken}` } });
@@ -318,11 +296,11 @@ function Dashboard() {
             fetchCurrentMonthIncomeData(),
             fetchCurrentMonthExpenseData()
         ]).finally(() => {
-            setLoading(false); // Set main loading false after all initial fetches are done
+            setLoading(false);
         });
     } else {
         setError("Please log in to view the dashboard.");
-        setLoading(false); // Also set loading false if no token
+        setLoading(false); 
         setLoadingLimits(false); 
         setLoadingFinancialSummary(false); 
         setLoadingGoals(false); 
@@ -332,13 +310,12 @@ function Dashboard() {
         setAllCategories([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Main data fetching effect, runs once
+  }, []);
 
   useEffect(() => {
     const handleDataUpdate = () => {
       const token = localStorage.getItem('authToken');
       if (token) {
-        // Consider setting specific loading states here if needed for UI feedback during updates
         fetchDashboardData();
         fetchFinancialSummaryAndSavings();
         fetchLimitsFromAPI();
@@ -507,10 +484,9 @@ function Dashboard() {
     }
   };
 
-  // Combined loading state for initial page render
   const overallPageLoading = loading || loadingFinancialSummary || loadingLimits || loadingGoals || loadingCurrentMonthIncome || loadingCurrentMonthExpenses;
 
-  if (loading && !error) { // Use the main `loading` state for the initial spinner
+  if (loading && !error) {
     return <div className={styles.dashboardPageContent}><p className={styles.loadingMessage}>Loading dashboard data...</p></div>;
   }
 
@@ -528,8 +504,6 @@ function Dashboard() {
   
   const isDataEmpty = transactions.length === 0 && limits.length === 0 && recentGoals.length === 0 && currentMonthIncomeTransactions.length === 0 && currentMonthExpenseTransactions.length === 0 && monthlySavingsData.length === 0;
   
-  // This condition is if there's an error AND no data has loaded at all.
-  // We still want to show the dashboard if some parts load but others fail.
   if (error && !totalIncome && !totalExpense && isDataEmpty && !overallPageLoading) {
     return (
       <div className={styles.dashboardPageContent}>
@@ -565,7 +539,7 @@ function Dashboard() {
         </div>
       )}
 
-      {error && !isDataEmpty && ( // Show non-critical errors if some data loaded
+      {error && !isDataEmpty && ( 
         <div className={`${styles.pageErrorBanner} ${styles.nonCriticalError}`}>
           Some data might be unavailable: {error.split('\n').map((e, i) => <span key={i}>{e.replace(/(Dashboard: |Profile: |Limits: |Summary\/Savings: |Goals: |Submit: |Auth: |Delete: |MonthIncome: |MonthExpense: )/g, '')}<br /></span>)}
         </div>
@@ -592,7 +566,7 @@ function Dashboard() {
         </div>
       </section>
 
-      {(showRecentTransactionsList || showFinancialOverviewPieChart || loading ) && ( // Keep row if loading or has data
+      {(showRecentTransactionsList || showFinancialOverviewPieChart || loading ) && ( 
         <div className={styles.dashboardRow} style={ !(showRecentTransactionsList && showFinancialOverviewPieChart) ? { gridTemplateColumns: '1fr' } : {} }>
           {(showRecentTransactionsList || loading) && (
             <section className={`${styles.sectionBox} ${styles.transactionsSection}`}>
@@ -600,7 +574,7 @@ function Dashboard() {
                 <h2 className={styles.sectionTitle}>Recent Transactions (This Month)</h2>
                 <Link to="/transactions" className={styles.seeAllButton}>See All</Link>
               </div>
-              {(loading && transactions.length === 0 && !error.includes("Dashboard:")) ? <div className={styles.placeholderContent}>Loading transactions...</div> :
+              {(loading && transactions.length === 0 && !(error && error.includes("Dashboard:"))) ? <div className={styles.placeholderContent}>Loading transactions...</div> :
                 transactions.length > 0 ? (
                   <div className={styles.transactionList}>
                     {transactions.slice(0, 5).map((tx) => (
@@ -623,7 +597,7 @@ function Dashboard() {
             <section className={`${styles.sectionBox} ${styles.chartSection}`}>
               <h2 style={{marginBottom:'30px'}} className={styles.sectionTitle}>Current Month Financial Overview</h2>
               <div className={styles.chartContainer} style={{ height: '300px' }}>
-                {(loadingFinancialSummary && !hasChartData && !error.includes("Dashboard:")) ? <div className={styles.placeholderContent}>Loading chart data...</div> :
+                {(loadingFinancialSummary && !hasChartData && !(error && error.includes("Dashboard:"))) ? <div className={styles.placeholderContent}>Loading chart data...</div> :
                   hasChartData ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -641,7 +615,7 @@ function Dashboard() {
         </div>
       )}
 
-      <div className={styles.dashboardRow} style={ !showSpendingLimits && !loadingLimits ? { gridTemplateColumns: '1fr' } : {} }> {/* Adjust grid if limits not shown/loading */}
+      <div className={styles.dashboardRow} style={ !showSpendingLimits && !loadingLimits ? { gridTemplateColumns: '1fr' } : {} }>
         <section ref={addTransactionSectionRef} className={`${styles.sectionBox} ${styles.addTransactionSection}`}>
           <h2 className={styles.sectionTitle}>Add New Transaction</h2>
           <form onSubmit={handleAddTransaction} className={styles.transactionForm}>
@@ -716,7 +690,7 @@ function Dashboard() {
               <h2 className={styles.sectionTitle}>Spending Limits</h2>
               <Link to="/limits" className={`${styles.seeAllButton} ${styles.limitsSeeAll}`}>Manage Limits</Link>
             </div>
-            {loadingLimits && limits.length === 0 && !error.includes("Limits:") ? (<div className={styles.placeholderContent}>Loading limits...</div>)
+            {loadingLimits && limits.length === 0 && !(error && error.includes("Limits:")) ? (<div className={styles.placeholderContent}>Loading limits...</div>)
               : limits.length > 0 ? (
                 <div className={styles.limitList}>
                   {limits.slice(0, 4).map((limit) => {
@@ -758,7 +732,7 @@ function Dashboard() {
                 <h2 className={styles.sectionTitle}><FaBullseye style={{ marginRight: '8px', display: 'inline-block', verticalAlign: 'middle' }} />Active Goals</h2>
                 <Link to="/goals" className={styles.seeAllButton}>Manage Goals</Link>
               </div>
-              {loadingGoals && recentGoals.length === 0 && !error.includes("Goals:") ? (<div className={styles.placeholderContent}>Loading goals...</div>)
+              {loadingGoals && recentGoals.length === 0 && !(error && error.includes("Goals:")) ? (<div className={styles.placeholderContent}>Loading goals...</div>)
                 : recentGoals.length > 0 ? (
                   <div className={styles.goalListDashboard}>
                     {recentGoals.map(goal => (
@@ -788,7 +762,7 @@ function Dashboard() {
                 <Link style={{marginBottom:'50px'}} to="/savings" className={styles.seeAllButton}>Full Report</Link>
               </div>
               <div className={styles.chartContainer} style={{ height: '250px' }}>
-                {loadingFinancialSummary && savingsChartData.length === 0 && !error.includes("Summary/Savings:") ? (<div className={styles.placeholderContent}>Loading savings trend...</div>)
+                {loadingFinancialSummary && savingsChartData.length === 0 && !(error && error.includes("Summary/Savings:")) ? (<div className={styles.placeholderContent}>Loading savings trend...</div>)
                   : savingsChartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={savingsChartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
@@ -815,7 +789,7 @@ function Dashboard() {
                 <h2 className={styles.sectionTitle}>Recent Income (This Month)</h2>
                 <Link to="/income" className={styles.seeAllButton}>See All Income</Link>
               </div>
-              {loadingCurrentMonthIncome && recentIncomeForDisplay.length === 0 && !error.includes("MonthIncome:") ? (<div className={styles.placeholderContent}>Loading recent income...</div>)
+              {loadingCurrentMonthIncome && recentIncomeForDisplay.length === 0 && !(error && error.includes("MonthIncome:")) ? (<div className={styles.placeholderContent}>Loading recent income...</div>)
                 : recentIncomeForDisplay.length > 0 ? (
                   <div className={styles.transactionList}>
                     {recentIncomeForDisplay.map((tx) => (
@@ -833,7 +807,7 @@ function Dashboard() {
             <section className={`${styles.sectionBox} ${styles.incomeCategoryChartSection}`}>
               <h2 className={styles.sectionTitle}>Monthly Income Breakdown</h2>
               <div className={styles.chartContainer} style={{ height: '300px' }}>
-                {loadingCurrentMonthIncome && incomeByCategoryPieData.length === 0 && !error.includes("MonthIncome:") ? (<div className={styles.placeholderContent}>Loading income breakdown...</div>)
+                {loadingCurrentMonthIncome && incomeByCategoryPieData.length === 0 && !(error && error.includes("MonthIncome:")) ? (<div className={styles.placeholderContent}>Loading income breakdown...</div>)
                   : incomeByCategoryPieData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -859,7 +833,7 @@ function Dashboard() {
                 <h2 className={styles.sectionTitle}>Recent Expenses (This Month)</h2>
                 <Link to="/expense" className={styles.seeAllButton}>See All Expenses</Link>
               </div>
-              {loadingCurrentMonthExpenses && recentExpensesForDisplay.length === 0 && !error.includes("MonthExpense:") ? (<div className={styles.placeholderContent}>Loading recent expenses...</div>)
+              {loadingCurrentMonthExpenses && recentExpensesForDisplay.length === 0 && !(error && error.includes("MonthExpense:")) ? (<div className={styles.placeholderContent}>Loading recent expenses...</div>)
                 : recentExpensesForDisplay.length > 0 ? (
                   <div className={styles.transactionList}>
                     {recentExpensesForDisplay.map((tx) => (
@@ -877,7 +851,7 @@ function Dashboard() {
             <section className={`${styles.sectionBox} ${styles.expenseCategoryChartSection}`}>
               <h2 className={styles.sectionTitle} style={{marginBottom:'70px'}}>Monthly Expense Breakdown</h2>
               <div className={styles.chartContainer} style={{ height: '300px' }}>
-                {loadingCurrentMonthExpenses && expenseByCategoryBarData.length === 0 && !error.includes("MonthExpense:") ? (<div className={styles.placeholderContent}>Loading expense breakdown...</div>)
+                {loadingCurrentMonthExpenses && expenseByCategoryBarData.length === 0 && !(error && error.includes("MonthExpense:")) ? (<div className={styles.placeholderContent}>Loading expense breakdown...</div>)
                   : expenseByCategoryBarData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={expenseByCategoryBarData} layout="vertical" margin={{ top: 5, right: 30, left: 50, bottom: 25 }}>
