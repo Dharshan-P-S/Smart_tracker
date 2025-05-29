@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { sendToWit } from '../utils/witClient';
 import styles from './SmartAssistantPage.module.css';
 
+// ... (generateId, formatDateForDisplay, capitalizeFirstLetter, formatCurrency, parseWitDateTimeToQueryParams functions remain the same) ...
 const generateId = () => `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
 const formatDateForDisplay = (dateString) => {
@@ -152,11 +153,11 @@ const SmartAssistantPage = () => {
 
     const fetchLimits = useCallback(async () => {
         setLimitsLoading(true);
-        setFetchError(''); // Reset fetch error specific to limits
+        setFetchError(''); 
         try {
             const token = localStorage.getItem('authToken');
             if (!token) {
-                setFetchError('Please log in to manage limits.'); // This error might be general, consider namespacing or specific state
+                setFetchError('Please log in to manage limits.'); 
                 setLimits([]);
                 return;
             }
@@ -214,7 +215,7 @@ const SmartAssistantPage = () => {
             setGoalsLoading(false);
             setLimitsLoading(false);
             setLoadingCumulativeSavings(false);
-            setFetchError("Please log in to use the assistant's features."); // Set a general fetch error if not logged in
+            setFetchError("Please log in to use the assistant's features.");
         }
         const handleDataUpdate = () => {
             if (localStorage.getItem('authToken')) {
@@ -245,17 +246,26 @@ const SmartAssistantPage = () => {
         setIsLoading(true);
         const transactionType = capitalizeFirstLetter(transactionData.type);
         try {
-        const response = await axios.post('/api/transactions', transactionData);
-        toast.success(`${transactionType} "${transactionData.description}" of ${formatCurrency(transactionData.amount)} added!`);
-        addMessage('assistant', `Great! I've added the ${transactionData.type}: ${formatCurrency(transactionData.amount)} for ${transactionData.description}.`);
-        window.dispatchEvent(new CustomEvent('transactions-updated'));
-        fetchUserCumulativeSavings();
-        return response.data;
+            const token = localStorage.getItem('authToken'); // Get token
+            if (!token) {
+                toast.error("Authentication error. Please log in again.");
+                addMessage('assistant', "Sorry, I can't perform this action without authentication. Please log in.", null, true);
+                setIsLoading(false);
+                throw new Error("User not authenticated");
+            }
+            const response = await axios.post('/api/transactions', transactionData, {
+                headers: { 'Authorization': `Bearer ${token}` } // Add Authorization header
+            });
+            toast.success(`${transactionType} "${transactionData.description}" of ${formatCurrency(transactionData.amount)} added!`);
+            addMessage('assistant', `Great! I've added the ${transactionData.type}: ${formatCurrency(transactionData.amount)} for ${transactionData.description}.`);
+            window.dispatchEvent(new CustomEvent('transactions-updated'));
+            fetchUserCumulativeSavings(); // Refetch savings as it might change
+            return response.data;
         } catch (error) {
-        const errorMessage = error.response?.data?.message || error.message || `Failed to add ${transactionData.type}.`;
-        toast.error(`Error: ${errorMessage}`);
-        addMessage('assistant', `Sorry, I couldn't add the ${transactionData.type}. ${errorMessage}`, null, true);
-        throw error;
+            const errorMessage = error.response?.data?.message || error.message || `Failed to add ${transactionData.type}.`;
+            toast.error(`Error: ${errorMessage}`);
+            addMessage('assistant', `Sorry, I couldn't add the ${transactionData.type}. ${errorMessage}`, null, true);
+            throw error; // Re-throw to be caught by handleSendMessage if needed
         } finally {
             setIsLoading(false);
         }
@@ -264,17 +274,26 @@ const SmartAssistantPage = () => {
     const executeAddGoal = async (goalData) => {
         setIsLoading(true);
         try {
-        const response = await axios.post('/api/goals', goalData);
-        toast.success(`Goal "${goalData.description}" set successfully!`);
-        addMessage('assistant', `Okay, I've set a new goal: ${goalData.description} for ${formatCurrency(goalData.targetAmount)} by ${formatDateForDisplay(goalData.targetDate)}.`);
-        fetchGoals();
-        window.dispatchEvent(new CustomEvent('goals-updated'));
-        return response.data;
+            const token = localStorage.getItem('authToken'); // Get token
+            if (!token) {
+                toast.error("Authentication error. Please log in again.");
+                addMessage('assistant', "Sorry, I can't perform this action without authentication. Please log in.", null, true);
+                setIsLoading(false);
+                throw new Error("User not authenticated");
+            }
+            const response = await axios.post('/api/goals', goalData, {
+                headers: { 'Authorization': `Bearer ${token}` } // Add Authorization header
+            });
+            toast.success(`Goal "${goalData.description}" set successfully!`);
+            addMessage('assistant', `Okay, I've set a new goal: ${goalData.description} for ${formatCurrency(goalData.targetAmount)} by ${formatDateForDisplay(goalData.targetDate)}.`);
+            fetchGoals(); // Refetch goals
+            window.dispatchEvent(new CustomEvent('goals-updated'));
+            return response.data;
         } catch (error) {
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to set goal.';
-        toast.error(`Error: ${errorMessage}`);
-        addMessage('assistant', `Sorry, I couldn't set the goal. ${errorMessage}`, null, true);
-        throw error;
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to set goal.';
+            toast.error(`Error: ${errorMessage}`);
+            addMessage('assistant', `Sorry, I couldn't set the goal. ${errorMessage}`, null, true);
+            throw error;
         } finally {
             setIsLoading(false);
         }
@@ -283,26 +302,45 @@ const SmartAssistantPage = () => {
     const executeSetLimit = async (limitData) => {
         setIsLoading(true);
         try {
-        const response = await axios.post('/api/limits', limitData);
-        toast.success(`Limit for "${limitData.category}" set to ${formatCurrency(limitData.amount)} successfully!`);
-        addMessage('assistant', `Alright, I've set a spending limit for ${limitData.category} at ${formatCurrency(limitData.amount)}.`);
-        fetchLimits();
-        window.dispatchEvent(new CustomEvent('limits-updated'));
-        return response.data;
+            const token = localStorage.getItem('authToken'); // Get token
+            if (!token) {
+                toast.error("Authentication error. Please log in again.");
+                addMessage('assistant', "Sorry, I can't perform this action without authentication. Please log in.", null, true);
+                setIsLoading(false);
+                throw new Error("User not authenticated");
+            }
+            const response = await axios.post('/api/limits', limitData, {
+                headers: { 'Authorization': `Bearer ${token}` } // Add Authorization header
+            });
+            toast.success(`Limit for "${limitData.category}" set to ${formatCurrency(limitData.amount)} successfully!`);
+            addMessage('assistant', `Alright, I've set a spending limit for ${limitData.category} at ${formatCurrency(limitData.amount)}.`);
+            fetchLimits(); // Refetch limits
+            window.dispatchEvent(new CustomEvent('limits-updated'));
+            return response.data;
         } catch (error) {
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to set limit.';
-        toast.error(`Error: ${errorMessage}`);
-        addMessage('assistant', `Sorry, I couldn't set the limit. ${errorMessage}`, null, true);
-        throw error;
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to set limit.';
+            toast.error(`Error: ${errorMessage}`);
+            addMessage('assistant', `Sorry, I couldn't set the limit. ${errorMessage}`, null, true);
+            throw error;
         } finally {
             setIsLoading(false);
         }
     };
 
+    // executeContributeToGoal already includes the token, so it's fine.
+    // executeGetExpenseDetails, executeGetExpenseByCategory, executeGetIncomeDetails, executeGetIncomeByCategory,
+    // executeGetGoalDetailsByName, executeGetLimitDetailsByCategory also correctly include the token.
+
     const executeContributeToGoal = async (goalId, amount, goalDescription) => {
         setIsLoading(true);
         try {
             const token = localStorage.getItem('authToken');
+             if (!token) { // Added token check here as well
+                toast.error("Authentication error. Please log in again.");
+                addMessage('assistant', "Sorry, I can't perform this action without authentication. Please log in.", null, true);
+                setIsLoading(false);
+                throw new Error("User not authenticated");
+            }
             await axios.post(`/api/goals/${goalId}/contribute`, { amount }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -326,6 +364,7 @@ const SmartAssistantPage = () => {
         setIsLoading(true);
         try {
             const token = localStorage.getItem('authToken');
+            if (!token) { throw new Error("User not authenticated"); } // Early exit if no token
             const { description: initialPeriodDescription, ...apiParams } = parseWitDateTimeToQueryParams(dateTimeEntity, isTotalQuery);
 
             const response = await axios.get('/api/transactions/expenses/summary', {
@@ -365,6 +404,7 @@ const SmartAssistantPage = () => {
         setIsLoading(true);
         try {
             const token = localStorage.getItem('authToken');
+            if (!token) { throw new Error("User not authenticated"); }
             const { description: initialPeriodDescription, ...apiParams } = parseWitDateTimeToQueryParams(dateTimeEntity, isTotalQuery);
             apiParams.category = categoryName;
             const response = await axios.get('/api/transactions/expenses/summary', {
@@ -397,6 +437,7 @@ const SmartAssistantPage = () => {
         setIsLoading(true);
         try {
             const token = localStorage.getItem('authToken');
+            if (!token) { throw new Error("User not authenticated"); }
             const { description: initialPeriodDescription, ...apiParams } = parseWitDateTimeToQueryParams(dateTimeEntity, isTotalQuery);
             const response = await axios.get('/api/transactions/income/summary', {
                 headers: { Authorization: `Bearer ${token}` },
@@ -430,6 +471,7 @@ const SmartAssistantPage = () => {
         setIsLoading(true);
         try {
             const token = localStorage.getItem('authToken');
+            if (!token) { throw new Error("User not authenticated"); }
             const { description: initialPeriodDescription, ...apiParams } = parseWitDateTimeToQueryParams(dateTimeEntity, isTotalQuery);
             apiParams.category = categoryName;
             const response = await axios.get('/api/transactions/income/summary', {
@@ -493,6 +535,8 @@ const SmartAssistantPage = () => {
                  addMessage('assistant', `I couldn't find a goal related to "${searchedCategory || 'the specified term'}". You can ask me to "set a new goal" or "show my goals".`);
             }
         } catch (error) {
+            // This catch block is unlikely to be hit if `goals` is from state and `foundGoal` is derived from it.
+            // Errors would more likely occur during the initial fetch of `goals`.
             const errorMessage = error.response?.data?.message || error.message || 'Failed to process goal details.';
             toast.error(`Error: ${errorMessage}`);
             addMessage('assistant', `Sorry, I had trouble processing details for goal related to "${searchedCategory}". ${errorMessage}`, null, true);
@@ -539,7 +583,7 @@ const SmartAssistantPage = () => {
                 addMessage('assistant', `No spending limit found for a category related to "${searchedCategory || 'the specified term'}". You can ask me to "set a limit" or "show my limits".`);
             }
         } catch (error) {
-            const errorMessage = error.response?.data?.message || error.message || 'Failed to process limit details.';
+             const errorMessage = error.response?.data?.message || error.message || 'Failed to process limit details.';
             toast.error(`Error: ${errorMessage}`);
             addMessage('assistant', `Sorry, I had trouble processing the limit for "${searchedCategory}". ${errorMessage}`, null, true);
         } finally {
@@ -548,6 +592,7 @@ const SmartAssistantPage = () => {
     };
 
 
+  // ... (processWitResponseAndTakeAction and handleSendMessage functions, with the EXECUTE functions now fixed)
   const processWitResponseAndTakeAction = (witData, originalQuery) => {
     if (!localStorage.getItem('authToken')) {
         addMessage('assistant', "You need to be logged in to perform financial actions. Please log in first.", null, true);
@@ -646,7 +691,7 @@ const SmartAssistantPage = () => {
             setIsLoading(false);
             return;
         }
-         if (fetchError && goals.length === 0) { // Check fetchError if goals are empty potentially due to it
+         if (fetchError && goals.length === 0) { 
             addMessage('assistant', `There was an issue fetching your goals: ${fetchError}. Please try again after resolving.`, null, true);
             setIsLoading(false);
             return;
@@ -676,7 +721,7 @@ const SmartAssistantPage = () => {
             setIsLoading(false);
             return;
         }
-        if (fetchError) { // General fetch error check
+        if (fetchError) { 
             addMessage('assistant', `There was an issue fetching your data: ${fetchError}. Please try again after resolving.`, null, true);
             setIsLoading(false);
             return;
@@ -748,7 +793,7 @@ const SmartAssistantPage = () => {
             setIsLoading(false);
             return;
         }
-        if (fetchError && limits.length === 0) { // Check fetchError if limits are empty potentially due to it
+        if (fetchError && limits.length === 0) { 
             addMessage('assistant', `There was an issue fetching your limits: ${fetchError}. Please try again after resolving.`, null, true);
             setIsLoading(false);
             return;
@@ -870,24 +915,29 @@ const SmartAssistantPage = () => {
             }
           } catch (apiError) {
             // setIsLoading(false) is handled in execute* functions' finally blocks
+            // console.error("API Error during confirmed action:", apiError); // Already logged in execute*
           }
           finally {
-            setPendingAction(null);
+            setPendingAction(null); // Clear pending action regardless of success/failure of execution
           }
         } else if (lowerQuery === 'no' || lowerQuery === 'n') {
           addMessage('assistant', 'Okay, I won\'t do that. What would you like to do instead?');
           setPendingAction(null);
-          setIsLoading(false);
+          setIsLoading(false); // Ensure loading is false if action is cancelled
         } else {
+          // If response is not yes/no, keep pendingAction and re-prompt
           addMessage('assistant', "Please respond with 'yes' or 'no' to confirm or cancel.");
+           // setIsLoading(false); // No change in loading state, still waiting for yes/no
         }
       } else {
+         // Should not happen if pendingAction is set correctly
          setPendingAction(null);
          setIsLoading(false);
       }
-      return;
+      return; // Exit after handling pending action response
     }
 
+    // If no pending action, proceed with new query
     setIsLoading(true);
     try {
       const witResponse = await sendToWit(query);
@@ -937,6 +987,11 @@ const SmartAssistantPage = () => {
                 <p className={styles.messageText}><i>Loading your financial data...</i></p>
             </div>
           }
+           {fetchError && !isLoading && !goalsLoading && !limitsLoading && !loadingCumulativeSavings && (
+             <div className={`${styles.message} ${styles.assistant} ${styles.errorMessageBubble}`}>
+                <p className={styles.messageText}>Error: {fetchError}</p>
+             </div>
+           )}
           <div ref={messagesEndRef} />
         </div>
         <form onSubmit={handleSendMessage} className={styles.inputForm}>
