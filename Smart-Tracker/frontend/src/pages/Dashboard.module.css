@@ -1293,58 +1293,43 @@
   /* min-height: 400px; */ /* Example: if you want all boxes to have a minimum uniform height, but usually content-driven is better */
 }
 
+/* ... your existing styles ... */
 /* Dashboard.module.css */
 
-/* ... existing styles ... */
+/* ... your existing styles ... */
 
-/* NEW: Styles for the "Scroll to Add Transaction Form" trigger */
+/* New styles for the fixed "Go to Add Transaction Form" button */
+.fixedScrollToFormContainer {
+  position: fixed;
+  top: 85px; /* Adjust this value based on your header's height + desired spacing */
+  right: 20px;
+  z-index: 1000; /* Ensure it's above other content but below modals if any */
+}
+
 .scrollToFormTrigger {
-  display: inline-block; /* Allows margin and padding */
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  font-weight: 600;
-  text-align: center;
-  color: var(--button-text-light, #ffffff);
-  background-color: var(--primary-accent-light, #3b82f6);
+  /* Assuming you have these CSS variables defined globally or in :root */
+  /* Otherwise, replace with actual color values */
+  background-color: var(--primary-accent, #007bff); 
+  color: white;
   border: none;
-  border-radius: 6px;
+  padding: 10px 15px;
+  border-radius: 5px;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
-  margin-top: 1rem; /* Space above it */
-  margin-bottom: 1.5rem; /* Space below it */
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  font-size: 0.9rem;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
 }
 
 .scrollToFormTrigger:hover {
-  background-color: var(--primary-accent-hover-light, #2563eb);
+  background-color: var(--primary-accent-dark, #0056b3); /* Make sure this var exists or use a direct color */
 }
-
 .scrollToFormTrigger:active {
-  transform: translateY(1px); /* Slight press down effect */
+  transform: translateY(1px);
 }
 
-/* Dark Mode for the scroll trigger */
-@media (prefers-color-scheme: dark) {
-  .scrollToFormTrigger {
-    color: var(--button-text-dark, #ffffff);
-    background-color: var(--primary-accent-dark, #60a5fa);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  }
+/* ... rest of your existing styles ... */
 
-  .scrollToFormTrigger:hover {
-    background-color: var(--primary-accent-hover-dark, #3b82f6);
-  }
-}
-
-/* Container for the scroll trigger to center it */
-.scrollToFormContainer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%; /* Take full width to allow centering of inline-block child */
-  /* margin-bottom: 1.5rem; /* You can also put margin here instead of on the trigger itself */
-}
-
+/* ... rest of your existing styles ... */
 /*
   If you have specific height set on .chartContainer globally,
   you might need to override it for each chart instance or make the global one more flexible.
