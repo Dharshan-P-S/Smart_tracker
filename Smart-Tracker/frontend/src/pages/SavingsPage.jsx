@@ -132,7 +132,7 @@ const SavingsPage = () => {
                      ₹{item.savings.toFixed(2)}
                   </span>
                   <span className={styles.separator}> | </span>
-                  <span className={styles.label}>Total Saving till this month: </span>
+                  <span className={styles.label}>Total Savings till this month: </span>
                   <span className={item.cumulativeSavings >= 0 ? styles.positive : styles.negative}>
                      ₹{item.cumulativeSavings.toFixed(2)}
                   </span>
