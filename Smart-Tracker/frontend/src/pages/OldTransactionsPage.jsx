@@ -615,7 +615,7 @@ function OldTransactionsPage() {
             </div>
 
             <section className={`${styles.sectionBox} ${styles.addMonthlySavingsSection}`}>
-                <h3 className={styles.sectionTitle}><FaCalculator style={{ marginRight: '8px' }} /> Add Monthly Total Savings</h3>
+                <h3 className={styles.sectionTitle}><FaCalculator style={{ marginRight: '8px', display:'inline' }} /> Add Monthly Total Savings</h3>
                 {!currentToken && <p className={styles.loginPrompt}>Please log in to add monthly savings.</p>}
                 {currentToken && (
                     <form onSubmit={handleAddMonthlySavings} className={styles.transactionForm}>
