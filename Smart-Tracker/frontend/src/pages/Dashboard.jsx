@@ -559,7 +559,7 @@ function Dashboard() {
 
       {!isAddTransactionFormVisible && (
         <div className={styles.fixedScrollToFormContainer}>
-            <button type="button" className={styles.scrollToFormTrigger} onClick={handleScrollToAddTransaction}>
+            <button style={{marginTop:'10px'}} type="button" className={styles.scrollToFormTrigger} onClick={handleScrollToAddTransaction}>
                 Go to Add Transaction Form
             </button>
         </div>
