@@ -47,7 +47,6 @@ const getDisplayDateString = (dateObj) => {
 };
 
 function Dashboard() {
-  console.log("--- Dashboard Component Render Start ---");
 
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpense, setTotalExpense] = useState(0);
