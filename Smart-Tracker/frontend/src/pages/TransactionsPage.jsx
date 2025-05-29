@@ -7,7 +7,8 @@ import Picker from 'emoji-picker-react';
 import axios from 'axios';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import styles from './Dashboard.module.css';
+import styles from './Dashboard.module.css'; // Assuming TransactionsPage uses these styles as per your original code.
+import Header from '../components/Header'; // Path to your Header component
 
 // --- Constants for Goal Savings ---
 const GOAL_SAVINGS_CATEGORY_NAME = 'Goal Savings';
@@ -94,7 +95,7 @@ function TransactionsPage() {
             });
 
             const [savingsResponse, dashboardResponseHttp] = await Promise.all([savingsPromise, dashboardPromise]);
-            
+
             const fetchedMonthlyNetSavings = savingsResponse.data || [];
             const calculatedTotalCumulativeSavings = fetchedMonthlyNetSavings.reduce(
                 (sum, monthData) => sum + (monthData.savings || 0), 0
@@ -185,7 +186,7 @@ function TransactionsPage() {
         const handleExternalUpdate = (event) => {
             console.log("TransactionsPage received an update event, re-fetching...", event.type);
             setError(null);
-            fetchAllTransactions(true); 
+            fetchAllTransactions(true);
             fetchFinancialSummary();
             fetchGoals(true); // Refresh goals too
         };
@@ -215,7 +216,7 @@ function TransactionsPage() {
         const { name, value } = e.target;
         setEditFormData(prev => ({ ...prev, [name]: value }));
     };
-    
+
     const currentMonthNetBalance = useMemo(() => {
         return currentMonthIncomeTotal - currentMonthExpenseTotal;
     }, [currentMonthIncomeTotal, currentMonthExpenseTotal]);
@@ -237,7 +238,7 @@ function TransactionsPage() {
         if (isNaN(newAmount)) {
              return { projectedCurrentMonthBalance: null, projectedTotalCumulativeSavings: null, isValidAmount: false, goalConstraint: { applicable: false } };
         }
-        
+
         const amountDifference = newAmount - originalAmount;
         let projectedTotalCumulativeSavings;
         let projectedCurrentMonthBalance = currentMonthNetBalance;
@@ -276,7 +277,7 @@ function TransactionsPage() {
                 }
             }
         }
-        
+
         return {
             projectedCurrentMonthBalance: isDateInCurrentMonth(originalTx.date) ? projectedCurrentMonthBalance : null,
             projectedTotalCumulativeSavings: projectedTotalCumulativeSavings,
@@ -287,7 +288,7 @@ function TransactionsPage() {
         };
     }, [
         editingTxId, editFormData.amount, editFormData.category, editFormData.description, // Added category & description
-        transactions, currentCumulativeSavings, currentMonthNetBalance, 
+        transactions, currentCumulativeSavings, currentMonthNetBalance,
         loadingFinancialSummary, loadingGoals, goals // Added goals related states
     ]);
 
@@ -313,7 +314,7 @@ function TransactionsPage() {
         if (!originalTx) {
             toast.error("Original transaction not found."); setError("Update Error: Original transaction not found."); return;
         }
-        
+
         // --- Goal Savings Category Check (Only for expenses) ---
         if (originalTx.type === 'expense' && editFormData.category.trim().toLowerCase() === GOAL_SAVINGS_CATEGORY_NAME.toLowerCase()) {
             console.log("--- TxPage: Goal Savings Check ---");
@@ -393,14 +394,14 @@ function TransactionsPage() {
                     category: editFormData.category.trim(),
                     emoji: editFormData.emoji,
                     amount: newAmount,
-                    type: originalTx.type 
+                    type: originalTx.type
                 }),
             });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ message: 'Update failed with non-JSON response' }));
                 throw new Error(errorData.message || `Failed to update transaction: ${response.statusText}`);
             }
-            
+
             window.dispatchEvent(new CustomEvent('transactions-updated'));
             toast.success("Transaction updated successfully!");
             handleCancelEdit();
@@ -433,7 +434,7 @@ function TransactionsPage() {
         let projectedNewOverallNetSavings;
         if (txType === 'income') {
             projectedNewOverallNetSavings = currentCumulativeSavings - amountToDelete;
-        } else { 
+        } else {
             projectedNewOverallNetSavings = currentCumulativeSavings + amountToDelete;
         }
 
@@ -462,7 +463,7 @@ function TransactionsPage() {
                 const errorData = await response.json().catch(() => ({ message: 'Deletion failed' }));
                 throw new Error(errorData.message || `Failed to delete transaction`);
             }
-            
+
             window.dispatchEvent(new CustomEvent('transactions-updated'));
             toast.success(`${txType.charAt(0).toUpperCase() + txType.slice(1)} deleted successfully!`);
 
@@ -480,21 +481,12 @@ function TransactionsPage() {
         }
         const doc = new jsPDF();
         const tableColumn = ["Date", "Type", "Description", "Category", "Amount"];
-        const tableRows = [];
+        // const tableRows = []; // This variable was declared but not used, removed.
 
         doc.setFontSize(18);
         doc.text(`All Transactions for ${username}`, 14, 22);
 
-        transactions.forEach(tx => {
-            tableRows.push([
-                formatDate(tx.date),
-                tx.type.charAt(0).toUpperCase() + tx.type.slice(1),
-                tx.description,
-                tx.category,
-                formatCurrency(tx.amount, null) // Keep only amount formatting, +/- will be based on cell content or logic
-            ]);
-        });
-         // For PDF amount, we want the raw value without +/- from formatCurrency if we handle color/prefix in PDF
+        // For PDF amount, we want the raw value without +/- from formatCurrency if we handle color/prefix in PDF
         const pdfTransactions = transactions.map(tx => [
             formatDate(tx.date),
             tx.type.charAt(0).toUpperCase() + tx.type.slice(1),
@@ -512,7 +504,7 @@ function TransactionsPage() {
             styles: { fontSize: 9, cellPadding: 2 },
             headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
             columnStyles: {
-                4: { halign: 'right' } 
+                4: { halign: 'right' }
             },
             didDrawCell: (data) => {
                 if (data.section === 'body' && data.column.index === 4) { // Amount column
@@ -542,190 +534,198 @@ function TransactionsPage() {
     const pageIsLoading = loading || loadingFinancialSummary || loadingGoals; // Added loadingGoals
 
     if (pageIsLoading) {
-        return <div className={styles.dashboardPageContent}><p>Loading transactions, financial summary, and goals...</p></div>;
+        return (
+            <>
+                <Header />
+                <div className={styles.dashboardPageContent}><p>Loading transactions, financial summary, and goals...</p></div>
+            </>
+        );
     }
-    
+
     const pageLoadError = error && (error.includes("Transactions List:") || error.includes("Summary:") || error.includes("Auth:") || error.includes("Goals:"));
 
     return (
-        <div className={styles.transactionsPageContainer}>
-            <div className={styles.dashboardPageContent}>
-                <div className={styles.sectionHeader}>
-                   <h1 className={styles.pageTitle}>All Transactions</h1>
-                   <div>
-                       <button 
-                           onClick={handleDownloadAllPDF} 
-                           className={styles.pdfButton}
-                           style={{fontSize: '1rem', marginRight: '1rem'}}
-                           disabled={pageIsLoading || transactions.length === 0 || !!pageLoadError}
-                       >
-                           Download All PDF
-                       </button>
-                       <Link to="/dashboard" className={styles.seeAllButton} style={{fontSize: '1rem'}}>Back to Dashboard</Link>
-                   </div>
-                </div>
-
-                {pageLoadError && 
-                    <div className={styles.pageErrorBanner}>
-                        Error loading page data:
-                        {error.split('\n').filter(e => e.trim()).map((e, i) => <div key={i}>{e.replace(/(Transactions List: |Summary: |Auth: |Goals: )/g, '')}</div>)}
+        <>
+            <Header /> {/* --- Header Component Added Here --- */}
+            <div className={styles.transactionsPageContainer}> {/* Ensure this class exists or use a general one like styles.pageContainer */}
+                <div className={styles.dashboardPageContent}>
+                    <div className={styles.sectionHeader}>
+                       <h1 style={{marginTop:'40px'}} className={styles.pageTitle}>All Transactions</h1>
+                       <div>
+                           <button
+                               onClick={handleDownloadAllPDF}
+                               className={styles.pdfButton}
+                               style={{fontSize: '1rem', marginRight: '1rem',marginTop:'40px'}}
+                               disabled={pageIsLoading || transactions.length === 0 || !!pageLoadError}
+                           >
+                               Download All PDF
+                           </button>
+                           <Link to="/dashboard" className={styles.seeAllButton} style={{fontSize: '1rem'}}>Back to Dashboard</Link>
+                       </div>
                     </div>
-                }
-                {(!pageLoadError && error && (error.startsWith('Update Error:') || error.startsWith('Delete Error:'))) && (
-                    <p className={styles.formErrorBanner} style={{marginBottom: '1rem'}}>{error.replace(/(Update Error: |Delete Error: )/g, '')}</p>
-                )}
+
+                    {pageLoadError &&
+                        <div className={styles.pageErrorBanner}>
+                            Error loading page data:
+                            {error.split('\n').filter(e => e.trim()).map((e, i) => <div key={i}>{e.replace(/(Transactions List: |Summary: |Auth: |Goals: )/g, '')}</div>)}
+                        </div>
+                    }
+                    {(!pageLoadError && error && (error.startsWith('Update Error:') || error.startsWith('Delete Error:'))) && (
+                        <p className={styles.formErrorBanner} style={{marginBottom: '1rem'}}>{error.replace(/(Update Error: |Delete Error: )/g, '')}</p>
+                    )}
 
 
-                {!loading && !pageLoadError && (
-                     <section className={`${styles.sectionBox} ${styles.transactionsSection}`}>
-                        {transactions.length > 0 ? (
-                            <div className={styles.transactionList} style={{borderTop: 'none'}}>
-                                {transactions.map((tx) => (
-                                    <React.Fragment key={tx._id}>
-                                    <div
-                                        className={`${styles.transactionItem} ${
-                                            tx.type === 'income' ? styles.incomeBorder : styles.expenseBorder
-                                        }`}
-                                    >
-                                        <span className={styles.transactionDate} style={{ gridColumn: '1 / 2', gridRow: '1 / 2' }}>
-                                            {formatDate(tx.date)}
-                                        </span>
-
-                                        {editingTxId === tx._id ? (
-                                            <>
-                                                <div style={{ gridColumn: '2 / 5', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr auto', gap: '0.5rem', alignItems: 'center', gridRow: '1 / 2' }}>
-                                                    <input
-                                                        type="text" name="description" value={editFormData.description}
-                                                        onChange={handleEditFormChange} className={styles.formInput}
-                                                        style={{ fontSize: '0.9rem', padding: '0.4rem' }}
-                                                        placeholder="Description" required
-                                                    />
-                                                    <input
-                                                        type="text" name="category" value={editFormData.category}
-                                                        onChange={handleEditFormChange} className={styles.formInput}
-                                                        style={{ fontSize: '0.9rem', padding: '0.4rem' }}
-                                                        placeholder="Category" 
-                                                        list="transaction-categories"
-                                                        required
-                                                    />
-                                                    <datalist id="transaction-categories">
-                                                        {/* You can populate this dynamically or have common ones */}
-                                                        <option value="Salary" />
-                                                        <option value="Freelance" />
-                                                        <option value="Food & Drink" />
-                                                        <option value="Transportation" />
-                                                        <option value={GOAL_SAVINGS_CATEGORY_NAME} />
-                                                    </datalist>
-                                                    <input
-                                                        type="number" name="amount" value={editFormData.amount}
-                                                        onChange={handleEditFormChange} className={styles.formInput}
-                                                        style={{ fontSize: '0.9rem', padding: '0.4rem', textAlign: 'right' }}
-                                                        step="0.01" min="0.01" required
-                                                    />
-                                                      <div style={{ position: 'relative', justifySelf:'start' }}>
-                                                        <button
-                                                          type="button"
-                                                          onClick={() => setShowEditEmojiPicker(prev => prev === tx._id ? null : tx._id)}
-                                                          className={styles.emojiButton}
-                                                          style={{fontSize: '1.2rem', padding: '0.4rem'}}
-                                                          aria-label="Select icon"
-                                                        >
-                                                          {editFormData.emoji || '+'}
-                                                        </button>
-                                                        {showEditEmojiPicker === tx._id && (
-                                                          <div className={styles.emojiPickerContainer} style={{top: '100%', left: 0, zIndex: 10, position: 'absolute', minWidth: '280px'}}>
-                                                            <Picker
-                                                                onEmojiClick={(emojiData) => {
-                                                                    setEditFormData(prev => ({ ...prev, emoji: emojiData.emoji }));
-                                                                    setShowEditEmojiPicker(null);
-                                                                }}
-                                                                pickerStyle={{ width: '100%' }}
-                                                            />
-                                                          </div>
-                                                        )}
-                                                      </div>
-                                                 </div>
-                                            </>
-                                        ) : (
-                                            <>
-                                            <span className={styles.transactionDesc} style={{ gridColumn: '2 / 4', gridRow: '1 / 2' }}>
-                                                {tx.emoji && <span className={styles.transactionEmoji} style={{marginRight: '0.5em'}}>{tx.emoji}</span>}
-                                                {tx.description} ({tx.category})
+                    {!loading && !pageLoadError && (
+                         <section className={`${styles.sectionBox} ${styles.transactionsSection}`}>
+                            {transactions.length > 0 ? (
+                                <div className={styles.transactionList} style={{borderTop: 'none'}}>
+                                    {transactions.map((tx) => (
+                                        <React.Fragment key={tx._id}>
+                                        <div
+                                            className={`${styles.transactionItem} ${
+                                                tx.type === 'income' ? styles.incomeBorder : styles.expenseBorder
+                                            }`}
+                                        >
+                                            <span className={styles.transactionDate} style={{ gridColumn: '1 / 2', gridRow: '1 / 2' }}>
+                                                {formatDate(tx.date)}
                                             </span>
-                                            <span
-                                                className={`${styles.transactionAmount} ${tx.type === 'income' ? styles.income : styles.expense}`}
-                                                style={{ gridColumn: '4 / 5', gridRow: '1 / 2', justifySelf: 'end' }}
-                                            >
-                                                {formatCurrency(tx.amount, tx.type)} {/* Pass type for +/- prefix */}
-                                            </span>
-                                            </>
-                                        )}
-                                        <div style={{
-                                            display: 'flex', gap: '0.5rem', justifyContent: 'flex-end',
-                                            gridColumn: '5 / 6', gridRow: '1 / span 2', 
-                                            alignItems: 'center'
-                                        }}>
+
                                             {editingTxId === tx._id ? (
                                                 <>
-                                                    <button onClick={() => handleSaveEdit(tx._id)} className={`${styles.actionButton} ${styles.saveButton}`}>Save</button>
-                                                    <button onClick={handleCancelEdit} className={`${styles.actionButton} ${styles.cancelButton}`}>Cancel</button>
+                                                    <div style={{ gridColumn: '2 / 5', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr auto', gap: '0.5rem', alignItems: 'center', gridRow: '1 / 2' }}>
+                                                        <input
+                                                            type="text" name="description" value={editFormData.description}
+                                                            onChange={handleEditFormChange} className={styles.formInput}
+                                                            style={{ fontSize: '0.9rem', padding: '0.4rem' }}
+                                                            placeholder="Description" required
+                                                        />
+                                                        <input
+                                                            type="text" name="category" value={editFormData.category}
+                                                            onChange={handleEditFormChange} className={styles.formInput}
+                                                            style={{ fontSize: '0.9rem', padding: '0.4rem' }}
+                                                            placeholder="Category"
+                                                            list="transaction-categories"
+                                                            required
+                                                        />
+                                                        <datalist id="transaction-categories">
+                                                            {/* You can populate this dynamically or have common ones */}
+                                                            <option value="Salary" />
+                                                            <option value="Freelance" />
+                                                            <option value="Food & Drink" />
+                                                            <option value="Transportation" />
+                                                            <option value={GOAL_SAVINGS_CATEGORY_NAME} />
+                                                        </datalist>
+                                                        <input
+                                                            type="number" name="amount" value={editFormData.amount}
+                                                            onChange={handleEditFormChange} className={styles.formInput}
+                                                            style={{ fontSize: '0.9rem', padding: '0.4rem', textAlign: 'right' }}
+                                                            step="0.01" min="0.01" required
+                                                        />
+                                                          <div style={{ position: 'relative', justifySelf:'start' }}>
+                                                            <button
+                                                              type="button"
+                                                              onClick={() => setShowEditEmojiPicker(prev => prev === tx._id ? null : tx._id)}
+                                                              className={styles.emojiButton}
+                                                              style={{fontSize: '1.2rem', padding: '0.4rem'}}
+                                                              aria-label="Select icon"
+                                                            >
+                                                              {editFormData.emoji || '+'}
+                                                            </button>
+                                                            {showEditEmojiPicker === tx._id && (
+                                                              <div className={styles.emojiPickerContainer} style={{top: '100%', left: 0, zIndex: 10, position: 'absolute', minWidth: '280px'}}>
+                                                                <Picker
+                                                                    onEmojiClick={(emojiData) => {
+                                                                        setEditFormData(prev => ({ ...prev, emoji: emojiData.emoji }));
+                                                                        setShowEditEmojiPicker(null);
+                                                                    }}
+                                                                    pickerStyle={{ width: '100%' }}
+                                                                />
+                                                              </div>
+                                                            )}
+                                                          </div>
+                                                     </div>
                                                 </>
                                             ) : (
                                                 <>
-                                                    <button onClick={() => handleEditClick(tx)} className={`${styles.actionButton} ${styles.editButton}`} aria-label="Edit transaction">
-                                                        <FaEdit />
-                                                    </button>
-                                                    <button onClick={() => handleDelete(tx._id)} className={`${styles.actionButton} ${styles.deleteButton}`} aria-label="Delete transaction">
-                                                        <FaTrash />
-                                                    </button>
+                                                <span className={styles.transactionDesc} style={{ gridColumn: '2 / 4', gridRow: '1 / 2' }}>
+                                                    {tx.emoji && <span className={styles.transactionEmoji} style={{marginRight: '0.5em'}}>{tx.emoji}</span>}
+                                                    {tx.description} ({tx.category})
+                                                </span>
+                                                <span
+                                                    className={`${styles.transactionAmount} ${tx.type === 'income' ? styles.income : styles.expense}`}
+                                                    style={{ gridColumn: '4 / 5', gridRow: '1 / 2', justifySelf: 'end' }}
+                                                >
+                                                    {formatCurrency(tx.amount, tx.type)} {/* Pass type for +/- prefix */}
+                                                </span>
                                                 </>
                                             )}
+                                            <div style={{
+                                                display: 'flex', gap: '0.5rem', justifyContent: 'flex-end',
+                                                gridColumn: '5 / 6', gridRow: '1 / span 2',
+                                                alignItems: 'center'
+                                            }}>
+                                                {editingTxId === tx._id ? (
+                                                    <>
+                                                        <button onClick={() => handleSaveEdit(tx._id)} className={`${styles.actionButton} ${styles.saveButton}`}>Save</button>
+                                                        <button onClick={handleCancelEdit} className={`${styles.actionButton} ${styles.cancelButton}`}>Cancel</button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <button onClick={() => handleEditClick(tx)} className={`${styles.actionButton} ${styles.editButton}`} aria-label="Edit transaction">
+                                                            <FaEdit />
+                                                        </button>
+                                                        <button onClick={() => handleDelete(tx._id)} className={`${styles.actionButton} ${styles.deleteButton}`} aria-label="Delete transaction">
+                                                            <FaTrash />
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                    {editingTxId === tx._id && projections.isValidAmount && (
-                                        <div className={styles.editProjections} style={{gridColumn: '1 / -1'}}>
-                                            {projections.isCurrentMonthTx && projections.projectedCurrentMonthBalance !== null && (
+                                        {editingTxId === tx._id && projections.isValidAmount && (
+                                            <div className={styles.editProjections} style={{gridColumn: '1 / -1'}}>
+                                                {projections.isCurrentMonthTx && projections.projectedCurrentMonthBalance !== null && (
+                                                    <p>
+                                                        If saved, this month's balance will become: <strong>{formatCurrency(projections.projectedCurrentMonthBalance, null)}</strong>
+                                                    </p>
+                                                )}
                                                 <p>
-                                                    If saved, this month's balance will become: <strong>{formatCurrency(projections.projectedCurrentMonthBalance, null)}</strong>
+                                                    Your total cumulative savings will become: <strong>{formatCurrency(projections.projectedTotalCumulativeSavings, null)}</strong>
                                                 </p>
-                                            )}
-                                            <p>
-                                                Your total cumulative savings will become: <strong>{formatCurrency(projections.projectedTotalCumulativeSavings, null)}</strong>
-                                            </p>
-                                            {/* Goal Constraint Projection */}
-                                            {projections.txType === 'expense' && projections.goalConstraint && projections.goalConstraint.applicable && (
-                                                <p style={projections.goalConstraint.isExceeded ? {color: 'red', fontWeight: 'bold'} : {color: 'darkgreen'}}>
-                                                    For goal "<strong>{projections.goalConstraint.goalName}</strong>":
-                                                    Max spend for this item is <strong>{formatCurrency(projections.goalConstraint.limit, null)}</strong>.
-                                                    {projections.goalConstraint.isExceeded && (
-                                                        <em> Current amount exceeds this limit!</em>
-                                                    )}
-                                                </p>
-                                            )}
-                                             {projections.projectedTotalCumulativeSavings < 0 && (
-                                                <p style={{color: 'red', fontWeight: 'bold'}}>
-                                                    Warning: This change will result in overall negative savings!
-                                                </p>
-                                            )}
-                                            {projections.isCurrentMonthTx && projections.projectedCurrentMonthBalance !== null && projections.projectedCurrentMonthBalance < 0 && currentMonthNetBalance >= 0 && (
-                                                <p style={{color: 'orange', fontWeight: 'bold'}}>
-                                                    Note: This change will make your current month's balance negative.
-                                                </p>
-                                            )}
-                                        </div>
-                                     )}
-                                    </React.Fragment>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className={styles.placeholderContent}>
-                                No transactions found. {localStorage.getItem('authToken') ? '' : 'Please log in to view transactions.'}
-                            </div>
-                        )}
-                    </section>
-                )}
+                                                {/* Goal Constraint Projection */}
+                                                {projections.txType === 'expense' && projections.goalConstraint && projections.goalConstraint.applicable && (
+                                                    <p style={projections.goalConstraint.isExceeded ? {color: 'red', fontWeight: 'bold'} : {color: 'darkgreen'}}>
+                                                        For goal "<strong>{projections.goalConstraint.goalName}</strong>":
+                                                        Max spend for this item is <strong>{formatCurrency(projections.goalConstraint.limit, null)}</strong>.
+                                                        {projections.goalConstraint.isExceeded && (
+                                                            <em> Current amount exceeds this limit!</em>
+                                                        )}
+                                                    </p>
+                                                )}
+                                                 {projections.projectedTotalCumulativeSavings < 0 && (
+                                                    <p style={{color: 'red', fontWeight: 'bold'}}>
+                                                        Warning: This change will result in overall negative savings!
+                                                    </p>
+                                                )}
+                                                {projections.isCurrentMonthTx && projections.projectedCurrentMonthBalance !== null && projections.projectedCurrentMonthBalance < 0 && currentMonthNetBalance >= 0 && (
+                                                    <p style={{color: 'orange', fontWeight: 'bold'}}>
+                                                        Note: This change will make your current month's balance negative.
+                                                    </p>
+                                                )}
+                                            </div>
+                                         )}
+                                        </React.Fragment>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className={styles.placeholderContent}>
+                                    No transactions found. {localStorage.getItem('authToken') ? '' : 'Please log in to view transactions.'}
+                                </div>
+                            )}
+                        </section>
+                    )}
+                </div>
             </div>
-        </div>
+        </>
     );
 }
 
