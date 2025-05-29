@@ -68,7 +68,6 @@ function AboutPage() {
             <li>Complete transaction list (income + expense)</li>
             <li>Download as PDF</li>
             <li>Edit/Delete each transaction</li>
-            <li>Accessed via “See All” from Dashboard’s “Recent Transactions”</li>
           </ul>
         </section>
 
